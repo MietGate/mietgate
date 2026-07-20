@@ -41,7 +41,7 @@ const groups = [
   {
     title: "Preise & Abo",
     items: [
-      { q: "Kann ich MietGate kostenlos testen?", a: "Ja. Sie können ohne Kreditkarte starten und Ihr erstes Objekt anlegen." },
+      { q: "Kann ich MietGate kostenlos testen?", a: "Ja. Sie können MietGate kostenlos starten, Objekte anlegen und alles einrichten. Eine Zahlungsmethode wird erst benötigt, wenn Sie Ihren Bewerbungslink veröffentlichen – dann startet Ihre 3-tägige Testphase." },
       { q: "Kann ich jederzeit kündigen?", a: "Ja. Abos können zum Ende der Abrechnungsperiode gekündigt werden." },
       { q: "Was passiert bei Preisänderungen?", a: "Neue Kunden erhalten neue Preise. Bestehende Kunden behalten ihren bisherigen Tarif." },
     ],

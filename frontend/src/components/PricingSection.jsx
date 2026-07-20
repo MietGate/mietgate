@@ -43,9 +43,13 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen" }) {
             <p className="text-sm text-muted-foreground mt-1">bis zu {p.max_properties} aktive{p.max_properties === 1 ? "s" : ""} Objekt{p.max_properties === 1 ? "" : "e"}</p>
             <ul className="mt-6 space-y-2.5 flex-1">
               {p.features?.map((f, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" /> <span className="text-foreground/80">{f}</span>
-                </li>
+                f.startsWith("Alles aus") ? (
+                  <li key={i} className="text-sm font-semibold text-foreground pt-1">{f}</li>
+                ) : (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" /> <span className="text-foreground/80">{f}</span>
+                  </li>
+                )
               ))}
             </ul>
             <Button className="mt-7 w-full" variant={p.highlight ? "default" : "outline"}

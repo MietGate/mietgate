@@ -56,7 +56,7 @@ export default function Register() {
         <div className="w-full max-w-sm py-8">
           <div className="lg:hidden mb-8"><Logo /></div>
           <h1 className="font-display text-3xl font-bold">Konto erstellen</h1>
-          <p className="text-muted-foreground mt-1 mb-6 text-sm">Kostenlos testen. Keine Kreditkarte nötig.</p>
+          <p className="text-muted-foreground mt-1 mb-6 text-sm">Kostenlos starten. Zahlungsmethode erst bei Veröffentlichung des Bewerbungslinks nötig.</p>
           {planIntent && planIntent !== "starter" && (
             <div className="mb-6 rounded-lg border border-primary/30 bg-accent/50 px-4 py-3 text-sm" data-testid="plan-intent-banner">
               Gewähltes Paket: <span className="font-semibold capitalize">{planIntent}</span> · Nach der Registrierung schließen Sie die Buchung ab.
