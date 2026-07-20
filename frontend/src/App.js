@@ -7,6 +7,7 @@ import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Pricing from "@/pages/Pricing";
+import Features from "@/pages/Features";
 import PublicApplication from "@/pages/PublicApplication";
 import PaymentResult from "@/pages/PaymentResult";
 import AuthReset from "@/pages/AuthReset";
@@ -40,6 +41,7 @@ function AppRouter() {
       <Route path="/aktivieren" element={<AuthReset />} />
       <Route path="/passwort-zuruecksetzen" element={<AuthReset />} />
       <Route path="/preise" element={<Pricing />} />
+      <Route path="/funktionen" element={<Features />} />
       <Route path="/b/:code" element={<PublicApplication />} />
       <Route path="/payment/success" element={<PaymentResult />} />
       <Route path="/payment/cancel" element={<PaymentResult />} />

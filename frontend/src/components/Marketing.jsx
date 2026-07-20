@@ -14,8 +14,7 @@ export function MarketingNav() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/"><Logo /></Link>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-          <a href="/#funktionen" className="text-muted-foreground hover:text-foreground transition-colors">Funktionen</a>
-          <a href="/#ablauf" className="text-muted-foreground hover:text-foreground transition-colors">So funktioniert's</a>
+          <Link to="/funktionen" className="text-muted-foreground hover:text-foreground transition-colors">Funktionen</Link>
           <Link to="/preise" className="text-muted-foreground hover:text-foreground transition-colors">Preise</Link>
           <a href="/#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
         </nav>
@@ -33,7 +32,7 @@ export function MarketingNav() {
       </div>
       {open && (
         <div className="md:hidden border-t border-border px-6 py-4 space-y-3 bg-background">
-          <a href="/#funktionen" className="block text-sm">Funktionen</a>
+          <Link to="/funktionen" className="block text-sm">Funktionen</Link>
           <Link to="/preise" className="block text-sm">Preise</Link>
           <a href="/#faq" className="block text-sm">FAQ</a>
           <Button asChild className="w-full"><Link to={user ? dest : "/registrieren"}>{user ? "Dashboard" : "Kostenlos starten"}</Link></Button>
@@ -54,7 +53,7 @@ export function MarketingFooter() {
         <div>
           <h4 className="text-white font-semibold mb-3 text-sm">Produkt</h4>
           <ul className="space-y-2 text-sm">
-            <li><a href="/#funktionen" className="hover:text-white">Funktionen</a></li>
+            <li><Link to="/funktionen" className="hover:text-white">Funktionen</Link></li>
             <li><Link to="/preise" className="hover:text-white">Preise</Link></li>
             <li><Link to="/registrieren" className="hover:text-white">Registrieren</Link></li>
           </ul>

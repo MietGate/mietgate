@@ -79,6 +79,9 @@ export default function Landing() {
             </motion.div>
           ))}
         </div>
+        <motion.div {...fade} className="mt-10">
+          <Button variant="outline" asChild data-testid="all-features-cta"><Link to="/funktionen">Alle Funktionen im Detail <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
+        </motion.div>
       </section>
 
       {/* Process */}
