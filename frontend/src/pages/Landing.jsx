@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { PricingSection } from "@/components/PricingSection";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import {
   ArrowRight, Check, X, Inbox, LayoutGrid, CalendarCheck, ShieldCheck,
   Building2, Users, Briefcase, Star, ShieldCheck as Shield, Clock, MapPin
