@@ -1,0 +1,30 @@
+{
+  "summary": "Re-tested FIX 1 (invite applicant to a viewing from the pipeline drawer) after the Pipeline.jsx state declarations were added. All three targeted fixes now pass end-to-end. BACKEND: 50/50 pytest passes (health, plans, auth, properties + plan limits, public application flow, applications CRUD + status, applicant activation + document upload/download + auth guards, viewings + invite + respond, messaging + notifications, dashboard, payments checkout, admin CRUD + block/unblock + promotions, gating negatives+positives for Team & White-Label, and pipeline invite regression). FRONTEND: Seeded a fresh landlord/property/viewing/public application via API, logged in via UI, opened /objekte/<pid>, clicked the Bewerber tab (1 applicant card visible), clicked the card — drawer opened cleanly with NO React error overlay. All expected data-testids present: app-status-select, star-1..5, invite-viewing-select, invite-to-viewing, msg-input, msg-send, request-docs. Opening the invite Select listed the created viewing ('UI Besichtigung · 10.3.2026'); after selecting it and clicking Einladen the toast 'Zur Besichtigung eingeladen' appeared and the applicant card moved to the 'Besichtigung' column (kanban-column-besichtigung, count went from 0 → 1). Other drawer actions also verified: status change via select shows toast 'Status aktualisiert', star rating persists, message send works, and Dokumente anfordern shows toast 'Dokumente angefordert'. No console errors or error overlays observed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Pipeline.jsx now correctly declares useState for viewings and selViewing and fetches /viewings?property_id=<propertyId> in the drawer's load(). Fix is minimal and correct.",
+    "Suggestion (nice-to-have, not blocking): enable ESLint rule `no-undef` (or migrate to Vite/TS) so identical bugs where render references an undeclared identifier are caught at build time rather than at click time.",
+    "Suggestion: after a successful inviteToViewing, consider closing the drawer (`onClose?.()`) in addition to `load()` + `onChanged?.()` — currently the drawer stays open on the same applicant that just moved columns, which is fine but a minor UX polish.",
+    "The invite endpoint /viewings/{id}/invite is idempotent server-side (verified by pytest); no duplicate participants get added on repeated clicks."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (50/50)", "frontend": "100% — FIX 1, FIX 2, FIX 3 all verified"},
+  "test_credentials": "Admin: admin@mietgate.de / MietGate2026! (from /app/memory/test_credentials.md). Per-run landlord created via /api/auth/register with random suffix (e.g. pipeui-1b20dd@example.com / Test1234!). Per-run applicant created via /api/public/apply (activation token used only in backend suite).",
+  "seed_data_creation": "Frontend UI test seeded a fresh landlord + org + property + viewing (2026-03-10) + one public application through the public REST API before opening the browser. Backend suite still upserts a Mongo `subscriptions` doc (plan_key=makler, status=active) for the per-run org and sets `organizations.white_label_addon=true` on that org to exercise the positive gating branches. All rows are per-run (random hex suffix) so no seeded/production data is touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "FIX 1 UI now fully working. If more tests are needed later: run `python -m pytest /app/backend/tests/backend_test.py -v -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml` for the backend regression, then reproduce the pipeline UI flow by seeding via /api/auth/register + /api/properties + /api/viewings + /api/public/apply, opening /objekte/<pid>, clicking Bewerber tab → applicant card, and verifying data-testids `invite-viewing-select` and `invite-to-viewing` render + the invite toast + column move. Base URL from /app/frontend/.env: REACT_APP_BACKEND_URL."
+}

@@ -23,11 +23,13 @@ function scoreColor(s) {
   return "bg-destructive/10 text-destructive border-destructive/20";
 }
 
-function ApplicationSheet({ appId, open, onClose, onChanged }) {
+function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   const [app, setApp] = useState(null);
   const [messages, setMessages] = useState([]);
   const [msg, setMsg] = useState("");
   const [notes, setNotes] = useState("");
+  const [viewings, setViewings] = useState([]);
+  const [selViewing, setSelViewing] = useState("");
   const token = localStorage.getItem("mg_token");
 
   const load = useCallback(async () => {
@@ -36,7 +38,11 @@ function ApplicationSheet({ appId, open, onClose, onChanged }) {
     setApp(data); setNotes(data.internal_notes || "");
     const m = await api.get(`/messages?application_id=${appId}`);
     setMessages(m.data);
-  }, [appId]);
+    if (propertyId) {
+      const v = await api.get(`/viewings?property_id=${propertyId}`);
+      setViewings(v.data);
+    }
+  }, [appId, propertyId]);
 
   useEffect(() => { if (open) load(); }, [open, load]);
 
