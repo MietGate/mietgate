@@ -14,7 +14,7 @@ export default function Billing() {
   useEffect(() => { load(); }, []);
 
   const select = async (plan, interval) => {
-    if (plan.key === "enterprise") { toast.info("Bitte kontaktieren Sie uns unter kontakt@mietgate.de"); return; }
+    if (plan.key === "enterprise") { toast.info("Bitte kontaktieren Sie uns unter support@mietgate.de"); return; }
     try {
       const { data } = await api.post("/payments/checkout", { plan_key: plan.key, interval, origin_url: window.location.origin });
       window.location.href = data.checkout_url;

@@ -60,7 +60,7 @@ export default function Contact() {
 
           <div className="md:col-span-2 space-y-4">
             {[
-              { icon: Mail, t: "E-Mail", d: "kontakt@mietgate.de" },
+              { icon: Mail, t: "E-Mail", d: "support@mietgate.de" },
               { icon: MessageSquare, t: "Support", d: "Für Vermieter, Makler & Hausverwaltungen" },
               { icon: ShieldCheck, t: "Datenschutz", d: "EU-Hosting · DSGVO-konform" },
             ].map((c, i) => (

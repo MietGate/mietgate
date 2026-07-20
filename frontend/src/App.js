@@ -13,7 +13,7 @@ import ForLandlords from "@/pages/ForLandlords";
 import ForTenants from "@/pages/ForTenants";
 import Contact from "@/pages/Contact";
 import FAQ from "@/pages/FAQ";
-import { Impressum, Datenschutz, AGB } from "@/pages/LegalPages";
+import { Impressum, Datenschutz, AGB, Widerruf, Cookies, Plattformregeln } from "@/pages/LegalPages";
 import PublicApplication from "@/pages/PublicApplication";
 import PaymentResult from "@/pages/PaymentResult";
 import AuthReset from "@/pages/AuthReset";
@@ -56,6 +56,9 @@ function AppRouter() {
       <Route path="/impressum" element={<Impressum />} />
       <Route path="/datenschutz" element={<Datenschutz />} />
       <Route path="/agb" element={<AGB />} />
+      <Route path="/widerruf" element={<Widerruf />} />
+      <Route path="/cookies" element={<Cookies />} />
+      <Route path="/plattformregeln" element={<Plattformregeln />} />
       <Route path="/b/:code" element={<PublicApplication />} />
       <Route path="/payment/success" element={<PaymentResult />} />
       <Route path="/payment/cancel" element={<PaymentResult />} />
