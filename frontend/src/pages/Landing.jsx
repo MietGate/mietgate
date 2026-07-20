@@ -11,7 +11,14 @@ import {
 const fade = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.55 } };
 
 const HERO_IMG = "https://images.unsplash.com/photo-1682184805271-11671b7ecf4c?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
-const QUOTE_IMG = "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?crop=entropy&cs=srgb&fm=jpg&q=85&w=400";
+
+const faqs = [
+  { q: "Wie funktioniert MietGate?", a: "Sie erstellen ein Objekt, erhalten einen individuellen Bewerbungslink und teilen ihn überall dort, wo Sie inserieren. Bewerbungen, Dokumente und Termine verwalten Sie zentral in MietGate – vom Eingang bis zur Zusage." },
+  { q: "Welche Dokumente können hochgeladen werden?", a: "SCHUFA-Auskunft, Gehaltsnachweise, Arbeitsvertrag, Ausweis, Aufenthaltstitel, Mietschuldenfreiheitsbescheinigung, Bürgschaft und weitere – sicher verschlüsselt und nur für Sie zugänglich." },
+  { q: "Ist MietGate DSGVO-konform?", a: "Ja. Wir setzen auf EU-Hosting, sichere Dokumentenzugriffe mit zeitlich begrenzten Links, Einwilligungen bei jeder Bewerbung und ein transparentes Löschkonzept." },
+  { q: "Kann ich mehrere Wohnungen verwalten?", a: "Ja. Mit dem Plus-Paket verwalten Sie bis zu 5 Objekte, mit dem Makler-Paket bis zu 20 – inklusive Team, Rollen und optionalem White-Label." },
+  { q: "Ist MietGate ein Immobilienportal?", a: "Nein. MietGate ist kein Portal wie ImmoScout oder Kleinanzeigen. Es beginnt nach dem Inserat und organisiert den gesamten Bewerbungs- und Vermietungsprozess." },
+];
 
 const oldWay = [
   "Anfragen verstreut über E-Mail, Telefon & Messenger",
@@ -181,21 +188,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Testimonial */}
-      <section className="bg-brand-dark text-white">
-        <div className="max-w-5xl mx-auto px-6 py-24 grid md:grid-cols-3 gap-10 items-center">
-          <div className="md:col-span-1 flex md:justify-center">
-            <img src={QUOTE_IMG} alt="" className="h-28 w-28 rounded-full object-cover ring-4 ring-white/10" />
-          </div>
-          <blockquote className="md:col-span-2">
-            <p className="font-display text-2xl sm:text-3xl font-medium leading-snug">
-              „Früher habe ich Bewerbungen aus drei Postfächern zusammengesucht. Heute bekomme ich alles strukturiert über einen Link – und weiß sofort, wer wirklich passt."
-            </p>
-            <footer className="mt-6 text-white/70">Sandra M. · Vermietet 6 Wohnungen in München</footer>
-          </blockquote>
-        </div>
-      </section>
-
       {/* Audiences */}
       <section className="max-w-6xl mx-auto px-6 py-24">
         <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">Für jede Größe gemacht</motion.h2>
@@ -219,6 +211,20 @@ export default function Landing() {
           </motion.div>
           <PricingSection onSelect={() => navigate("/registrieren")} ctaLabel="Jetzt starten" />
         </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="max-w-3xl mx-auto px-6 py-24">
+        <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark mb-10">Häufige Fragen</motion.h2>
+        <Accordion type="single" collapsible className="w-full">
+          {faqs.map((f, i) => (
+            <AccordionItem key={i} value={`item-${i}`}>
+              <AccordionTrigger className="text-left font-medium" data-testid={`faq-${i}`}>{f.q}</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">{f.a}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+        <p className="text-center text-sm text-muted-foreground mt-8">Noch Fragen? <Link to="/kontakt" className="text-primary font-medium hover:underline">Kontaktieren Sie uns</Link>.</p>
       </section>
 
       {/* Final CTA */}

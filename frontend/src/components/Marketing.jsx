@@ -59,16 +59,17 @@ export function MarketingFooter() {
         <div>
           <h4 className="text-white font-semibold mb-3 text-sm">Rechtliches</h4>
           <ul className="space-y-2 text-sm">
-            <li><span className="hover:text-white cursor-pointer">Impressum</span></li>
-            <li><span className="hover:text-white cursor-pointer">Datenschutz</span></li>
-            <li><span className="hover:text-white cursor-pointer">AGB</span></li>
+            <li><Link to="/impressum" className="hover:text-white">Impressum</Link></li>
+            <li><Link to="/datenschutz" className="hover:text-white">Datenschutz</Link></li>
+            <li><Link to="/agb" className="hover:text-white">AGB</Link></li>
           </ul>
         </div>
         <div>
           <h4 className="text-white font-semibold mb-3 text-sm">Kontakt</h4>
           <ul className="space-y-2 text-sm">
+            <li><Link to="/kontakt" className="hover:text-white">Support & Kontakt</Link></li>
             <li>kontakt@mietgate.de</li>
-            <li className="text-white/40">🇩🇪 EU-Hosting · DSGVO-konform</li>
+            <li className="text-white/40">EU-Hosting · DSGVO-konform</li>
           </ul>
         </div>
       </div>
