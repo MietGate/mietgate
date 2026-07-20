@@ -1,0 +1,166 @@
+{
+  "theme_preference": "light_first_with_dark_toggle",
+  "brand_identity": {
+    "name": "MietGate.de",
+    "archetype": "Swiss & High-Contrast / Old Money Tech",
+    "description": "A premium, trustworthy, GDPR-compliant multi-tenant SaaS for the German real-estate rental market. It avoids the 'outdated real estate portal' look, opting for 'Linear-style calm density'—professional, simple, and high-performance."
+  },
+  "typography": {
+    "fonts": {
+      "headings": {
+        "family": "Cabinet Grotesk",
+        "fallback": "sans-serif",
+        "weights": ["500", "700", "800"],
+        "usage": "H1 to H4. Used to deliver a highly sophisticated, high-end European feel. NO Inter for headings."
+      },
+      "body": {
+        "family": "IBM Plex Sans",
+        "fallback": "sans-serif",
+        "weights": ["400", "500", "600"],
+        "usage": "Paragraphs, labels, and forms. Legible, technical, and trustworthy."
+      },
+      "mono": {
+        "family": "JetBrains Mono",
+        "fallback": "monospace",
+        "weights": ["400", "500"],
+        "usage": "Property IDs (e.g., 8KX2A1), matching scores (87/100), financial figures, pricing tables, and technical metadata."
+      }
+    },
+    "scale_rules": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-none",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight",
+      "h3": "text-xl sm:text-2xl tracking-tight",
+      "body": "text-base leading-relaxed",
+      "labels": "text-xs tracking-[0.1em] uppercase font-semibold"
+    }
+  },
+  "colors": {
+    "strategy": "Trustworthy 'Fintech/Real-Estate' feel. High contrast, low saturation. Easily re-brandable via CSS variables.",
+    "css_variables": {
+      "light": {
+        "--background": "60 20% 98%",
+        "--foreground": "220 30% 10%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "220 30% 10%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "220 30% 10%",
+        "--primary": "214 74% 15%",
+        "--primary-foreground": "210 40% 98%",
+        "--secondary": "210 20% 96%",
+        "--secondary-foreground": "214 74% 15%",
+        "--muted": "210 20% 96%",
+        "--muted-foreground": "215 16% 47%",
+        "--accent": "210 20% 96%",
+        "--accent-foreground": "214 74% 15%",
+        "--destructive": "0 84% 60%",
+        "--destructive-foreground": "210 40% 98%",
+        "--success": "142 72% 29%",
+        "--success-foreground": "210 40% 98%",
+        "--border": "214 32% 91%",
+        "--input": "214 32% 91%",
+        "--ring": "214 74% 15%",
+        "--radius": "0.3rem"
+      },
+      "dark": {
+        "--background": "224 25% 6%",
+        "--foreground": "210 40% 98%",
+        "--card": "222 25% 8%",
+        "--card-foreground": "210 40% 98%",
+        "--popover": "222 25% 8%",
+        "--popover-foreground": "210 40% 98%",
+        "--primary": "210 40% 98%",
+        "--primary-foreground": "224 25% 6%",
+        "--secondary": "217 20% 15%",
+        "--secondary-foreground": "210 40% 98%",
+        "--muted": "217 20% 15%",
+        "--muted-foreground": "215 20% 65%",
+        "--accent": "217 20% 15%",
+        "--accent-foreground": "210 40% 98%",
+        "--destructive": "0 62% 30%",
+        "--destructive-foreground": "210 40% 98%",
+        "--success": "142 60% 20%",
+        "--success-foreground": "210 40% 98%",
+        "--border": "217 20% 15%",
+        "--input": "217 20% 15%",
+        "--ring": "210 40% 98%",
+        "--radius": "0.3rem"
+      }
+    }
+  },
+  "visual_enhancers": {
+    "borders": "1px crisp borders (Grid Borders technical look) across dashboards to expose the skeleton and maximize density.",
+    "shadows": "Minimalistic. Use shadow-sm for cards. For high-conversion elements like pricing, use an ambient glow or layered shadow.",
+    "glassmorphism": "Used strictly for sticky headers on the marketing site (Crystal Glass variant: high blur backdrop-blur-xl, subtle white/20 border). Flat surfaces only for dashboards to prevent data refraction.",
+    "icons": "Phosphor Icons (@phosphor-icons/react) for high-end duotone feel on marketing, and solid/regular on dashboard."
+  },
+  "layouts": {
+    "marketing_page": {
+      "strategy": "The 'Tetris' Grid. Asymmetrical, high tension. Generous spacing (p-12, p-24).",
+      "sections": [
+        "Hero: Deep Prussian Blue overlay on architecture image (max bg-black/40). Large Cabinet Grotesk typography.",
+        "Benefits: Bento grid layout with overlapping elements.",
+        "Pricing: 3 tiers (Starter, Plus, Makler) with 'Tracing Beam' highlight on the middle tier.",
+        "Footer: Massive space (py-20), clear legal links (Impressum, Datenschutz, AGB)."
+      ]
+    },
+    "dashboard_shell": {
+      "strategy": "High Density Grid (Linear style). Calm density, progressive disclosure. Every pixel utilized.",
+      "navigation": "Collapsible left sidebar (240px default), dark-first or highly contrasted neutral. Main content area has a minimalist top bar (breadcrumb + user profile).",
+      "kanban_pipeline": "Horizontal flex container with overflow-x-auto. Fixed width columns (min-w-[320px]). Cards use 1px borders, minimal shadow, dense information (Matching Score badge, SCHUFA tag)."
+    }
+  },
+  "grids": {
+    "dashboard_bento": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 or gap-6. Summary metrics span 1 col, main charts span 2-3.",
+    "spacing_scale": "Use Tailwind defaults but apply generously on marketing (gap-8 to gap-16) and tightly on dashboard (gap-4)."
+  },
+  "component_rules": {
+    "cards": "Flat background, 1px subtle border, no shadow by default. On hover: -translate-y-1, shadow-md, border darkens.",
+    "buttons": "Slightly rounded (rounded-md). Solid primary color. On hover: scale slightly or reveal an icon. Never generic.",
+    "inputs_forms": "Shadcn components, lightly customized to feel sharp. 1px border. Focus state must use ring-2 ring-primary offset-2.",
+    "badges": "Used for matching scores (e.g., 87/100). High contrast. e.g., bg-green-100 text-green-900 (light mode)."
+  },
+  "motion": {
+    "strategy": "Micro-interactions for feedback. Staggered entrances for dashboard lists/kanban cards.",
+    "transitions": "Specific properties only (e.g., transition-transform duration-200, transition-colors). NO transition-all.",
+    "libraries": "framer-motion for marketing page scroll effects (fade up, parallax). react-beautiful-dnd or @hello-pangea/dnd for Kanban."
+  },
+  "accessibility": {
+    "contrast": "APCA preferred. Standard WCAG AA compliance required. Focus states must have higher contrast.",
+    "testing": "All interactive elements MUST have data-testid attributes (e.g., data-testid='kanban-column-neu').",
+    "reduced_motion": "Wrap complex animations with prefers-reduced-motion checks."
+  },
+  "images": [
+    {
+      "url": "https://images.pexels.com/photos/18153132/pexels-photo-18153132.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "category": "marketing_hero",
+      "description": "Contemporary apartment buildings in Berlin. Perfect for the hero section background to establish the German real-estate context."
+    },
+    {
+      "url": "https://images.pexels.com/photos/7546322/pexels-photo-7546322.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "category": "feature_highlight",
+      "description": "Modern bright apartment interior. Use in the feature sections (e.g., 'Digitize rental applications')."
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1526948531399-320e7e40f0ca?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjByZWFsJTIwZXN0YXRlJTIwYWdlbnQlMjBvciUyMGxhbmRsb3JkJTIwbG9va2luZyUyMHRydXN0d29ydGh5fGVufDB8fHx8MTc4NDUyNjIxNHww&ixlib=rb-4.1.0&q=85",
+      "category": "trust_testimonial",
+      "description": "Two men in a professional setting. Ideal for the 'Target Groups' (Makler/Hausverwaltungen) section or testimonials."
+    }
+  ],
+  "instructions_to_main_agent": [
+    "Read this complete JSON to establish the theme variables before generating components.",
+    "The app has two distinct worlds: A highly creative, generously spaced Marketing Page (use pure Tailwind + framer-motion) and a Dense, Linear-style Dashboard (use Shadcn + tight grids).",
+    "Install and use @phosphor-icons/react for icons.",
+    "Install and use 'sonner' for toasts.",
+    "Do NOT use HTML <select> or <input type='date'>. Always use Shadcn DropdownMenu, Select, and Calendar.",
+    "For the Kanban pipeline, create horizontal scrolling lanes. Use strict 1px borders and distinct card styling.",
+    "Use German language for all placeholder text, navigation, and mock data (e.g., 'Neu', 'Prüfung', 'Zusage')."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not apply 'transition: all'. It breaks framer-motion transforms. Specify transition properties.",
+    "Never center-align the main app container globally.",
+    "Do not use generic blue gradients. Stick to the premium Slate/Prussian Blue solid brand identity.",
+    "Ensure all buttons and links have distinct hover states (lighter/darker hue, not opacity).",
+    "Always use the defined image URLs. Never use placeholder services like via.placeholder.com.",
+    "Add data-testid attributes to all critical interactive elements."
+  ]
+}
