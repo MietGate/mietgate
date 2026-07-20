@@ -16,7 +16,6 @@ export function MarketingNav() {
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
           <Link to="/funktionen" className="text-muted-foreground hover:text-foreground transition-colors">Funktionen</Link>
           <Link to="/preise" className="text-muted-foreground hover:text-foreground transition-colors">Preise</Link>
-          <a href="/#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
         </nav>
         <div className="hidden md:flex items-center gap-3">
           {user ? (
@@ -34,7 +33,6 @@ export function MarketingNav() {
         <div className="md:hidden border-t border-border px-6 py-4 space-y-3 bg-background">
           <Link to="/funktionen" className="block text-sm">Funktionen</Link>
           <Link to="/preise" className="block text-sm">Preise</Link>
-          <a href="/#faq" className="block text-sm">FAQ</a>
           <Button asChild className="w-full"><Link to={user ? dest : "/registrieren"}>{user ? "Dashboard" : "Kostenlos starten"}</Link></Button>
         </div>
       )}
