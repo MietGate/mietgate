@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import {
   ArrowRight, Inbox, BarChart3, Clock, ShieldCheck,
-  Building2, Briefcase, Users, Check
+  Building2, Briefcase, Users, Check, Link2, LayoutGrid, CalendarCheck
 } from "lucide-react";
 
 const fade = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.5 } };
@@ -43,6 +43,12 @@ const faqs = [
   { q: "Kann ich im Team arbeiten?", a: "Ja – ab dem Makler-Paket können Sie Mitarbeiter mit Rollen (Admin, Mitarbeiter, Assistent) einladen und Objekte gemeinsam verwalten." },
 ];
 
+const steps = [
+  { icon: Link2, n: "1", t: "Objekt anlegen & Link teilen", d: "Wohnung anlegen, Bewerbungsformular anpassen und Ihren sicheren Bewerbungslink überall teilen – Portale, Social Media, Website." },
+  { icon: LayoutGrid, n: "2", t: "Bewerbungen sammeln & sichten", d: "Alle Bewerbungen laufen strukturiert in Ihrer Pipeline auf – vollständig, vergleichbar und mit Matching-Score." },
+  { icon: CalendarCheck, n: "3", t: "Besichtigen & zusagen", d: "Termine vergeben, Favoriten markieren, Dokumente sicher prüfen – und dem passenden Mieter zusagen." },
+];
+
 export default function ForLandlords() {
   return (
     <div className="bg-background">
@@ -60,6 +66,24 @@ export default function ForLandlords() {
             </div>
             <p className="text-sm text-muted-foreground mt-4">Kostenlos starten · Zahlung erst bei Veröffentlichung des Bewerbungslinks</p>
           </motion.div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="max-w-5xl mx-auto px-6 pt-20">
+        <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">So funktioniert's</motion.h2>
+        <motion.p {...fade} transition={{ duration: 0.5, delay: 0.05 }} className="text-muted-foreground text-lg text-center mt-3 max-w-xl mx-auto">In drei Schritten vom Inserat zum passenden Mieter.</motion.p>
+        <div className="grid md:grid-cols-3 gap-6 mt-14">
+          {steps.map((s, i) => (
+            <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }} className="rounded-2xl border border-border bg-card p-8" data-testid={`landlord-step-${i}`}>
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary"><s.icon className="h-5 w-5" /></div>
+                <span className="font-display text-2xl font-bold text-primary/30">{s.n}</span>
+              </div>
+              <h3 className="font-display font-semibold text-lg mt-5 text-brand-dark">{s.t}</h3>
+              <p className="text-muted-foreground text-sm mt-2">{s.d}</p>
+            </motion.div>
+          ))}
         </div>
       </section>
 
