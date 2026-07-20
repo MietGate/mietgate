@@ -15,6 +15,13 @@ Vermieter-zentrierte Multi-Tenant SaaS für den deutschen Immobilienmarkt zur Di
 ## Core Requirements (static)
 Bewerbungslink, Formular-Builder (Pflicht/Optional/Aus), Dokumente + Sicherheit, Besichtigungen (Einzel/Slots/Massen), Bewerberpipeline (Kanban), Matching Score (nicht-diskriminierend), Stripe, Admin, Organisationen, White-Label-Vorbereitung, DSGVO.
 
+## Implemented (2026-07-20 — Fork session)
+- ✅ Hintergrund-Jobs aktiviert: `maintenance.py` (Besichtigungs-Erinnerungen ~24h vorher + DSGVO Auto-Löschung 6/12/24 Monate) via `asyncio.create_task(maintenance_loop())` im Startup (stündlich). SyntaxError in maintenance.py behoben.
+- ✅ Bewerber-Premium 4,99€/Mo: Frontend Upsell-Karte + Checkout im ApplicantDashboard (POST /api/premium/checkout, Stripe). PaymentResult rollenbasiert (Bewerber → /bewerber, refresh user).
+- ✅ Admin Partner-/Affiliate-Link-Editor: neue Seite /admin/partner (AdminPartners.jsx) + Nav-Item; Backend GET/PUT /api/admin/partners + POST /api/admin/maintenance/run (manueller Lauf, admin-only).
+- ✅ Enterprise-CTA auf /preise verlinkt jetzt /kontakt.
+- ✅ Getestet: iteration_4.json — Backend 16/16 neu, Frontend-Flows 100%, keine Bugs.
+
 ## Implemented (2026-07-20)
 - ✅ Auth: register/login/me/logout, JWT + Google OAuth, brute-force lockout, admin seeding, password reset (console/email).
 - ✅ Organizations + members (owner/admin/employee/assistant), invite/remove, org settings, White-Label toggle.
