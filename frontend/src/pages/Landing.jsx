@@ -67,7 +67,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-6 pt-8 pb-20 lg:pt-12 lg:pb-24 grid lg:grid-cols-2 gap-14 items-center">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary bg-primary/10 px-3 py-1.5 rounded-full">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-soft-pulse" /> Early Access · Jetzt kostenlos starten
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-soft-pulse" /> Der neue Standard für Mietbewerbungen
             </span>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-semibold leading-[1.06] mt-6 text-brand-dark">
               Schluss mit dem Bewerbungs&shy;chaos.
@@ -80,9 +80,8 @@ export default function Landing() {
               <Button size="lg" variant="outline" asChild><Link to="/funktionen" className="w-full">Funktionen ansehen</Link></Button>
             </div>
             <div className="flex flex-col sm:flex-row sm:flex-wrap items-start gap-x-6 gap-y-2 mt-7 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary shrink-0" /> Kostenlos starten</span>
-              <span className="flex items-center gap-1.5"><CreditCard className="h-4 w-4 text-primary shrink-0" /> Zahlung erst bei Link-Veröffentlichung</span>
-              <span className="flex items-center gap-1.5"><Shield className="h-4 w-4 text-primary shrink-0" /> DSGVO & EU-Hosting</span>
+              <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary shrink-0" /> Kostenlos starten, Zahlung erst bei Veröffentlichung</span>
+              <span className="flex items-center gap-1.5"><Shield className="h-4 w-4 text-primary shrink-0" /> DSGVO-konform · Hosting in der EU</span>
             </div>
           </motion.div>
 
