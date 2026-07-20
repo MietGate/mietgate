@@ -133,12 +133,12 @@ export default function Features() {
       <section className="max-w-5xl mx-auto px-6 py-20 space-y-6">
         {features.map((f, i) => (
           <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: (i % 2) * 0.05 }}
-            className="rounded-2xl border border-border bg-card p-7 sm:p-9 grid md:grid-cols-3 gap-6" data-testid={`feature-${i}`}>
-            <div className="md:col-span-1">
+            className="rounded-2xl border border-border bg-card p-7 sm:p-9 grid md:grid-cols-3 gap-6 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all" data-testid={`feature-${i}`}>
+            <div className={`md:col-span-1 ${i % 2 === 1 ? "md:order-2" : ""}`}>
               <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><f.icon className="h-6 w-6" /></div>
               <h2 className="font-display text-2xl font-semibold mt-4">{f.title}</h2>
             </div>
-            <div className="md:col-span-2">
+            <div className={`md:col-span-2 ${i % 2 === 1 ? "md:order-1" : ""}`}>
               <p className="text-foreground/80 text-lg">{f.lead}</p>
               <ul className="mt-5 grid sm:grid-cols-2 gap-x-6 gap-y-2.5">
                 {f.points.map((p, j) => (

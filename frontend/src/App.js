@@ -2,6 +2,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardShell } from "@/components/DashboardShell";
+import { CookieConsent } from "@/components/CookieConsent";
 import { AuthCallback } from "@/pages/AuthCallback";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -96,6 +97,7 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <AppRouter />
+        <CookieConsent />
       </BrowserRouter>
     </div>
   );

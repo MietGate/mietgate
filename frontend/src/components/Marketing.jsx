@@ -1,9 +1,40 @@
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Send, Loader2 } from "lucide-react";
+import api from "@/lib/api";
+import { toast } from "sonner";
+
+function NewsletterForm() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post("/newsletter", { email });
+      setDone(true);
+      toast.success("Danke! Wir halten Sie auf dem Laufenden.");
+    } catch {
+      toast.error("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
+    } finally { setLoading(false); }
+  };
+  if (done) return <p className="text-sm text-white/70" data-testid="newsletter-done">✓ Sie sind eingetragen. Willkommen an Bord!</p>;
+  return (
+    <form onSubmit={submit} className="flex gap-2 max-w-sm" data-testid="newsletter-form">
+      <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+        placeholder="Ihre E-Mail" data-testid="newsletter-email"
+        className="bg-white/10 border-white/20 text-white placeholder:text-white/40" />
+      <Button type="submit" disabled={loading} variant="secondary" data-testid="newsletter-submit">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+      </Button>
+    </form>
+  );
+}
 
 export function MarketingNav() {
   const { user } = useAuth();
@@ -52,35 +83,45 @@ export function MarketingNav() {
 export function MarketingFooter() {
   return (
     <footer className="bg-brand-dark text-white/70">
-      <div className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-4 gap-10">
-        <div className="md:col-span-1">
-          <Logo textClass="text-white" className="h-8 bg-white rounded-md p-0.5" />
-          <p className="mt-4 text-sm text-white/50 max-w-xs">Digitales Vermietungsmanagement für den deutschen Immobilienmarkt.</p>
+      <div className="max-w-6xl mx-auto px-6 pt-16 pb-8">
+        <div className="rounded-2xl bg-white/5 border border-white/10 p-8 mb-14 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h3 className="text-white font-display text-xl font-semibold">Bleiben Sie auf dem Laufenden</h3>
+            <p className="text-sm text-white/60 mt-1">Neuigkeiten, Produkt-Updates und Vermieter-Tipps – kein Spam.</p>
+          </div>
+          <NewsletterForm />
         </div>
-        <div>
-          <h4 className="text-white font-semibold mb-3 text-sm">Produkt</h4>
-          <ul className="space-y-2 text-sm">
-            <li><Link to="/funktionen" className="hover:text-white">Funktionen</Link></li>
-            <li><Link to="/preise" className="hover:text-white">Preise</Link></li>
-            <li><Link to="/faq" className="hover:text-white">FAQ</Link></li>
-            <li><Link to="/registrieren" className="hover:text-white">Registrieren</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="text-white font-semibold mb-3 text-sm">Rechtliches</h4>
-          <ul className="space-y-2 text-sm">
-            <li><Link to="/impressum" className="hover:text-white">Impressum</Link></li>
-            <li><Link to="/datenschutz" className="hover:text-white">Datenschutz</Link></li>
-            <li><Link to="/agb" className="hover:text-white">AGB</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="text-white font-semibold mb-3 text-sm">Kontakt</h4>
-          <ul className="space-y-2 text-sm">
-            <li><Link to="/kontakt" className="hover:text-white">Support & Kontakt</Link></li>
-            <li>kontakt@mietgate.de</li>
-            <li className="text-white/40">EU-Hosting · DSGVO-konform</li>
-          </ul>
+        <div className="grid md:grid-cols-4 gap-10">
+          <div className="md:col-span-1">
+            <Logo textClass="text-white" className="h-8 bg-white rounded-md p-0.5" />
+            <p className="mt-4 text-sm text-white/50 max-w-xs">Digitales Vermietungsmanagement für den deutschen Immobilienmarkt.</p>
+          </div>
+          <div>
+            <h4 className="text-white font-semibold mb-3 text-sm">Produkt</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/funktionen" className="hover:text-white">Funktionen</Link></li>
+              <li><Link to="/preise" className="hover:text-white">Preise</Link></li>
+              <li><Link to="/faq" className="hover:text-white">FAQ</Link></li>
+              <li><Link to="/registrieren" className="hover:text-white">Registrieren</Link></li>
+              <li><Link to="/login" className="hover:text-white">Bewerber-Login</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-white font-semibold mb-3 text-sm">Rechtliches</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/impressum" className="hover:text-white">Impressum</Link></li>
+              <li><Link to="/datenschutz" className="hover:text-white">Datenschutz</Link></li>
+              <li><Link to="/agb" className="hover:text-white">AGB</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-white font-semibold mb-3 text-sm">Kontakt</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/kontakt" className="hover:text-white">Support & Kontakt</Link></li>
+              <li>kontakt@mietgate.de</li>
+              <li className="text-white/40">EU-Hosting · DSGVO-konform</li>
+            </ul>
+          </div>
         </div>
       </div>
       <div className="border-t border-white/10 py-6 text-center text-xs text-white/40">

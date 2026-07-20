@@ -13,6 +13,7 @@ export default function Register() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [params] = useSearchParams();
+  const planIntent = params.get("plan");
   const [role, setRole] = useState(params.get("role") === "applicant" ? "applicant" : "landlord");
   const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "", org_name: "", org_type: "private" });
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,8 @@ export default function Register() {
       const { data } = await api.post("/auth/register", { ...form, role });
       login(data.token, data.user);
       toast.success("Konto erstellt!");
-      navigate(role === "applicant" ? "/bewerber" : "/dashboard");
+      if (role === "applicant") navigate("/bewerber");
+      else navigate(planIntent && planIntent !== "starter" ? `/abo?plan=${planIntent}` : "/dashboard");
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
     } finally {
@@ -55,6 +57,11 @@ export default function Register() {
           <div className="lg:hidden mb-8"><Logo /></div>
           <h1 className="font-display text-3xl font-bold">Konto erstellen</h1>
           <p className="text-muted-foreground mt-1 mb-6 text-sm">Kostenlos testen. Keine Kreditkarte nötig.</p>
+          {planIntent && planIntent !== "starter" && (
+            <div className="mb-6 rounded-lg border border-primary/30 bg-accent/50 px-4 py-3 text-sm" data-testid="plan-intent-banner">
+              Gewähltes Paket: <span className="font-semibold capitalize">{planIntent}</span> · Nach der Registrierung schließen Sie die Buchung ab.
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2 mb-6">
             <button type="button" onClick={() => setRole("landlord")} data-testid="role-landlord"

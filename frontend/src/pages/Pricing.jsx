@@ -11,7 +11,7 @@ export default function Pricing() {
 
   const onSelect = async (plan, interval) => {
     if (plan.key === "enterprise") { navigate("/kontakt"); return; }
-    if (!user) { navigate("/registrieren"); return; }
+    if (!user) { navigate(`/registrieren?plan=${plan.key}`); return; }
     if (user.role !== "landlord") { toast.error("Nur Vermieter können ein Paket buchen."); return; }
     try {
       const { data } = await api.post("/payments/checkout", { plan_key: plan.key, interval, origin_url: window.location.origin });

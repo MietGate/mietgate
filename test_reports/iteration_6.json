@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only E2E-Verifikation der überarbeiteten öffentlichen MietGate-Website. Alle geforderten Flows funktionieren fehlerfrei: Landing (Produkt-Hero-Mockup, Early-Access-Badge, Trust-Bar mit 'In Minuten'/'Ein Ort'/'DSGVO'/'Fair'), Cookie-Consent (Erscheinen + 'Alle akzeptieren' + 'Nur notwendige' + Persistenz via localStorage 'mg_cookie_consent'), Newsletter (POST /api/newsletter -> newsletter-done), Preis-CTA-Weitergabe (/preise select-plus -> /registrieren?plan=plus + plan-intent-banner), Landing-Pricing-CTAs (select-starter/plus/makler -> /registrieren?plan=<key>), Enterprise-CTA (-> /kontakt), Funktionen (9 Feature-Blöcke geladen), rechtliche Seiten (/impressum, /datenschutz, /agb, /faq alle mit Inhalt), FAQ-Accordion (16 Trigger). 0 Console-Errors und 0 pageerrors. Mobile-Menü im 375px-Viewport getestet: nav-mobile-login + nav-mobile-register sichtbar und funktional.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Landing.jsx: HERO_IMG (Unsplash) wird nur noch als schwaches Hintergrundbild (opacity 0.08) im Final-CTA-Block genutzt. Das Produkt-Mockup ist rein CSS/HTML – gut. HERO_IMG-Konstante könnte umbenannt (z.B. CTA_BG_IMG) oder inline gesetzt werden, da 'HERO' irreführend ist.",
+    "CookieConsent.jsx: 800ms setTimeout vor Banner-Anzeige verzögert das Erscheinen leicht – ok für UX, aber automatisierte Tests müssen mindestens ~1000ms warten. Kein Bug.",
+    "Register.jsx L60: plan-intent-banner wird für plan='starter' bewusst nicht angezeigt (Starter ~ Default). Dieses Verhalten ist konsistent mit L30 (nur non-starter geht zu /abo?plan=). Klar dokumentiert im Code.",
+    "PricingSection.jsx: onSelect wird aus dem API-Response gefüttert; falls /api/plans leer oder fehlerhaft ist, gibt es keine Fallback-UI (kein Loading/Empty-State). Aktuell nicht blockierend, aber ein 'Skeleton' oder Retry könnte robust sein.",
+    "Marketing.jsx NewsletterForm: fängt Fehler nicht sichtbar für den User – bei einem 5xx würde 'Senden…' hängen bleiben. Optional: setError-Zustand + toast.",
+    "MarketingFooter/CTA texts (/impressum /agb) haben Titel 'Emergent | Fullstack App' im document.title. Sollten für SEO und Branding auf 'MietGate | Impressum' etc. gesetzt werden (react-helmet oder <title> pro Route).",
+    "Cookie-Consent bietet nur 'Alle' oder 'Nur notwendige' – für strikte DSGVO ist ein 3-Optionen-Layout (mit Detail-Toggle für Analyse-Kategorie) empfehlenswert. Aktuell mag ok sein, wenn keine Analytics geladen werden.",
+    "Alle interaktiven Elemente haben data-testid – vorbildlich."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only)", "frontend": "100% (18/18 assertions)"},
+  "test_credentials": "Kein Login benötigt (öffentliche Flows).",
+  "seed_data_creation": "Newsletter-Test hat 1 Eintrag 'test-frontend@example.com' in db.newsletter_subscribers erzeugt.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Öffentliche Website (Landing, Preise, Funktionen, Register, FAQ, Legal, Cookie-Consent, Newsletter, Pricing-CTAs) 100% funktional. Bei Screenshot-Tool immer localStorage.clear() (oder page.evaluate) verwenden, damit Cookie-Banner erscheint. Backend-URL: REACT_APP_BACKEND_URL aus /app/frontend/.env. Plan-Keys aus /api/plans: starter/plus/makler/whitelabel + Enterprise (kein 'free' Plan). plan-intent-banner in Register.jsx wird bewusst NUR für non-starter Plans angezeigt (Register.jsx L60).",
+  "rca of the issue": "Kein Bug gefunden. Der zuvor erwähnte Uncaught-Runtime-Fehler (Accordion-Import in Landing.jsx) ist behoben – Konsole zeigt 0 Errors."
+}

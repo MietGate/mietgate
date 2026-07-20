@@ -67,7 +67,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-6 pt-16 pb-20 lg:pt-24 lg:pb-28 grid lg:grid-cols-2 gap-14 items-center">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary bg-primary/10 px-3 py-1.5 rounded-full">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Digitales Vermietungsmanagement
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-soft-pulse" /> Early Access · Jetzt kostenlos starten
             </span>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-semibold leading-[1.06] mt-6 text-brand-dark">
               Schluss mit dem Bewerbungs&shy;chaos.
@@ -86,19 +86,53 @@ export default function Landing() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.1 }} className="relative">
-            <div className="rounded-2xl overflow-hidden border border-border shadow-2xl shadow-brand-dark/10">
-              <img src={HERO_IMG} alt="Moderne Wohnung" className="w-full h-[380px] lg:h-[460px] object-cover" />
+          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.1 }} className="relative hero-glow">
+            {/* Product preview: browser-framed pipeline board */}
+            <div className="rounded-2xl overflow-hidden border border-border bg-card shadow-2xl shadow-brand-dark/15">
+              <div className="flex items-center gap-1.5 px-4 h-10 bg-secondary/70 border-b border-border">
+                <span className="h-2.5 w-2.5 rounded-full bg-destructive/40" />
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400/50" />
+                <span className="h-2.5 w-2.5 rounded-full bg-success/40" />
+                <span className="ml-3 text-[11px] text-muted-foreground font-mono truncate">app.mietgate.de/objekte/bewerber</span>
+              </div>
+              <div className="p-4 bg-secondary/20">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { t: "Neu", n: 4, tone: "bg-muted-foreground/60" },
+                    { t: "Besichtigung", n: 2, tone: "bg-primary" },
+                    { t: "Zusage", n: 1, tone: "bg-success" },
+                  ].map((col, ci) => (
+                    <div key={ci} className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground/70">
+                        <span className={`h-1.5 w-1.5 rounded-full ${col.tone}`} /> {col.t}
+                        <span className="text-muted-foreground">· {col.n}</span>
+                      </div>
+                      {Array.from({ length: col.n > 2 ? 2 : col.n }).map((_, k) => (
+                        <div key={k} className="rounded-lg border border-border bg-card p-2.5 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="h-5 w-5 rounded-full bg-accent" />
+                            <div className="h-2 w-14 rounded bg-secondary" />
+                          </div>
+                          <div className="mt-2 h-1.5 w-full rounded bg-secondary overflow-hidden">
+                            <div className={`h-full ${ci === 2 ? "bg-success" : "bg-primary"} rounded animate-bar`} style={{ width: `${60 + ci * 15}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="absolute -bottom-5 -left-4 sm:left-6 bg-card border border-border rounded-xl shadow-lg p-4 w-56">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Matching-Score</span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-primary animate-soft-pulse" /> Matching-Score</span>
                 <span className="font-mono text-lg font-bold text-primary">87<span className="text-sm text-muted-foreground">/100</span></span>
               </div>
-              <div className="mt-2 h-2 rounded-full bg-secondary overflow-hidden"><div className="h-full bg-primary rounded-full" style={{ width: "87%" }} /></div>
+              <div className="mt-2 h-2 rounded-full bg-secondary overflow-hidden"><div className="h-full bg-primary rounded-full animate-bar" style={{ width: "87%" }} /></div>
               <p className="text-xs text-muted-foreground mt-2">Anna S. · 2 Personen · Dokumente vollständig</p>
             </div>
           </motion.div>
+
         </div>
       </section>
 
@@ -106,10 +140,10 @@ export default function Landing() {
       <section className="border-y border-border bg-secondary/40">
         <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { icon: Clock, k: "In 2 Min.", v: "Objekt online" },
-            { icon: Inbox, k: "100%", v: "vollständige Bewerbungen" },
-            { icon: ShieldCheck, k: "Sicher", v: "verschlüsselte Dokumente" },
-            { icon: Star, k: "Ein Ort", v: "für den ganzen Prozess" },
+            { icon: Clock, k: "In Minuten", v: "startklar – ohne IT" },
+            { icon: Inbox, k: "Ein Ort", v: "für alle Bewerbungen" },
+            { icon: ShieldCheck, k: "DSGVO", v: "verschlüsselt & EU-Hosting" },
+            { icon: Star, k: "Fair", v: "transparente Preise" },
           ].map((s, i) => (
             <div key={i} className="flex flex-col items-center">
               <s.icon className="h-5 w-5 text-primary" />
@@ -210,7 +244,7 @@ export default function Landing() {
             <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-brand-dark">Faire, transparente Preise</h2>
             <p className="text-muted-foreground mt-3 text-lg">Starten Sie kostenlos. Zahlen Sie erst, wenn Sie mehr brauchen.</p>
           </motion.div>
-          <PricingSection onSelect={() => navigate("/registrieren")} ctaLabel="Jetzt starten" />
+          <PricingSection onSelect={(p) => navigate(p?.key ? `/registrieren?plan=${p.key}` : "/registrieren")} ctaLabel="Jetzt starten" />
         </div>
       </section>
 
@@ -230,12 +264,13 @@ export default function Landing() {
 
       {/* Final CTA */}
       <section className="max-w-6xl mx-auto px-6 py-24">
-        <motion.div {...fade} className="rounded-3xl bg-brand-dark text-white p-12 lg:p-16 text-center relative overflow-hidden">
+        <motion.div {...fade} className="rounded-3xl bg-brand-dark text-white p-12 lg:p-16 text-center relative overflow-hidden grain">
           <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: `url(${HERO_IMG})`, backgroundSize: "cover", backgroundPosition: "center" }} />
           <div className="relative">
             <h2 className="font-display text-3xl sm:text-4xl font-semibold">Vermieten Sie ab heute entspannter.</h2>
             <p className="text-white/70 mt-3 max-w-lg mx-auto">Legen Sie Ihr erstes Objekt an und teilen Sie Ihren Bewerbungslink in wenigen Minuten.</p>
             <Button size="lg" className="mt-8" asChild><Link to="/registrieren">Kostenlos starten <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
+            <p className="text-white/50 text-sm mt-4">Kostenlos · keine Kreditkarte · jederzeit kündbar</p>
           </div>
         </motion.div>
       </section>

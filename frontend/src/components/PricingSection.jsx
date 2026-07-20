@@ -32,7 +32,7 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen" }) {
       <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {main.map((p) => (
           <div key={p.key} data-testid={`plan-${p.key}`}
-            className={`relative rounded-2xl border p-7 bg-card flex flex-col ${p.highlight ? "border-primary shadow-lg shadow-primary/10 ring-1 ring-primary/20" : "border-border"}`}>
+            className={`relative rounded-2xl border p-7 bg-card flex flex-col hover:-translate-y-1.5 hover:shadow-xl transition-all ${p.highlight ? "border-primary shadow-lg shadow-primary/10 ring-1 ring-primary/20" : "border-border hover:border-primary/40"}`}>
             {p.highlight && <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">Beliebt</Badge>}
             <h3 className="font-display text-xl font-bold">{p.name}</h3>
             <div className="mt-4 flex items-baseline gap-1">

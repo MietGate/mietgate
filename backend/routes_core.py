@@ -56,6 +56,21 @@ async def contact(payload: ContactPayload):
     return {"ok": True}
 
 
+class NewsletterPayload(BaseModel):
+    email: str
+
+
+@router.post("/newsletter")
+async def newsletter_signup(payload: NewsletterPayload):
+    email = payload.email.lower().strip()
+    existing = await db.newsletter_subscribers.find_one({"email": email})
+    if not existing:
+        await db.newsletter_subscribers.insert_one({
+            "id": new_id(), "email": email, "created_at": now_iso(),
+        })
+    return {"ok": True}
+
+
 # ---------- Profile ----------
 class ProfileUpdate(BaseModel):
     first_name: Optional[str] = None
