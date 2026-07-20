@@ -48,5 +48,7 @@ async def send_email(to_email: str, subject: str, title: str, body_html: str):
                 json=payload,
             )
         resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Email send failed {e.response.status_code}: {e.response.text}")
     except Exception as e:
         logger.error(f"Email send error: {e}")
