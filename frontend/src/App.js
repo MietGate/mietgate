@@ -29,6 +29,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminOrganizations from "@/pages/admin/AdminOrganizations";
 import AdminPlans from "@/pages/admin/AdminPlans";
+import AdminPartners from "@/pages/admin/AdminPartners";
 import AdminSupport from "@/pages/admin/AdminSupport";
 
 function AppRouter() {
@@ -83,6 +84,7 @@ function AppRouter() {
         <Route path="/admin/nutzer" element={<AdminUsers />} />
         <Route path="/admin/organisationen" element={<AdminOrganizations />} />
         <Route path="/admin/pakete" element={<AdminPlans />} />
+        <Route path="/admin/partner" element={<AdminPartners />} />
         <Route path="/admin/support" element={<AdminSupport />} />
       </Route>
     </Routes>

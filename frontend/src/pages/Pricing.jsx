@@ -10,7 +10,7 @@ export default function Pricing() {
   const navigate = useNavigate();
 
   const onSelect = async (plan, interval) => {
-    if (plan.key === "enterprise") { toast.info("Bitte kontaktieren Sie uns unter kontakt@mietgate.de"); return; }
+    if (plan.key === "enterprise") { navigate("/kontakt"); return; }
     if (!user) { navigate("/registrieren"); return; }
     if (user.role !== "landlord") { toast.error("Nur Vermieter können ein Paket buchen."); return; }
     try {

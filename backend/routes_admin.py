@@ -150,3 +150,41 @@ async def update_ticket(tid: str, status: str, user: dict = Depends(admin)):
 @router.get("/activities")
 async def admin_activities(user: dict = Depends(admin)):
     return await db.activities.find({}, NO_ID).sort("created_at", -1).to_list(200)
+
+
+# ---------- Partner / Affiliate links ----------
+class PartnerOffer(BaseModel):
+    category: str
+    name: str
+    url: str
+    description: Optional[str] = ""
+
+
+class PartnersPayload(BaseModel):
+    schufa_url: Optional[str] = None
+    schufa_text: Optional[str] = None
+    offers: List[PartnerOffer] = []
+
+
+@router.get("/partners")
+async def admin_get_partners(user: dict = Depends(admin)):
+    doc = await db.settings.find_one({"key": "partners"}, NO_ID)
+    return doc or {"key": "partners", "schufa_url": None, "schufa_text": None, "offers": []}
+
+
+@router.put("/partners")
+async def admin_update_partners(body: PartnersPayload, user: dict = Depends(admin)):
+    upd = {
+        "schufa_url": body.schufa_url,
+        "schufa_text": body.schufa_text,
+        "offers": [o.model_dump() for o in body.offers],
+    }
+    await db.settings.update_one({"key": "partners"}, {"$set": upd}, upsert=True)
+    doc = await db.settings.find_one({"key": "partners"}, NO_ID)
+    return doc
+
+
+@router.post("/maintenance/run")
+async def run_maintenance(user: dict = Depends(admin)):
+    import maintenance
+    return await maintenance.run_once()

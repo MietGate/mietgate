@@ -33,16 +33,16 @@ async def send_viewing_reminders():
         when = dt.strftime("%d.%m.%Y %H:%M")
         for p in v.get("participants", []):
             await notify(p["applicant_user_id"], "viewing_reminder", "Erinnerung: Besichtigung morgen",
-                         f"Ihre Besichtigung „{v['title']}" findet am {when} statt.")
+                         f'Ihre Besichtigung "{v["title"]}" findet am {when} statt.')
             if p.get("applicant_email"):
                 await send_email(p["applicant_email"], "Erinnerung: Ihre Besichtigung",
                                  "Besichtigung morgen",
                                  f"<p>Ihre Besichtigung <b>{v['title']}</b> findet am <b>{when}</b> statt.</p>")
             if p.get("status") == "invited":
                 await notify(v.get("created_by"), "viewing_no_response", "Bewerber hat nicht reagiert",
-                             f"Ein eingeladener Bewerber hat den Termin „{v['title']}" noch nicht bestätigt.")
+                             f'Ein eingeladener Bewerber hat den Termin "{v["title"]}" noch nicht bestätigt.')
         await notify(v.get("created_by"), "viewing_reminder", "Erinnerung: Besichtigung morgen",
-                     f"Ihre Besichtigung „{v['title']}" ist am {when}.")
+                     f'Ihre Besichtigung "{v["title"]}" ist am {when}.')
         await db.viewings.update_one({"id": v["id"]}, {"$set": {"reminder_sent": True}})
         count += 1
     if count:

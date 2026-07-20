@@ -11,6 +11,7 @@ from database import ensure_indexes
 from seed import seed_all
 import storage
 import stripe_service
+import maintenance
 
 import routes_auth
 import routes_core
@@ -56,3 +57,5 @@ async def on_startup():
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
     asyncio.get_event_loop().run_in_executor(None, stripe_service.setup_catalog)
+    asyncio.create_task(maintenance.maintenance_loop())
+    logger.info("Maintenance loop scheduled")

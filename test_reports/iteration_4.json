@@ -1,0 +1,34 @@
+{
+  "summary": "Tested newly added features: (1) Admin Partner-Links GET/PUT + public visibility on /api/partners, (2) Admin manual maintenance run (POST /api/admin/maintenance/run) with reminders+deleted_applications JSON, (3) Applicant Premium checkout (POST /api/premium/checkout) real Stripe sandbox session + 400 when user.premium=true, (4) Non-admin 403 gates on /api/admin/partners (both GET and PUT) and /api/admin/maintenance/run, plus 401 requires-auth. BACKEND: 16/16 new pytest cases pass (test_new_features.py) — legacy suite untouched. FRONTEND: verified end-to-end via Playwright: applicant logs in on /login → /bewerber shows premium-upsell card + buy-premium-btn → click triggers POST /api/premium/checkout (200) and window.location.href redirect to https://checkout.stripe.com/… (verified in browser URL). Admin sidebar shows nav-partnerlinks item → /admin/partner loads admin-partners-page with add-offer-btn + save-partners-btn → adding a new offer, filling category/name/url/description, then saving fires PUT /api/admin/partners (200) and shows toast 'Partner-Links gespeichert'; the remove-offer-N button also works. Pricing page /preise shows select-enterprise CTA and clicking it navigates to /kontakt (contact form visible).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/pytest_new_features.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes_payment.py POST /api/premium/checkout does NOT restrict to role=='applicant' — a landlord (or admin) can also create a premium checkout as long as user.premium is false. This matches the spec you provided ('Ein Vermieter/kein-Bewerber sollte trotzdem gehen'), but if premium is meant to be an applicant-only perk long-term, add an explicit role check. Documented as verified behavior, not a bug.",
+    "routes_admin.py /partners GET returns doc with the persisted 'key':'partners' field plus stored fields; the public /api/partners in routes_core.py returns the same doc — both correctly exclude Mongo _id via NO_ID projection. OK.",
+    "routes_admin.py POST /maintenance/run has no request-body constraints (correct) and returns {reminders:int, deleted_applications:int}. Consider adding a per-invocation rate limit or an activity-log entry so admins can audit manual triggers.",
+    "AdminPartners.jsx: the 'Speichern' button remains disabled during the axios call, but if the PUT throws no explicit onError toast is shown for network errors caught inside formatApiError → e.message fallback is used, which is fine. Not blocking.",
+    "Frontend route map: user-visible auth link labels say 'Anmelden' but the actual route is /login (not /anmelden). This is only a mismatch if any doc/link points to /anmelden — none observed in App.js. Testing note: use /login as canonical URL.",
+    "App.js declares routes but does NOT have a catch-all NotFound route — hitting an unknown path (e.g. /anmelden) renders an empty <div class=App/> with no user feedback. Suggest adding a Route path='*' fallback (404 page) so unknown URLs don't silently render a blank page."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py"
+  ],
+  "success_rate": {"backend": "100% (16/16 new + prior 50/50 untouched)", "frontend": "100% — premium upsell + Stripe redirect, admin partner editor add/edit/remove/save+toast, pricing enterprise CTA -> /kontakt"},
+  "test_credentials": "Admin: admin@mietgate.de / MietGate2026! (from /app/memory/test_credentials.md). Per-run landlord + applicant seeded via /api/auth/register + /api/public/apply + /api/auth/reset-password with random hex suffix; the applicant used for the UI test was ui-a-5e6aa9@example.com / Applicant123!.",
+  "seed_data_creation": "Per-run seed via public API: 1 landlord org + 1 property (application_code) + 1 public application → applicant activated via reset-password. Left in place (idempotent naming with random hex suffix; matches previous iterations' convention). Also PUT /api/admin/partners populated schufa_url/schufa_text + 2 offers (TEST_Anbieter_<run>, InetCo) — these persist in db.settings and will be visible to future tests; if unwanted, delete the doc via `db.settings.deleteOne({key:'partners'})`.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "New endpoints and UI are fully wired and verified. Regression: run `REACT_APP_BACKEND_URL=<preview> python -m pytest /app/backend/tests/test_new_features.py -v -n 0`. Note that pytest.ini's default `-n 2 --dist loadscope` also works but the file was validated with -n 0. For Stripe premium flow retest, ensure user.premium=false before hitting POST /api/premium/checkout; the test flips it to true via mongosh and back to false. The applicant login URL is /login (NOT /anmelden — /anmelden renders a blank page because there's no catch-all Route)."
+}

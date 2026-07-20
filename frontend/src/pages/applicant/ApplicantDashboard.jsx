@@ -1,14 +1,78 @@
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Inbox, FileText, PartyPopper, ExternalLink, Zap, Wifi, Truck, Sparkles, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Loader2, Inbox, FileText, PartyPopper, ExternalLink, Zap, Wifi, Truck, Sparkles, ShieldCheck, Crown, Check } from "lucide-react";
 
 const STATUS_COLOR = {
   neu: "secondary", zusage: "default", absage: "destructive", favorit: "default",
 };
 
 const OFFER_ICON = { Strom: Zap, Internet: Wifi, Umzug: Truck, Reinigung: Sparkles, Versicherung: ShieldCheck };
+
+const PREMIUM_PERKS = [
+  "Premium-Profil hebt Ihre Bewerbung hervor",
+  "Bevorzugte Sichtbarkeit bei Vermietern",
+  "Verifiziertes Bewerber-Badge",
+  "Alle Dokumente an einem Ort teilen",
+];
+
+function PremiumCard() {
+  const { user, refresh } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  const buyPremium = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.post("/premium/checkout", { origin_url: window.location.origin });
+      window.location.href = data.checkout_url;
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+      setLoading(false);
+    }
+  };
+
+  if (user?.premium) {
+    return (
+      <div className="rounded-2xl border-2 border-amber-400/40 bg-amber-50/60 p-6" data-testid="premium-active-banner">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-xl bg-amber-400 text-white flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
+          <div>
+            <h2 className="font-display text-xl font-bold">Premium aktiv 👑</h2>
+            <p className="text-muted-foreground text-sm mt-0.5">Ihr Bewerber-Profil wird bevorzugt angezeigt. Danke für Ihre Unterstützung!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6" data-testid="premium-upsell">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="h-11 w-11 rounded-xl bg-amber-400/15 text-amber-500 flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
+          <div>
+            <h2 className="font-display text-xl font-bold">Bewerber-Premium</h2>
+            <p className="text-muted-foreground text-sm mt-0.5">Erhöhen Sie Ihre Chancen auf die Wunschwohnung – für nur <span className="font-semibold text-foreground">4,99 €/Monat</span>.</p>
+          </div>
+        </div>
+        <Button onClick={buyPremium} disabled={loading} data-testid="buy-premium-btn" className="bg-amber-500 hover:bg-amber-600 text-white">
+          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Crown className="h-4 w-4 mr-2" />} Premium holen
+        </Button>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-2 mt-5">
+        {PREMIUM_PERKS.map((p, i) => (
+          <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Check className="h-4 w-4 text-amber-500 shrink-0" /> {p}
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground mt-4">Monatlich kündbar. Wird sicher über Stripe abgewickelt.</p>
+    </div>
+  );
+}
 
 export default function ApplicantDashboard() {
   const { user } = useAuth();
@@ -26,6 +90,8 @@ export default function ApplicantDashboard() {
   return (
     <div className="space-y-6 animate-fade-up">
       <div><h1 className="font-display text-3xl font-bold">Hallo, {user?.first_name || "Bewerber"}!</h1><p className="text-muted-foreground mt-1">Ihre laufenden Bewerbungen.</p></div>
+
+      <PremiumCard />
 
       {wonApp && (
         <div className="rounded-2xl border-2 border-primary/30 bg-accent/40 p-6 animate-fade-up" data-testid="congrats-banner">
