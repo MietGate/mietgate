@@ -9,6 +9,8 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Pricing from "@/pages/Pricing";
 import Features from "@/pages/Features";
+import ForLandlords from "@/pages/ForLandlords";
+import ForTenants from "@/pages/ForTenants";
 import Contact from "@/pages/Contact";
 import FAQ from "@/pages/FAQ";
 import { Impressum, Datenschutz, AGB } from "@/pages/LegalPages";
@@ -47,6 +49,8 @@ function AppRouter() {
       <Route path="/passwort-zuruecksetzen" element={<AuthReset />} />
       <Route path="/preise" element={<Pricing />} />
       <Route path="/funktionen" element={<Features />} />
+      <Route path="/fuer-vermieter" element={<ForLandlords />} />
+      <Route path="/fuer-mieter" element={<ForTenants />} />
       <Route path="/kontakt" element={<Contact />} />
       <Route path="/faq" element={<FAQ />} />
       <Route path="/impressum" element={<Impressum />} />

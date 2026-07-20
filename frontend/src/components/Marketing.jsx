@@ -44,7 +44,9 @@ export function MarketingNav() {
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border/60">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/"><Logo /></Link>
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+        <nav className="hidden md:flex items-center gap-7 text-sm font-medium">
+          <Link to="/fuer-vermieter" className="text-muted-foreground hover:text-foreground transition-colors">Für Vermieter</Link>
+          <Link to="/fuer-mieter" className="text-muted-foreground hover:text-foreground transition-colors">Für Mieter</Link>
           <Link to="/funktionen" className="text-muted-foreground hover:text-foreground transition-colors">Funktionen</Link>
           <Link to="/preise" className="text-muted-foreground hover:text-foreground transition-colors">Preise</Link>
           <Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
@@ -63,6 +65,8 @@ export function MarketingNav() {
       </div>
       {open && (
         <div className="md:hidden border-t border-border px-6 py-4 space-y-3 bg-background">
+          <Link to="/fuer-vermieter" className="block text-sm">Für Vermieter</Link>
+          <Link to="/fuer-mieter" className="block text-sm">Für Mieter</Link>
           <Link to="/funktionen" className="block text-sm">Funktionen</Link>
           <Link to="/preise" className="block text-sm">Preise</Link>
           <Link to="/faq" className="block text-sm">FAQ</Link>
