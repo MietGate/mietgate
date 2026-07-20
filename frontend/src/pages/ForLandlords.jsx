@@ -69,24 +69,6 @@ export default function ForLandlords() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="max-w-5xl mx-auto px-6 pt-20">
-        <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">So funktioniert's</motion.h2>
-        <motion.p {...fade} transition={{ duration: 0.5, delay: 0.05 }} className="text-muted-foreground text-lg text-center mt-3 max-w-xl mx-auto">In drei Schritten vom Inserat zum passenden Mieter.</motion.p>
-        <div className="grid md:grid-cols-3 gap-6 mt-14">
-          {steps.map((s, i) => (
-            <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }} className="rounded-2xl border border-border bg-card p-8" data-testid={`landlord-step-${i}`}>
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary"><s.icon className="h-5 w-5" /></div>
-                <span className="font-display text-2xl font-bold text-primary/30">{s.n}</span>
-              </div>
-              <h3 className="font-display font-semibold text-lg mt-5 text-brand-dark">{s.t}</h3>
-              <p className="text-muted-foreground text-sm mt-2">{s.d}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
       {/* Outcomes, not features */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <motion.div {...fade} className="max-w-2xl">
@@ -135,8 +117,26 @@ export default function ForLandlords() {
         </div>
       </section>
 
+      {/* How it works */}
+      <section className="max-w-5xl mx-auto px-6 py-20">
+        <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">So funktioniert's</motion.h2>
+        <motion.p {...fade} transition={{ duration: 0.5, delay: 0.05 }} className="text-muted-foreground text-lg text-center mt-3 max-w-xl mx-auto">In drei Schritten vom Inserat zum passenden Mieter.</motion.p>
+        <div className="grid md:grid-cols-3 gap-6 mt-14">
+          {steps.map((s, i) => (
+            <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }} className="rounded-2xl border border-border bg-card p-8" data-testid={`landlord-step-${i}`}>
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary"><s.icon className="h-5 w-5" /></div>
+                <span className="font-display text-2xl font-bold text-primary/30">{s.n}</span>
+              </div>
+              <h3 className="font-display font-semibold text-lg mt-5 text-brand-dark">{s.t}</h3>
+              <p className="text-muted-foreground text-sm mt-2">{s.d}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
       {/* Landlord-specific FAQ */}
-      <section className="max-w-3xl mx-auto px-6 py-20">
+      <section className="max-w-3xl mx-auto px-6 pb-20">
         <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">Häufige Fragen von Vermietern</motion.h2>
         <motion.div {...fade} transition={{ duration: 0.5, delay: 0.08 }} className="mt-10">
           <Accordion type="single" collapsible className="space-y-3">

@@ -2,11 +2,19 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import {
   ArrowRight, UserCheck, Link2, Send, ShieldCheck, FileCheck, Zap, Check, Crown
 } from "lucide-react";
 
 const fade = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.5 } };
+
+const faqs = [
+  { q: "Was kostet das Mieter-Profil?", a: "4,99 € pro Monat, jederzeit monatlich kündbar. Sie erhalten ein verifiziertes Profil und Ihren persönlichen, teilbaren Bewerber-Link." },
+  { q: "Welche Dokumente kann ich hinterlegen?", a: "Typische Unterlagen wie SCHUFA-Auskunft, Gehaltsnachweise, Ausweis und eine Selbstauskunft – sicher verschlüsselt und nur für berechtigte Vermieter sichtbar." },
+  { q: "Wer sieht meine Daten?", a: "Nur Vermieter, denen Sie Ihren Profil-Link aktiv zusenden. Ihre Daten werden DSGVO-konform in der EU gespeichert und nicht weiterverkauft." },
+  { q: "Wie hilft mir das bei der Wohnungssuche?", a: "Ein vollständiges, verifiziertes Profil signalisiert Vermietern Seriosität – Sie heben sich von anderen Bewerbern ab und sparen Zeit bei jeder Anfrage." },
+];
 
 const steps = [
   { icon: UserCheck, n: "1", t: "Profil erstellen & verifizieren", d: "Hinterlegen Sie einmal Ihre Angaben und Dokumente (SCHUFA, Gehaltsnachweise & Co.) – sicher und verschlüsselt." },
@@ -39,22 +47,6 @@ export default function ForTenants() {
               <Button size="lg" variant="outline" asChild><Link to="/login">Anmelden</Link></Button>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      <section className="max-w-5xl mx-auto px-6 py-20">
-        <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">So funktioniert's</motion.h2>
-        <div className="grid md:grid-cols-3 gap-6 mt-14">
-          {steps.map((s, i) => (
-            <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }} className="rounded-2xl border border-border bg-card p-8">
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary"><s.icon className="h-5 w-5" /></div>
-                <span className="font-display text-2xl font-bold text-primary/30">{s.n}</span>
-              </div>
-              <h3 className="font-display font-semibold text-lg mt-5 text-brand-dark">{s.t}</h3>
-              <p className="text-muted-foreground text-sm mt-2">{s.d}</p>
-            </motion.div>
-          ))}
         </div>
       </section>
 
@@ -91,6 +83,39 @@ export default function ForTenants() {
             </motion.div>
           ))}
         </div>
+      </section>
+
+      {/* How it works */}
+      <section className="max-w-5xl mx-auto px-6 py-20">
+        <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">So funktioniert's</motion.h2>
+        <motion.p {...fade} transition={{ duration: 0.5, delay: 0.05 }} className="text-muted-foreground text-lg text-center mt-3 max-w-xl mx-auto">In drei Schritten zum verifizierten Profil-Link.</motion.p>
+        <div className="grid md:grid-cols-3 gap-6 mt-14">
+          {steps.map((s, i) => (
+            <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }} className="rounded-2xl border border-border bg-card p-8" data-testid={`tenant-step-${i}`}>
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary"><s.icon className="h-5 w-5" /></div>
+                <span className="font-display text-2xl font-bold text-primary/30">{s.n}</span>
+              </div>
+              <h3 className="font-display font-semibold text-lg mt-5 text-brand-dark">{s.t}</h3>
+              <p className="text-muted-foreground text-sm mt-2">{s.d}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Tenant FAQ */}
+      <section className="max-w-3xl mx-auto px-6 pb-20">
+        <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">Häufige Fragen</motion.h2>
+        <motion.div {...fade} transition={{ duration: 0.5, delay: 0.08 }} className="mt-10">
+          <Accordion type="single" collapsible className="space-y-3">
+            {faqs.map((f, i) => (
+              <AccordionItem key={i} value={`f${i}`} className="border border-border rounded-xl px-5 bg-card" data-testid={`tenant-faq-${i}`}>
+                <AccordionTrigger className="text-left font-medium hover:no-underline">{f.q}</AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">{f.a}</AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </motion.div>
       </section>
 
       <section className="max-w-5xl mx-auto px-6 pb-20 text-center">
