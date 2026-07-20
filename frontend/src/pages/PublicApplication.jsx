@@ -40,6 +40,7 @@ const DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "A
 export default function PublicApplication() {
   const { code } = useParams();
   const [data, setData] = useState(null);
+  const [partners, setPartners] = useState(null);
   const [error, setError] = useState(false);
   const [form, setForm] = useState({});
   const [email, setEmail] = useState("");
@@ -165,7 +166,11 @@ export default function PublicApplication() {
               <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-sm">Tipp: SCHUFA-Auskunft</p>
-                <p className="text-sm text-muted-foreground">Eine aktuelle Bonitätsauskunft kann Ihre Bewerbung unterstützen. <button className="text-primary hover:underline" onClick={() => toast.info("Weiterleitung zum Partner (Demo)")}>SCHUFA-Auskunft erhalten</button></p>
+                <p className="text-sm text-muted-foreground">{partners?.schufa_text || "Eine aktuelle Bonitätsauskunft kann Ihre Bewerbung unterstützen."}{" "}
+                  {partners?.schufa_url ? (
+                    <a href={partners.schufa_url} target="_blank" rel="noreferrer" className="text-primary hover:underline font-medium" data-testid="schufa-link">SCHUFA-Auskunft erhalten →</a>
+                  ) : null}
+                </p>
               </div>
             </div>
           </div>

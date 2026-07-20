@@ -35,6 +35,12 @@ async def active_promotions():
         {"active": True, "start": {"$lte": now}, "end": {"$gte": now}, "show_on_landing": True}, NO_ID).to_list(50)
 
 
+@router.get("/partners")
+async def get_partners():
+    doc = await db.settings.find_one({"key": "partners"}, NO_ID)
+    return doc or {"schufa_url": None, "offers": []}
+
+
 class ContactPayload(BaseModel):
     name: str
     email: str

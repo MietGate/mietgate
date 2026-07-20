@@ -68,7 +68,28 @@ async def seed_plans():
             }})
 
 
+DEFAULT_PARTNERS = {
+    "key": "partners",
+    "schufa_url": "https://www.meineschufa.de/de/bonitaetscheck",
+    "schufa_text": "Eine aktuelle Bonitätsauskunft kann Ihre Bewerbung unterstützen.",
+    "offers": [
+        {"category": "Strom", "name": "Stromvertrag vergleichen", "url": "https://www.verivox.de/strom/", "description": "Günstigen Stromtarif für Ihr neues Zuhause finden."},
+        {"category": "Internet", "name": "Internet & DSL", "url": "https://www.verivox.de/dsl/", "description": "Schnelles Internet zum Einzug sichern."},
+        {"category": "Umzug", "name": "Umzugsunternehmen", "url": "https://www.movinga.de/", "description": "Umzugshelfer und Transporter buchen."},
+        {"category": "Reinigung", "name": "Reinigungsservice", "url": "https://www.helpling.de/", "description": "Endreinigung der alten Wohnung organisieren."},
+        {"category": "Versicherung", "name": "Hausratversicherung", "url": "https://www.check24.de/hausratversicherung/", "description": "Ihr Hab und Gut im neuen Zuhause absichern."},
+    ],
+}
+
+
+async def seed_partners():
+    existing = await db.settings.find_one({"key": "partners"})
+    if existing is None:
+        await db.settings.insert_one(dict(DEFAULT_PARTNERS))
+
+
 async def seed_all():
     await seed_admin()
     await seed_plans()
+    await seed_partners()
     logger.info("Seed complete")

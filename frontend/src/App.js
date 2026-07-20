@@ -9,6 +9,7 @@ import Register from "@/pages/Register";
 import Pricing from "@/pages/Pricing";
 import Features from "@/pages/Features";
 import Contact from "@/pages/Contact";
+import FAQ from "@/pages/FAQ";
 import { Impressum, Datenschutz, AGB } from "@/pages/LegalPages";
 import PublicApplication from "@/pages/PublicApplication";
 import PaymentResult from "@/pages/PaymentResult";
@@ -45,6 +46,7 @@ function AppRouter() {
       <Route path="/preise" element={<Pricing />} />
       <Route path="/funktionen" element={<Features />} />
       <Route path="/kontakt" element={<Contact />} />
+      <Route path="/faq" element={<FAQ />} />
       <Route path="/impressum" element={<Impressum />} />
       <Route path="/datenschutz" element={<Datenschutz />} />
       <Route path="/agb" element={<AGB />} />
