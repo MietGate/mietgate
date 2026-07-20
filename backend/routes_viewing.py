@@ -100,14 +100,52 @@ async def my_viewings(user: dict = Depends(get_current_user)):
     for v in views:
         mine = next((p for p in v.get("participants", []) if p["applicant_user_id"] == user["id"]), None)
         prop = await db.properties.find_one({"id": v["property_id"]}, NO_ID)
+        free_slots = [s["time"] for s in v.get("slots", []) if not s.get("application_id")]
+        my_app_id = mine.get("application_id") if mine else None
+        # include the slot I already booked as still selectable label
         result.append({
             "id": v["id"], "title": v["title"], "type": v["type"], "datetime": v.get("datetime"),
             "slot": mine.get("slot") if mine else None,
+            "free_slots": free_slots,
             "my_status": mine.get("status") if mine else None,
             "property_title": (prop or {}).get("title"),
             "city": (prop or {}).get("city"),
         })
     return result
+
+
+class BookSlotPayload(BaseModel):
+    slot_time: str
+
+
+@router.post("/viewings/{vid}/book-slot")
+async def book_slot(vid: str, payload: BookSlotPayload, user: dict = Depends(get_current_user)):
+    viewing = await db.viewings.find_one({"id": vid})
+    if not viewing:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+    if viewing.get("type") != "slots":
+        raise HTTPException(status_code=400, detail="Kein Zeitfenster-Termin")
+    parts = viewing.get("participants", [])
+    mine = next((p for p in parts if p["applicant_user_id"] == user["id"]), None)
+    if not mine:
+        raise HTTPException(status_code=403, detail="Nicht eingeladen")
+    slots = viewing.get("slots", [])
+    target = next((s for s in slots if s["time"] == payload.slot_time), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Zeitfenster nicht gefunden")
+    if target.get("application_id") and target["application_id"] != mine.get("application_id"):
+        raise HTTPException(status_code=409, detail="Zeitfenster bereits vergeben")
+    # release any previously held slot by this applicant
+    for s in slots:
+        if s.get("application_id") == mine.get("application_id"):
+            s["application_id"] = None
+    target["application_id"] = mine.get("application_id")
+    mine["slot"] = payload.slot_time
+    mine["status"] = "confirmed"
+    await db.viewings.update_one({"id": vid}, {"$set": {"slots": slots, "participants": parts}})
+    await notify(viewing.get("created_by"), "viewing_response", "Zeitfenster gebucht",
+                 f"{user.get('name')} hat ein Zeitfenster gebucht: {payload.slot_time}")
+    return {"ok": True, "slot": payload.slot_time}
 
 
 class RespondPayload(BaseModel):

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import api, { formatApiError } from "@/lib/api";
+import api, { API, formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,15 @@ export default function Settings() {
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
   const setWL = (patch) => setOrg({ ...org, white_label: { ...(org.white_label || {}), ...patch } });
+  const logoRef = useRef();
+  const uploadLogo = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const fd = new FormData(); fd.append("file", file);
+    try { const { data } = await api.post("/uploads/image", fd); setWL({ logo: data.id }); toast.success("Logo hochgeladen (Speichern nicht vergessen)"); }
+    catch { toast.error("Upload fehlgeschlagen"); }
+    finally { if (logoRef.current) logoRef.current.value = ""; }
+  };
 
   return (
     <div className="space-y-6 animate-fade-up max-w-2xl">
@@ -104,6 +113,21 @@ export default function Settings() {
               {org.white_label?.enabled && wlAddon && (
                 <>
                   <div><Label>Anzeigename / Firma</Label><Input value={org.white_label?.company_name || ""} onChange={(e) => setWL({ company_name: e.target.value })} className="mt-1.5" /></div>
+                  <div>
+                    <Label>Logo</Label>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      {org.white_label?.logo && <img src={`${API}/documents/${org.white_label.logo}/download?auth=${localStorage.getItem("mg_token")}`} alt="Logo" className="h-10 rounded border border-border bg-white p-1" />}
+                      <input ref={logoRef} type="file" accept=".png,.jpg,.jpeg,.webp" onChange={uploadLogo} className="hidden" data-testid="wl-logo-input" />
+                      <Button type="button" variant="outline" size="sm" onClick={() => logoRef.current?.click()} data-testid="wl-logo-upload">Logo hochladen</Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Primärfarbe</Label>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <input type="color" value={org.white_label?.colors?.primary || "#1b9e9e"} onChange={(e) => setWL({ colors: { ...(org.white_label?.colors || {}), primary: e.target.value } })} className="h-10 w-16 rounded border border-border cursor-pointer" data-testid="wl-color" />
+                      <span className="font-mono text-sm text-muted-foreground">{org.white_label?.colors?.primary || "#1b9e9e"}</span>
+                    </div>
+                  </div>
                   <div className="flex items-center justify-between">
                     <p className="text-sm">„Powered by MietGate" anzeigen</p>
                     <Switch checked={org.white_label?.show_powered_by !== false} onCheckedChange={(v) => setWL({ show_powered_by: v })} />

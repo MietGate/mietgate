@@ -60,7 +60,10 @@ export default function Login() {
                 data-testid="login-email" className="mt-1.5" placeholder="name@beispiel.de" />
             </div>
             <div>
-              <Label htmlFor="password">Passwort</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Passwort</Label>
+                <Link to="/passwort-vergessen" className="text-xs text-primary hover:underline" data-testid="forgot-link">Passwort vergessen?</Link>
+              </div>
               <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
                 data-testid="login-password" className="mt-1.5" placeholder="••••••••" />
             </div>

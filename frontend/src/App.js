@@ -9,6 +9,8 @@ import Register from "@/pages/Register";
 import Pricing from "@/pages/Pricing";
 import PublicApplication from "@/pages/PublicApplication";
 import PaymentResult from "@/pages/PaymentResult";
+import AuthReset from "@/pages/AuthReset";
+import ForgotPassword from "@/pages/ForgotPassword";
 import LandlordDashboard from "@/pages/landlord/Dashboard";
 import Properties from "@/pages/landlord/Properties";
 import PropertyForm from "@/pages/landlord/PropertyForm";
@@ -34,6 +36,9 @@ function AppRouter() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/registrieren" element={<Register />} />
+      <Route path="/passwort-vergessen" element={<ForgotPassword />} />
+      <Route path="/aktivieren" element={<AuthReset />} />
+      <Route path="/passwort-zuruecksetzen" element={<AuthReset />} />
       <Route path="/preise" element={<Pricing />} />
       <Route path="/b/:code" element={<PublicApplication />} />
       <Route path="/payment/success" element={<PaymentResult />} />

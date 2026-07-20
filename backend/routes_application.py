@@ -14,11 +14,19 @@ router = APIRouter(prefix="/api", tags=["applications"])
 
 def _public_property(prop, org):
     wl = (org or {}).get("white_label", {}) or {}
+    wl_on = bool(wl.get("enabled"))
+    code = prop["application_code"]
+    if wl_on and wl.get("logo"):
+        logo_url = f"/api/public/org-logo/{code}"
+    elif not wl_on:
+        logo_url = (org or {}).get("logo_url")
+    else:
+        logo_url = None
     branding = {
-        "org_name": wl.get("company_name") if wl.get("enabled") else (org or {}).get("name"),
-        "logo_url": (wl.get("logo") if wl.get("enabled") else (org or {}).get("logo_url")),
-        "show_powered_by": not wl.get("enabled") or wl.get("show_powered_by", True),
-        "colors": wl.get("colors") if wl.get("enabled") else None,
+        "org_name": wl.get("company_name") if wl_on else (org or {}).get("name"),
+        "logo_url": logo_url,
+        "show_powered_by": not wl_on or wl.get("show_powered_by", True),
+        "colors": wl.get("colors") if wl_on else None,
     }
     return {
         "title": prop["title"],
@@ -48,11 +56,31 @@ async def public_property(code: str):
     return {"property": _public_property(prop, org), "fields": FORM_FIELDS}
 
 
+@router.get("/public/org-logo/{code}")
+async def public_org_logo(code: str):
+    from fastapi import Response
+    from storage import get_object
+    prop = await db.properties.find_one({"application_code": code})
+    if not prop:
+        raise HTTPException(status_code=404, detail="Nicht gefunden")
+    org = await db.organizations.find_one({"id": prop["org_id"]}, NO_ID)
+    wl = (org or {}).get("white_label", {}) or {}
+    doc_id = wl.get("logo")
+    if not wl.get("enabled") or not doc_id:
+        raise HTTPException(status_code=404, detail="Kein Logo")
+    rec = await db.documents.find_one({"id": doc_id, "is_deleted": False}, NO_ID)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Kein Logo")
+    data, content_type = get_object(rec["storage_path"])
+    return Response(content=data, media_type=rec.get("content_type", content_type))
+
+
 class ApplyRequest(BaseModel):
     code: str
     email: str
     form_data: Dict[str, Any]
     consent: bool = False
+    origin_url: Optional[str] = None
 
 
 @router.post("/public/apply")
@@ -98,13 +126,15 @@ async def submit_application(req: ApplyRequest):
                  f"Neue Bewerbung für „{prop['title']}“", f"/properties/{prop['id']}")
     # emails
     if activation_link:
+        origin = (req.origin_url or "").rstrip("/")
+        link = f"{origin}/aktivieren?token={activation_link}" if origin else "#"
         await send_email(email, "Ihre Bewerbung bei MietGate", "Bewerbung eingegangen",
                          f"<p>Vielen Dank für Ihre Bewerbung für <b>{prop['title']}</b>.</p>"
                          f"<p>Wir haben für Sie ein MietGate-Konto angelegt. Aktivieren Sie es und "
                          f"vergeben Sie ein Passwort:</p>"
-                         f"<p><a href='#' style='background:#0a2540;color:#fff;padding:10px 18px;"
-                         f"border-radius:6px;text-decoration:none;'>Konto aktivieren</a></p>"
-                         f"<p style='color:#94a3b8;font-size:12px'>Aktivierungs-Code: {activation_link}</p>")
+                         f"<p><a href='{link}' style='background:#0a2540;color:#fff;padding:10px 18px;"
+                         f"border-radius:6px;text-decoration:none;display:inline-block'>Konto aktivieren</a></p>"
+                         f"<p style='color:#94a3b8;font-size:12px'>Oder Link kopieren: {link}</p>")
     else:
         await send_email(email, "Ihre Bewerbung bei MietGate", "Bewerbung eingegangen",
                          f"<p>Vielen Dank für Ihre Bewerbung für <b>{prop['title']}</b>. "

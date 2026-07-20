@@ -8,6 +8,7 @@ from typing import Optional
 from database import db, NO_ID
 from security import (hash_password, verify_password, create_access_token, get_current_user)
 from helpers import new_id, now_iso, log_activity
+from email_service import send_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 MAX_ATTEMPTS = 5
@@ -32,6 +33,7 @@ class LoginRequest(BaseModel):
 
 class ForgotRequest(BaseModel):
     email: EmailStr
+    origin_url: Optional[str] = None
 
 
 class ResetRequest(BaseModel):
@@ -180,6 +182,14 @@ async def forgot_password(req: ForgotRequest):
             "id": new_id(), "user_id": user["id"], "token": token, "used": False,
             "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
         })
+        origin = (req.origin_url or "").rstrip("/")
+        link = f"{origin}/passwort-zuruecksetzen?token={token}" if origin else "#"
+        await send_email(req.email, "Passwort zurücksetzen", "Passwort zurücksetzen",
+                         f"<p>Sie haben ein neues Passwort angefordert. Klicken Sie auf den Button, "
+                         f"um ein neues Passwort zu vergeben (gültig 1 Stunde):</p>"
+                         f"<p><a href='{link}' style='background:#0a2540;color:#fff;padding:10px 18px;"
+                         f"border-radius:6px;text-decoration:none;display:inline-block'>Passwort zurücksetzen</a></p>"
+                         f"<p style='color:#94a3b8;font-size:12px'>Oder Link kopieren: {link}</p>")
         print(f"[PASSWORD RESET] {req.email}: reset token = {token}")
     return {"ok": True, "message": "Falls die E-Mail existiert, wurde ein Link versendet."}
 
@@ -189,6 +199,17 @@ async def reset_password(req: ResetRequest):
     rec = await db.password_reset_tokens.find_one({"token": req.token, "used": False})
     if not rec:
         raise HTTPException(status_code=400, detail="Token ungültig oder abgelaufen")
-    await db.users.update_one({"id": rec["user_id"]}, {"$set": {"password_hash": hash_password(req.password)}})
+    expires = rec["expires_at"]
+    if isinstance(expires, str):
+        expires = datetime.fromisoformat(expires)
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Token abgelaufen")
+    await db.users.update_one({"id": rec["user_id"]},
+                              {"$set": {"password_hash": hash_password(req.password), "is_active": True}})
     await db.password_reset_tokens.update_one({"token": req.token}, {"$set": {"used": True}})
-    return {"ok": True}
+    user = await db.users.find_one({"id": rec["user_id"]}, NO_ID)
+    user.pop("password_hash", None)
+    token = create_access_token(user["id"], user["email"])
+    return {"ok": True, "token": token, "user": user}
