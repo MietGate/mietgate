@@ -35,7 +35,14 @@ export function MarketingNav() {
           <Link to="/funktionen" className="block text-sm">Funktionen</Link>
           <Link to="/preise" className="block text-sm">Preise</Link>
           <Link to="/faq" className="block text-sm">FAQ</Link>
-          <Button asChild className="w-full"><Link to={user ? dest : "/registrieren"}>{user ? "Dashboard" : "Kostenlos starten"}</Link></Button>
+          {user ? (
+            <Button asChild className="w-full"><Link to={dest} data-testid="nav-mobile-dashboard">Dashboard</Link></Button>
+          ) : (
+            <div className="space-y-2 pt-1">
+              <Button asChild variant="outline" className="w-full"><Link to="/login" data-testid="nav-mobile-login">Anmelden</Link></Button>
+              <Button asChild className="w-full"><Link to="/registrieren" data-testid="nav-mobile-register">Kostenlos starten</Link></Button>
+            </div>
+          )}
         </div>
       )}
     </header>
