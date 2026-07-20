@@ -30,6 +30,10 @@ CATALOG = [
          {"lookup_key": "whitelabel_monthly", "amount": 7900, "currency": "eur", "interval": "month"},
          {"lookup_key": "whitelabel_yearly", "amount": 75800, "currency": "eur", "interval": "year"},
      ]},
+    {"emergent_product_id": "mietgate_premium", "name": "MietGate Bewerber-Premium", "tax_code": "txcd_10103001",
+     "prices": [
+         {"lookup_key": "applicant_premium_monthly", "amount": 499, "currency": "eur", "interval": "month"},
+     ]},
 ]
 
 
@@ -63,7 +67,7 @@ def setup_catalog():
         logger.error(f"Stripe catalog setup failed: {e}")
 
 
-def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_id: str):
+def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_id: str, purpose: str = "subscription"):
     prices = stripe.Price.list(lookup_keys=[lookup_key], active=True, limit=1).data
     if not prices:
         raise ValueError(f"Price not found: {lookup_key}")
@@ -73,7 +77,7 @@ def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_
         mode="subscription",
         success_url=f"{origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{origin_url}/payment/cancel",
-        metadata={"user_id": user_id or "", "org_id": org_id or "", "lookup_key": lookup_key},
+        metadata={"user_id": user_id or "", "org_id": org_id or "", "lookup_key": lookup_key, "purpose": purpose},
     )
     try:
         session = stripe.checkout.Session.create(**kwargs, managed_payments={"enabled": True})
@@ -113,6 +117,11 @@ async def _mark_paid(session_id, subscription, payment_intent):
                   "stripe_payment_intent_id": payment_intent,
                   "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    # Bewerber-Premium: activate flag on the user
+    if tx.get("purpose") == "premium":
+        if tx.get("user_id"):
+            await db.users.update_one({"id": tx["user_id"]}, {"$set": {"premium": True}})
+        return
     # White-Label is an add-on: activate the flag on the org, don't overwrite the base plan
     if tx.get("plan_key") == "whitelabel":
         if tx.get("org_id"):

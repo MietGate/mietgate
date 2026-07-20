@@ -1,0 +1,96 @@
+import asyncio
+import logging
+from datetime import datetime, timezone, timedelta
+from database import db, NO_ID
+from helpers import notify, log_activity
+from email_service import send_email
+
+logger = logging.getLogger("mietgate.maintenance")
+
+
+def _parse(dt):
+    if not dt:
+        return None
+    if isinstance(dt, datetime):
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    try:
+        d = datetime.fromisoformat(dt)
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+async def send_viewing_reminders():
+    """Remind participants & landlord about viewings within the next ~24h (once)."""
+    now = datetime.now(timezone.utc)
+    horizon = now + timedelta(hours=25)
+    cursor = db.viewings.find({"reminder_sent": {"$ne": True}, "datetime": {"$ne": None}})
+    count = 0
+    async for v in cursor:
+        dt = _parse(v.get("datetime"))
+        if not dt or dt < now or dt > horizon:
+            continue
+        when = dt.strftime("%d.%m.%Y %H:%M")
+        for p in v.get("participants", []):
+            await notify(p["applicant_user_id"], "viewing_reminder", "Erinnerung: Besichtigung morgen",
+                         f"Ihre Besichtigung „{v['title']}" findet am {when} statt.")
+            if p.get("applicant_email"):
+                await send_email(p["applicant_email"], "Erinnerung: Ihre Besichtigung",
+                                 "Besichtigung morgen",
+                                 f"<p>Ihre Besichtigung <b>{v['title']}</b> findet am <b>{when}</b> statt.</p>")
+            if p.get("status") == "invited":
+                await notify(v.get("created_by"), "viewing_no_response", "Bewerber hat nicht reagiert",
+                             f"Ein eingeladener Bewerber hat den Termin „{v['title']}" noch nicht bestätigt.")
+        await notify(v.get("created_by"), "viewing_reminder", "Erinnerung: Besichtigung morgen",
+                     f"Ihre Besichtigung „{v['title']}" ist am {when}.")
+        await db.viewings.update_one({"id": v["id"]}, {"$set": {"reminder_sent": True}})
+        count += 1
+    if count:
+        logger.info(f"Sent reminders for {count} viewings")
+    return count
+
+
+async def run_gdpr_cleanup():
+    """Delete applications & their documents per retention rules."""
+    now = datetime.now(timezone.utc)
+    rejected_cut = now - timedelta(days=180)   # Absage: 6 Monate
+    inactive_cut = now - timedelta(days=365)    # Inaktivität: 12 Monate
+    success_cut = now - timedelta(days=730)     # Vermietet: 24 Monate
+    deleted = 0
+    async for app in db.applications.find({}):
+        created = _parse(app.get("created_at"))
+        if not created:
+            continue
+        status = app.get("status")
+        remove = False
+        if status == "absage" and created < rejected_cut:
+            remove = True
+        elif status == "zusage" and created < success_cut:
+            remove = True
+        elif status not in ("zusage",) and created < inactive_cut:
+            remove = True
+        if remove:
+            await db.documents.delete_many({"application_id": app["id"]})
+            await db.messages.delete_many({"application_id": app["id"]})
+            await db.applications.delete_one({"id": app["id"]})
+            await log_activity(app.get("org_id"), None, "gdpr_delete", "application", app["id"], {"status": status})
+            deleted += 1
+    if deleted:
+        logger.info(f"GDPR cleanup removed {deleted} applications")
+    return deleted
+
+
+async def run_once():
+    r = await send_viewing_reminders()
+    d = await run_gdpr_cleanup()
+    return {"reminders": r, "deleted_applications": d}
+
+
+async def maintenance_loop():
+    await asyncio.sleep(20)  # let startup settle
+    while True:
+        try:
+            await run_once()
+        except Exception as e:
+            logger.error(f"Maintenance run failed: {e}")
+        await asyncio.sleep(3600)  # hourly

@@ -35,6 +35,29 @@ async def create_checkout(req: CheckoutRequest, user: dict = Depends(get_current
         "org_id": user["org_id"], "plan_key": req.plan_key, "interval": req.interval,
         "lookup_key": lookup_key, "amount": (price.unit_amount or 0) / 100,
         "currency": price.currency, "status": "initiated", "payment_status": "pending",
+        "purpose": "subscription", "created_at": now_iso(), "updated_at": now_iso(),
+    })
+    return {"checkout_url": session.url, "session_id": session.id}
+
+
+class PremiumCheckout(BaseModel):
+    origin_url: str
+
+
+@router.post("/premium/checkout")
+async def premium_checkout(req: PremiumCheckout, user: dict = Depends(get_current_user)):
+    if user.get("premium"):
+        raise HTTPException(status_code=400, detail="Premium ist bereits aktiv")
+    try:
+        session, price = stripe_service.create_checkout_session(
+            "applicant_premium_monthly", req.origin_url, user["id"], None, purpose="premium")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Checkout fehlgeschlagen: {e}")
+    await db.payment_transactions.insert_one({
+        "id": new_id(), "session_id": session.id, "user_id": user["id"], "org_id": None,
+        "plan_key": "premium", "interval": "monthly", "lookup_key": "applicant_premium_monthly",
+        "amount": (price.unit_amount or 0) / 100, "currency": price.currency,
+        "status": "initiated", "payment_status": "pending", "purpose": "premium",
         "created_at": now_iso(), "updated_at": now_iso(),
     })
     return {"checkout_url": session.url, "session_id": session.id}
