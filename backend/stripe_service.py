@@ -113,6 +113,12 @@ async def _mark_paid(session_id, subscription, payment_intent):
                   "stripe_payment_intent_id": payment_intent,
                   "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    # White-Label is an add-on: activate the flag on the org, don't overwrite the base plan
+    if tx.get("plan_key") == "whitelabel":
+        if tx.get("org_id"):
+            await db.organizations.update_one(
+                {"id": tx["org_id"]}, {"$set": {"white_label_addon": True}})
+        return
     # Activate subscription for the org
     if tx.get("org_id"):
         await db.subscriptions.update_one(
@@ -121,6 +127,7 @@ async def _mark_paid(session_id, subscription, payment_intent):
                 "org_id": tx["org_id"], "plan_key": tx.get("plan_key"),
                 "status": "active", "interval": tx.get("interval"),
                 "stripe_subscription_id": subscription,
+                "cancel_at_period_end": False,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }}, upsert=True,
         )

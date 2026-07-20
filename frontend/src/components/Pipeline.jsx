@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Star, FileText, Download, Send, Loader2, User, X } from "lucide-react";
+import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus } from "lucide-react";
 
 const COLUMNS = [
   { key: "neu", label: "Neu" }, { key: "pruefung", label: "Prüfung" },
@@ -56,6 +56,11 @@ function ApplicationSheet({ appId, open, onClose, onChanged }) {
   const requestDocs = async () => {
     const fd = new FormData(); fd.append("application_id", appId); fd.append("message", "Bitte laden Sie Ihre Dokumente hoch.");
     await api.post("/documents/request", fd); toast.success("Dokumente angefordert");
+  };
+  const inviteToViewing = async () => {
+    if (!selViewing) return;
+    await api.post(`/viewings/${selViewing}/invite`, { application_ids: [appId] });
+    toast.success("Zur Besichtigung eingeladen"); setSelViewing(""); load(); onChanged?.();
   };
 
   return (
@@ -122,6 +127,26 @@ function ApplicationSheet({ appId, open, onClose, onChanged }) {
                     </a>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <Label2>Zu Besichtigung einladen</Label2>
+                <div className="flex gap-2 mt-1.5">
+                  <Select value={selViewing} onValueChange={setSelViewing}>
+                    <SelectTrigger data-testid="invite-viewing-select">
+                      <SelectValue placeholder={viewings.length ? "Termin wählen" : "Keine Termine vorhanden"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {viewings.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>{v.title} · {v.datetime ? new Date(v.datetime).toLocaleDateString("de-DE") : `${v.slots?.length || 0} Slots`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={inviteToViewing} disabled={!selViewing} data-testid="invite-to-viewing">
+                    <CalendarPlus className="h-4 w-4 mr-1" /> Einladen
+                  </Button>
+                </div>
+                {viewings.length === 0 && <p className="text-xs text-muted-foreground mt-1">Erstellen Sie zuerst einen Termin im Tab „Besichtigungen".</p>}
               </div>
 
               <div>
@@ -222,7 +247,7 @@ export function Pipeline({ propertyId }) {
           })}
         </div>
       </DragDropContext>
-      <ApplicationSheet appId={activeId} open={!!activeId} onClose={() => setActiveId(null)} onChanged={load} />
+      <ApplicationSheet appId={activeId} propertyId={propertyId} open={!!activeId} onClose={() => setActiveId(null)} onChanged={load} />
     </>
   );
 }

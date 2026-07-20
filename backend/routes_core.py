@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from database import db, NO_ID
 from security import get_current_user, hash_password, verify_password
-from helpers import new_id, now_iso, active_property_count, get_plan_limit
+from helpers import new_id, now_iso, active_property_count, get_plan_limit, plan_supports_team
 
 router = APIRouter(prefix="/api", tags=["core"])
 
@@ -115,6 +115,10 @@ async def update_organization(body: OrgUpdate, user: dict = Depends(get_current_
     if member and member["role"] not in ("owner", "admin"):
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
     upd = {k: v for k, v in body.model_dump().items() if v is not None}
+    if upd.get("white_label") and upd["white_label"].get("enabled"):
+        org = await db.organizations.find_one({"id": user["org_id"]}, NO_ID)
+        if not (org or {}).get("white_label_addon"):
+            raise HTTPException(status_code=402, detail="White-Label ist ein kostenpflichtiges Add-on. Bitte zuerst buchen.")
     if upd:
         await db.organizations.update_one({"id": user["org_id"]}, {"$set": upd})
     return await db.organizations.find_one({"id": user["org_id"]}, NO_ID)
@@ -144,6 +148,8 @@ async def invite_member(body: InviteMember, user: dict = Depends(get_current_use
     member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
     if member and member["role"] not in ("owner", "admin"):
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    if not await plan_supports_team(user["org_id"]):
+        raise HTTPException(status_code=402, detail="Team-Funktion nur im Makler-/Hausverwaltungs-Paket verfügbar. Bitte upgraden.")
     invitee = await db.users.find_one({"email": body.email.lower().strip()})
     if not invitee:
         raise HTTPException(status_code=404, detail="Kein Nutzer mit dieser E-Mail. Bitte zuerst registrieren lassen.")
@@ -180,7 +186,10 @@ async def get_subscription(user: dict = Depends(get_current_user)):
         plan = await db.plans.find_one({"key": sub["plan_key"]}, NO_ID)
     limit = await get_plan_limit(user["org_id"])
     used = await active_property_count(user["org_id"])
-    return {"subscription": sub, "plan": plan, "usage": {"used": used, "limit": limit}}
+    org = await db.organizations.find_one({"id": user["org_id"]}, NO_ID)
+    return {"subscription": sub, "plan": plan, "usage": {"used": used, "limit": limit},
+            "supports_team": bool(plan and plan.get("supports_team")),
+            "white_label_addon": bool((org or {}).get("white_label_addon"))}
 
 
 @router.get("/dashboard")

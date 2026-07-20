@@ -1,0 +1,55 @@
+{
+  "summary": "Verified the 3 targeted fixes for MietGate. BACKEND: 50/50 pytest passes including 7 new TestGating tests (team gating negative/positive, white-label gating negative/positive, subscription supports_team/white_label_addon flags) and TestPipelineInviteRegression (viewings/{id}/invite adds participant + sets application status='besichtigung'). FRONTEND: FIX 2 (Team) and FIX 3 (White-Label) UI gating work perfectly — /team shows data-testid='team-upsell' and 'invite-member' button is hidden without a Makler plan; Settings > White-Label shows data-testid='wl-upsell', and data-testid='wl-toggle' is hard-disabled (disabled=True, data-disabled attribute, click is a no-op, state stays 'unchecked'). FIX 1 (invite from pipeline) UI is BROKEN — the ApplicationSheet in /app/frontend/src/components/Pipeline.jsx references `selViewing`, `setSelViewing`, and `viewings` variables that are never declared (no useState) and no viewings are ever fetched. Clicking any applicant card throws an uncaught ReferenceError ('selViewing is not defined') and the drawer crashes with the red overlay, making the entire applicant drawer (status change, stars, notes, messaging, doc request, invite-to-viewing) unusable in dev. In production build this would show a blank sheet / crash the pipeline tab. The data-testid selectors 'invite-viewing-select' and 'invite-to-viewing' therefore never render.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ApplicationSheet (Pipeline.jsx)",
+        "issue": "CRITICAL: Uncaught ReferenceError 'selViewing is not defined' at ApplicationSheet render. Component uses `selViewing`, `setSelViewing`, and `viewings` (lines 61-62, 135-149) but none are declared with useState. Also missing fetch for viewings (should call `api.get('/viewings?property_id=<propertyId>')`). ApplicationSheet also does not destructure `propertyId` from its props even though Pipeline passes it (line 250). Result: clicking ANY applicant card crashes the drawer (React error overlay in dev) — invite-to-viewing feature is 100% inaccessible from the UI, and every other drawer action (status change, stars, docs, notes, chat) is blocked too.",
+        "selector": "[data-testid='app-card-*'] -> Sheet drawer",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Invite applicant to viewing from pipeline",
+        "issue": "Backend endpoint POST /api/viewings/{id}/invite works (confirmed by pytest), but the frontend UI can never reach it because the drawer crashes before rendering the Select+Button. data-testid='invite-viewing-select' and data-testid='invite-to-viewing' never appear in the DOM.",
+        "affected_selectors": ["[data-testid='invite-viewing-select']", "[data-testid='invite-to-viewing']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "FIX Pipeline.jsx ApplicationSheet: add `const [selViewing, setSelViewing] = useState('');` and `const [viewings, setViewings] = useState([]);` at the top of ApplicationSheet.",
+    "Accept `propertyId` prop in ApplicationSheet ({ appId, propertyId, open, onClose, onChanged }) — Pipeline already passes it (line 250).",
+    "Extend the `load` callback (or add a separate useEffect that fires when the drawer opens) to fetch `api.get(`/viewings?property_id=${propertyId}`).then(r => setViewings(r.data))` so the Select has data.",
+    "After successful invite (`inviteToViewing`), the applicant status becomes 'besichtigung' on the server — call `onChanged?.()` (already there) so the Kanban re-fetches; consider closing the drawer or toast (already toasts)."
+  ],
+  "critical_code_review_comments": [
+    "Pipeline.jsx: JSX uses undeclared identifiers `selViewing`, `viewings` — React only errors at render, not at compile. CRA's default ESLint does not enable `no-undef` for JSX identifiers. Recommend enabling `no-undef` in the project ESLint config to catch this class of bug at build time.",
+    "routes_core.py update_organization: the 402 white-label gate correctly checks `org.white_label_addon` before allowing enable. Good.",
+    "routes_core.py invite_member: order of checks is sensible — permission first, then plan_supports_team (402), then user existence (404). No leakage of user-existence when unauthorized.",
+    "helpers.plan_supports_team requires status=='active' — matches the /subscription response semantics and stripe_service._mark_paid which sets 'active'.",
+    "stripe_service._mark_paid: when plan_key == 'whitelabel' it now sets `organizations.white_label_addon=true` and does NOT overwrite the base subscription — correct.",
+    "seed.py correctly seeds `supports_team` (makler=true only) and marks whitelabel as `is_addon=true` with max_properties=0. Good.",
+    "Settings.jsx White-Label toggle: `disabled={!wlAddon}` reliably disables the Radix Switch at the DOM level (verified: disabled attribute + data-disabled attribute; click is a no-op). Good.",
+    "Team.jsx: correctly hides the invite trigger button when `supported` is false and shows the upsell card with data-testid='team-upsell'. Good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {"backend": "100% (50/50)", "frontend": "66% — FIX 2 and FIX 3 pass; FIX 1 UI fully broken (crash)"},
+  "test_credentials": "Admin: admin@mietgate.de / MietGate2026! (from /app/memory/test_credentials.md). Test landlords/applicants dynamically registered as *-<hex>@example.com during the run. Avoid .test TLD (EmailStr rejects).",
+  "seed_data_creation": "Backend tests upsert a Mongo doc into `subscriptions` (plan_key='makler', status='active') for the run landlord's org, and set `white_label_addon=true` on that org, to exercise the positive gating paths. These are per-run orgs (random suffix) so no production/seeded data is affected. mongosh runs against mongodb://localhost:27017/mietgate.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run backend regression: `python -m pytest /app/backend/tests/backend_test.py -v -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml`. New class TestGating covers the 3 fixes. After main agent fixes Pipeline.jsx state, retest by (a) registering a landlord, (b) creating a property + a viewing + a public application, (c) opening /objekte/<pid>, clicking the Bewerber tab, clicking the applicant card, then verifying data-testid='invite-viewing-select' renders and data-testid='invite-to-viewing' invites the applicant (toast 'Zur Besichtigung eingeladen' + card moves to 'Besichtigung' column). No page errors expected. Base URL from /app/frontend/.env: REACT_APP_BACKEND_URL.",
+  "rca of the issue": "ApplicationSheet in /app/frontend/src/components/Pipeline.jsx was extended with an 'Invite to viewing' section referencing `selViewing`, `setSelViewing`, and `viewings`, but the corresponding `useState` hooks and the `GET /api/viewings?property_id=...` fetch were never added. When React renders the Select, the identifier `viewings` resolves to no binding and throws ReferenceError inside the render function, bubbling up as an Uncaught error and mounting the CRA error overlay. Repro: register landlord → create property → submit public application → open /objekte/<pid> → Bewerber tab → click card. Mitigation: declare the two states with default `''` and `[]`, add a viewings fetch in `load` (using a propertyId prop) or an effect scoped to the drawer open. Backend endpoints POST /viewings and POST /viewings/{id}/invite are unaffected and verified working by pytest."
+}

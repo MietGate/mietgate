@@ -13,21 +13,21 @@ DEFAULT_PLANS = [
         "price_monthly": 14.99, "price_yearly": 143.90,
         "max_properties": 1, "sort_order": 1, "is_active": True,
         "features": ["1 aktives Objekt", "Bewerbungslink", "Bewerberpipeline", "Dokumentenmanagement", "Besichtigungen", "E-Mail-Benachrichtigungen"],
-        "monthly_lookup": "starter_monthly", "yearly_lookup": "starter_yearly",
+        "monthly_lookup": "starter_monthly", "yearly_lookup": "starter_yearly", "supports_team": False,
     },
     {
         "id": str(uuid.uuid4()), "key": "plus", "name": "Plus",
         "price_monthly": 29.99, "price_yearly": 269.90,
         "max_properties": 5, "sort_order": 2, "is_active": True,
         "features": ["5 aktive Objekte", "Alle Starter-Funktionen", "Matching Score", "Slot- & Massenbesichtigungen", "Formular-Builder", "Prioritäts-Support"],
-        "monthly_lookup": "plus_monthly", "yearly_lookup": "plus_yearly", "highlight": True,
+        "monthly_lookup": "plus_monthly", "yearly_lookup": "plus_yearly", "highlight": True, "supports_team": False,
     },
     {
         "id": str(uuid.uuid4()), "key": "makler", "name": "Makler / Hausverwaltung",
         "price_monthly": 99.0, "price_yearly": 891.0,
         "max_properties": 20, "sort_order": 3, "is_active": True,
         "features": ["20 aktive Objekte", "Alle Plus-Funktionen", "Team & Rollen", "Organisationsverwaltung", "Objekte teilen", "White-Label optional"],
-        "monthly_lookup": "makler_monthly", "yearly_lookup": "makler_yearly",
+        "monthly_lookup": "makler_monthly", "yearly_lookup": "makler_yearly", "supports_team": True,
     },
     {
         "id": str(uuid.uuid4()), "key": "whitelabel", "name": "White-Label Add-on",
@@ -60,6 +60,12 @@ async def seed_plans():
         existing = await db.plans.find_one({"key": plan["key"]})
         if existing is None:
             await db.plans.insert_one(plan)
+        else:
+            # keep prices/limits as-is (admin may have changed them), but ensure feature flags exist
+            await db.plans.update_one({"key": plan["key"]}, {"$set": {
+                "supports_team": plan.get("supports_team", False),
+                "is_addon": plan.get("is_addon", False),
+            }})
 
 
 async def seed_all():

@@ -7,18 +7,23 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, UserPlus, Trash2, Loader2 } from "lucide-react";
+import { Users, UserPlus, Trash2, Loader2, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", employee: "Mitarbeiter", assistant: "Assistent" };
 
 export default function Team() {
   const [members, setMembers] = useState(null);
+  const [supported, setSupported] = useState(true);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("employee");
 
   const load = () => api.get("/organization/members").then((r) => setMembers(r.data)).catch(() => setMembers([]));
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.get("/subscription").then((r) => setSupported(!!r.data.supports_team)).catch(() => setSupported(false));
+  }, []);
 
   const invite = async () => {
     try { await api.post("/organization/members", { email, role }); toast.success("Mitglied hinzugefügt"); setOpen(false); setEmail(""); load(); }
@@ -32,6 +37,7 @@ export default function Team() {
     <div className="space-y-6 animate-fade-up max-w-3xl">
       <div className="flex items-center justify-between">
         <div><h1 className="font-display text-3xl font-bold">Team</h1><p className="text-muted-foreground mt-1">Mitarbeiter und Rollen verwalten.</p></div>
+        {supported && (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button data-testid="invite-member"><UserPlus className="h-4 w-4 mr-1" /> Mitglied einladen</Button></DialogTrigger>
           <DialogContent className="max-w-sm">
@@ -47,7 +53,18 @@ export default function Team() {
             <DialogFooter><Button onClick={invite}>Hinzufügen</Button></DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
+
+      {!supported && (
+        <div className="rounded-xl border border-dashed border-primary/40 bg-accent/40 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4" data-testid="team-upsell">
+          <div>
+            <h3 className="font-display font-bold flex items-center gap-2"><Lock className="h-4 w-4 text-primary" /> Team-Funktion nicht verfügbar</h3>
+            <p className="text-sm text-muted-foreground mt-1">Mitarbeiter & Rollen sind im Makler-/Hausverwaltungs-Paket enthalten. Upgraden Sie, um Ihr Team einzuladen.</p>
+          </div>
+          <Button asChild><Link to="/abo">Paket upgraden</Link></Button>
+        </div>
+      )}
 
       <div className="rounded-xl border border-border bg-card divide-y divide-border">
         {members.map((m) => (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,15 @@ export default function Settings() {
   const [profile, setProfile] = useState({ first_name: user?.first_name || "", last_name: user?.last_name || "", phone: user?.phone || "" });
   const [pw, setPw] = useState({ current_password: "", new_password: "" });
   const [org, setOrg] = useState(null);
+  const [wlAddon, setWlAddon] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (isLandlord) api.get("/organization").then((r) => setOrg(r.data)).catch(() => {}); }, [isLandlord]);
+  useEffect(() => {
+    if (isLandlord) {
+      api.get("/organization").then((r) => setOrg(r.data)).catch(() => {});
+      api.get("/subscription").then((r) => setWlAddon(!!r.data.white_label_addon)).catch(() => {});
+    }
+  }, [isLandlord]);
 
   const saveProfile = async () => {
     setSaving(true);
@@ -81,11 +88,20 @@ export default function Settings() {
         {isLandlord && org && (
           <TabsContent value="whitelabel" className="mt-6">
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+              {!wlAddon && (
+                <div className="rounded-lg border border-dashed border-primary/40 bg-accent/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3" data-testid="wl-upsell">
+                  <div>
+                    <p className="font-medium">White-Label Add-on erforderlich</p>
+                    <p className="text-sm text-muted-foreground">Buchen Sie das White-Label Add-on (79 €/Monat), um eigenes Branding zu aktivieren.</p>
+                  </div>
+                  <Button asChild size="sm"><Link to="/abo">Add-on buchen</Link></Button>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div><p className="font-medium">White-Label aktivieren</p><p className="text-sm text-muted-foreground">Eigenes Branding auf der Bewerbungsseite (Add-on).</p></div>
-                <Switch checked={org.white_label?.enabled || false} onCheckedChange={(v) => setWL({ enabled: v })} data-testid="wl-toggle" />
+                <Switch checked={org.white_label?.enabled || false} disabled={!wlAddon} onCheckedChange={(v) => setWL({ enabled: v })} data-testid="wl-toggle" />
               </div>
-              {org.white_label?.enabled && (
+              {org.white_label?.enabled && wlAddon && (
                 <>
                   <div><Label>Anzeigename / Firma</Label><Input value={org.white_label?.company_name || ""} onChange={(e) => setWL({ company_name: e.target.value })} className="mt-1.5" /></div>
                   <div className="flex items-center justify-between">
@@ -94,7 +110,7 @@ export default function Settings() {
                   </div>
                 </>
               )}
-              <Button onClick={saveOrg}>Speichern</Button>
+              <Button onClick={saveOrg} disabled={!wlAddon}>Speichern</Button>
             </div>
           </TabsContent>
         )}

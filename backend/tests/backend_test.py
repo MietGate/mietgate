@@ -403,3 +403,143 @@ class TestAdmin:
         h = {"Authorization": f"Bearer {state['admin_token']}"}
         r = session_client.delete(f"{API}/admin/promotions/{state['promotion_id']}", headers=h)
         assert r.status_code == 200
+
+
+# ---------------- Gating: Team & White-Label (NEW) ----------------
+class TestGating:
+    """Verifies fix #2 (team gating) and fix #3 (white-label gating)."""
+
+    def _mongo_shell(self, cmd: str) -> str:
+        """Run a mongosh eval command inside the DB_NAME database."""
+        import subprocess
+        r = subprocess.run(
+            ["mongosh", "--quiet", "mongodb://localhost:27017/mietgate", "--eval", cmd],
+            capture_output=True, text=True, timeout=15,
+        )
+        return (r.stdout or "") + (r.stderr or "")
+
+    # --- FIX 2 negative: no subscription => 402 on invite_member ---
+    def test_subscription_reports_no_team_without_plan(self, session_client, state):
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        r = session_client.get(f"{API}/subscription", headers=h)
+        assert r.status_code == 200, r.text
+        j = r.json()
+        assert j.get("supports_team") is False, f"expected supports_team=false, got {j}"
+        assert j.get("white_label_addon") is False
+
+    def test_invite_member_negative_402(self, session_client, state):
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        r = session_client.post(
+            f"{API}/organization/members",
+            json={"email": f"invitee-{_RUN}@example.com", "role": "employee"},
+            headers=h,
+        )
+        assert r.status_code == 402, f"Expected 402 (no team plan), got {r.status_code}: {r.text}"
+        assert "Makler" in r.text or "Team" in r.text or "upgraden" in r.text.lower()
+
+    # --- FIX 3 negative: no add-on => 402 when enabling white-label ---
+    def test_white_label_negative_402(self, session_client, state):
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        r = session_client.put(
+            f"{API}/organization",
+            json={"white_label": {"enabled": True, "company_name": "X"}},
+            headers=h,
+        )
+        assert r.status_code == 402, f"Expected 402 (no WL add-on), got {r.status_code}: {r.text}"
+
+    # --- FIX 2 positive: activate makler sub in Mongo, then invite succeeds ---
+    def test_activate_makler_sub_via_mongo(self, session_client, state):
+        org_id = state["landlord_user"]["org_id"]
+        # Upsert an active makler subscription for this org
+        cmd = (
+            f'db.subscriptions.updateOne({{org_id:"{org_id}"}}, '
+            f'{{$set:{{org_id:"{org_id}",plan_key:"makler",status:"active",'
+            f'stripe_customer_id:"cus_test",stripe_subscription_id:"sub_test"}}}}, '
+            f'{{upsert:true}}); '
+            f'db.subscriptions.findOne({{org_id:"{org_id}"}});'
+        )
+        out = self._mongo_shell(cmd)
+        assert "makler" in out, f"Mongo shell did not confirm sub: {out[:400]}"
+        # Verify via API
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        r = session_client.get(f"{API}/subscription", headers=h)
+        assert r.status_code == 200
+        j = r.json()
+        assert j.get("supports_team") is True, f"expected supports_team=true, got {j}"
+
+    def test_invite_member_positive_needs_existing_user(self, session_client, state):
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        # Unknown user email => 404
+        r = session_client.post(
+            f"{API}/organization/members",
+            json={"email": f"nobody-{_RUN}@example.com", "role": "employee"},
+            headers=h,
+        )
+        assert r.status_code == 404, f"Expected 404 (no such user), got {r.status_code}: {r.text}"
+
+    def test_invite_member_positive_success(self, session_client, state):
+        # Create a real user that can be invited
+        invitee_email = f"invitee-real-{_RUN}@example.com"
+        reg = session_client.post(f"{API}/auth/register", json={
+            "email": invitee_email, "password": "Test1234!",
+            "first_name": "Inv", "last_name": "Itee",
+            "role": "landlord", "org_name": f"InviteeOrg-{_RUN}",
+        })
+        assert reg.status_code == 200, reg.text
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        r = session_client.post(
+            f"{API}/organization/members",
+            json={"email": invitee_email, "role": "employee"},
+            headers=h,
+        )
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        assert r.json().get("ok") is True
+        # Verify listed
+        lst = session_client.get(f"{API}/organization/members", headers=h)
+        assert lst.status_code == 200
+        assert any(m.get("email") == invitee_email for m in lst.json())
+
+    # --- FIX 3 positive: set add-on flag on org, then PUT WL succeeds ---
+    def test_white_label_positive_success(self, session_client, state):
+        org_id = state["landlord_user"]["org_id"]
+        cmd = (
+            f'db.organizations.updateOne({{id:"{org_id}"}}, '
+            f'{{$set:{{white_label_addon:true}}}}); '
+            f'db.organizations.findOne({{id:"{org_id}"}});'
+        )
+        out = self._mongo_shell(cmd)
+        assert "white_label_addon" in out, out[:400]
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        # /subscription now reports flag
+        r_sub = session_client.get(f"{API}/subscription", headers=h)
+        assert r_sub.status_code == 200
+        assert r_sub.json().get("white_label_addon") is True
+        # PUT with white_label.enabled=true succeeds
+        r = session_client.put(
+            f"{API}/organization",
+            json={"white_label": {"enabled": True, "company_name": "ABC Immobilien"}},
+            headers=h,
+        )
+        assert r.status_code == 200, f"Expected 200 after add-on, got {r.status_code}: {r.text}"
+        assert (r.json().get("white_label") or {}).get("enabled") is True
+        assert (r.json().get("white_label") or {}).get("company_name") == "ABC Immobilien"
+
+
+# ---------------- Regression: Invite from pipeline (existing sub after gating tests) ----------------
+class TestPipelineInviteRegression:
+    """Sanity check: viewing invite endpoint still adds participant + sets status 'besichtigung'."""
+    def test_invite_sets_status_besichtigung(self, session_client, state):
+        # Fresh applicant + application to avoid interfering with earlier tests
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        # Ensure at least one viewing exists (was created in TestViewings)
+        assert state.get("viewing_id"), "viewing_id missing"
+        # Re-invite the existing application; endpoint is idempotent (skips existing)
+        r = session_client.post(
+            f"{API}/viewings/{state['viewing_id']}/invite",
+            json={"application_ids": [state["application_id"]]}, headers=h,
+        )
+        assert r.status_code == 200
+        # Fetch application, expect status == 'besichtigung'
+        a = session_client.get(f"{API}/applications/{state['application_id']}", headers=h)
+        assert a.status_code == 200
+        assert a.json()["status"] == "besichtigung", f"expected besichtigung, got {a.json().get('status')}"

@@ -81,6 +81,7 @@ class PlanPayload(BaseModel):
     features: List[str] = []
     is_active: bool = True
     sort_order: int = 99
+    supports_team: bool = False
     monthly_lookup: Optional[str] = None
     yearly_lookup: Optional[str] = None
 

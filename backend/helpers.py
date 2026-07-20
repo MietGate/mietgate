@@ -48,6 +48,14 @@ async def get_plan_limit(org_id):
     return plan["max_properties"] if plan else 1
 
 
+async def plan_supports_team(org_id):
+    sub = await db.subscriptions.find_one({"org_id": org_id, "status": "active"}, NO_ID)
+    if not sub:
+        return False
+    plan = await db.plans.find_one({"key": sub["plan_key"]}, NO_ID)
+    return bool(plan and plan.get("supports_team"))
+
+
 INCOME_BUCKETS = {
     "unter_1000": 800, "1000_2000": 1500, "2000_3000": 2500, "3000_plus": 4000,
 }
