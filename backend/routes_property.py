@@ -107,6 +107,12 @@ async def update_property(pid: str, payload: PropertyPayload, user: dict = Depen
     upd = payload.model_dump(exclude_none=False)
     if payload.form_config is None:
         upd.pop("form_config", None)
+    # Re-check plan limit if activating a previously inactive property
+    if payload.status == "active" and prop.get("status") != "active":
+        limit = await get_plan_limit(prop["org_id"])
+        current = await active_property_count(prop["org_id"])
+        if current >= limit:
+            raise HTTPException(status_code=402, detail=f"Objekt-Limit erreicht ({limit}). Bitte Paket upgraden.")
     await db.properties.update_one({"id": pid}, {"$set": upd})
     await log_activity(prop["org_id"], user["id"], "update", "property", pid)
     return await db.properties.find_one({"id": pid}, NO_ID)

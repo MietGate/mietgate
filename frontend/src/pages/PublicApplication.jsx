@@ -38,7 +38,7 @@ export default function PublicApplication() {
 
   const { property: p, fields } = data;
   const cfg = p.form_config || {};
-  const activeFields = fields.filter((f) => cfg[f.key] && cfg[f.key] !== "disabled");
+  const activeFields = fields.filter((f) => cfg[f.key] && cfg[f.key] !== "disabled" && f.key !== "email");
   const categories = [...new Set(activeFields.map((f) => f.category))];
   const set = (k, v) => setForm({ ...form, [k]: v });
 

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Star, FileText, Download, Send, Loader2, User, X } from "lucide-react";
@@ -60,10 +60,11 @@ function ApplicationSheet({ appId, open, onClose, onChanged }) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0">
-        {!app ? <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : (
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0" aria-describedby={undefined}>
+        {!app ? <div className="flex justify-center py-20"><SheetTitle className="sr-only">Bewerbung</SheetTitle><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : (
           <>
             <SheetHeader className="p-6 border-b border-border bg-secondary/40">
+              <SheetDescription className="sr-only">Details zur Bewerbung</SheetDescription>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center"><User className="h-5 w-5" /></div>
