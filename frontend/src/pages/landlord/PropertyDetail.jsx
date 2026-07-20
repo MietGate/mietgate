@@ -1,0 +1,121 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import api from "@/lib/api";
+import { Pipeline } from "@/components/Pipeline";
+import { Viewings } from "@/components/Viewings";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import {
+  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check
+} from "lucide-react";
+
+export default function PropertyDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [prop, setProp] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const load = () => api.get(`/properties/${id}`).then((r) => setProp(r.data)).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  if (!prop) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  const appLink = `${window.location.origin}/b/${prop.application_code}`;
+  const copy = () => { navigator.clipboard.writeText(appLink); setCopied(true); toast.success("Link kopiert"); setTimeout(() => setCopied(false), 2000); };
+  const toggle = async () => { const { data } = await api.post(`/properties/${id}/link/toggle`); setProp({ ...prop, link_active: data.link_active }); };
+  const regen = async () => { const { data } = await api.post(`/properties/${id}/link/regenerate`); setProp({ ...prop, application_code: data.application_code, link_active: true }); toast.success("Neuer Link generiert"); };
+
+  const Row = ({ label, value }) => value != null && value !== "" ? (
+    <div className="flex justify-between py-2 border-b border-border last:border-0 text-sm">
+      <span className="text-muted-foreground">{label}</span><span className="font-medium">{value}</span>
+    </div>
+  ) : null;
+
+  return (
+    <div className="space-y-6 animate-fade-up">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate("/objekte")} className="p-2 rounded-md hover:bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
+          <div>
+            <h1 className="font-display text-2xl font-bold">{prop.title}</h1>
+            <p className="text-sm text-muted-foreground flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {[prop.street, prop.house_number, prop.zip, prop.city].filter(Boolean).join(" ") || "Keine Adresse"}</p>
+          </div>
+        </div>
+        <Button variant="outline" asChild data-testid="edit-property"><Link to={`/objekte/${id}/bearbeiten`}><Pencil className="h-4 w-4 mr-1" /> Bearbeiten</Link></Button>
+      </div>
+
+      <Tabs defaultValue="pipeline">
+        <TabsList>
+          <TabsTrigger value="pipeline" data-testid="tab-pipeline">Bewerber ({prop.application_count})</TabsTrigger>
+          <TabsTrigger value="link" data-testid="tab-link">Bewerbungslink</TabsTrigger>
+          <TabsTrigger value="viewings" data-testid="tab-viewings">Besichtigungen</TabsTrigger>
+          <TabsTrigger value="overview" data-testid="tab-overview">Details</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pipeline" className="mt-6"><Pipeline propertyId={id} /></TabsContent>
+
+        <TabsContent value="link" className="mt-6">
+          <div className="rounded-xl border border-border bg-card p-6 max-w-2xl">
+            <div className="flex items-center gap-2 mb-2"><Link2 className="h-5 w-5 text-primary" /><h2 className="font-display font-bold text-lg">Ihr Bewerbungslink</h2></div>
+            <p className="text-sm text-muted-foreground mb-4">Teilen Sie diesen Link auf ImmoScout, Kleinanzeigen, Social Media oder Ihrer Website. Keine Adresse sichtbar, sicher & teilbar.</p>
+            <div className="flex gap-2">
+              <div className="flex-1 font-mono text-sm bg-secondary rounded-md px-4 py-3 truncate flex items-center" data-testid="app-link">{appLink}</div>
+              <Button onClick={copy} data-testid="copy-link">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</Button>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-4 mt-5 pt-5 border-t border-border">
+              <label className="flex items-center gap-3 text-sm">
+                <Switch checked={prop.link_active} onCheckedChange={toggle} data-testid="toggle-link" />
+                Link {prop.link_active ? "aktiv" : "deaktiviert"}
+              </label>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground"><b className="font-mono">{prop.application_count}</b> Bewerbungen</span>
+                <Button variant="outline" size="sm" onClick={regen} data-testid="regen-link"><RefreshCw className="h-4 w-4 mr-1" /> Neu generieren</Button>
+              </div>
+            </div>
+            <div className="mt-5 pt-5 border-t border-border">
+              <Button variant="ghost" size="sm" asChild><a href={appLink} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4 mr-1" /> Bewerbungsseite ansehen</a></Button>
+            </div>
+          </div>
+          <div className="mt-4 rounded-lg bg-accent/50 border border-accent p-4 max-w-2xl text-sm">
+            <p className="font-medium">Beispieltext für Ihr Inserat:</p>
+            <p className="text-muted-foreground mt-1 italic">„Bitte bewerben Sie sich ausschließlich über folgenden Link: {appLink}"</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="viewings" className="mt-6"><Viewings propertyId={id} /></TabsContent>
+
+        <TabsContent value="overview" className="mt-6">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
+            <div className="rounded-xl border border-border bg-card p-6">
+              <h3 className="font-display font-bold mb-3">Wohnung</h3>
+              <Row label="Wohnfläche" value={prop.area && `${prop.area} m²`} />
+              <Row label="Zimmer" value={prop.rooms} />
+              <Row label="Badezimmer" value={prop.bathrooms} />
+              <Row label="Etage" value={prop.floor} />
+              <Row label="Balkon/Terrasse" value={prop.balcony ? "Ja" : null} />
+              <Row label="Keller" value={prop.cellar ? "Ja" : null} />
+              <Row label="Stellplatz" value={prop.parking ? "Ja" : null} />
+            </div>
+            <div className="rounded-xl border border-border bg-card p-6">
+              <h3 className="font-display font-bold mb-3">Miete</h3>
+              <Row label="Kaltmiete" value={prop.cold_rent && `${prop.cold_rent} €`} />
+              <Row label="Nebenkosten" value={prop.extra_costs && `${prop.extra_costs} €`} />
+              <Row label="Warmmiete" value={prop.warm_rent && `${prop.warm_rent} €`} />
+              <Row label="Kaution" value={prop.deposit && `${prop.deposit} €`} />
+              <Row label="Frühester Einzug" value={prop.earliest_move_in} />
+            </div>
+            {prop.description && (
+              <div className="rounded-xl border border-border bg-card p-6 md:col-span-2">
+                <h3 className="font-display font-bold mb-2">Beschreibung</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{prop.description}</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

@@ -1,0 +1,104 @@
+import { useEffect, useState } from "react";
+import api, { formatApiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+
+export default function Settings() {
+  const { user, refresh } = useAuth();
+  const isLandlord = user?.role === "landlord";
+  const [profile, setProfile] = useState({ first_name: user?.first_name || "", last_name: user?.last_name || "", phone: user?.phone || "" });
+  const [pw, setPw] = useState({ current_password: "", new_password: "" });
+  const [org, setOrg] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { if (isLandlord) api.get("/organization").then((r) => setOrg(r.data)).catch(() => {}); }, [isLandlord]);
+
+  const saveProfile = async () => {
+    setSaving(true);
+    try { await api.put("/me/profile", profile); await refresh(); toast.success("Profil gespeichert"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); } finally { setSaving(false); }
+  };
+  const changePw = async () => {
+    try { await api.post("/me/password", pw); toast.success("Passwort geändert"); setPw({ current_password: "", new_password: "" }); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+  const saveOrg = async () => {
+    try { await api.put("/organization", org); toast.success("Organisation gespeichert"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+  const setWL = (patch) => setOrg({ ...org, white_label: { ...(org.white_label || {}), ...patch } });
+
+  return (
+    <div className="space-y-6 animate-fade-up max-w-2xl">
+      <h1 className="font-display text-3xl font-bold">Einstellungen</h1>
+      <Tabs defaultValue="profile">
+        <TabsList>
+          <TabsTrigger value="profile" data-testid="tab-profile">Profil</TabsTrigger>
+          <TabsTrigger value="password">Passwort</TabsTrigger>
+          {isLandlord && <TabsTrigger value="org" data-testid="tab-org">Organisation</TabsTrigger>}
+          {isLandlord && <TabsTrigger value="whitelabel">White-Label</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="profile" className="mt-6 space-y-4">
+          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Vorname</Label><Input value={profile.first_name} onChange={(e) => setProfile({ ...profile, first_name: e.target.value })} className="mt-1.5" data-testid="profile-firstname" /></div>
+              <div><Label>Nachname</Label><Input value={profile.last_name} onChange={(e) => setProfile({ ...profile, last_name: e.target.value })} className="mt-1.5" /></div>
+            </div>
+            <div><Label>E-Mail</Label><Input value={user?.email} disabled className="mt-1.5" /></div>
+            <div><Label>Telefon</Label><Input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} className="mt-1.5" /></div>
+            <Button onClick={saveProfile} disabled={saving} data-testid="save-profile">{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Speichern</Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="password" className="mt-6">
+          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+            <div><Label>Aktuelles Passwort</Label><Input type="password" value={pw.current_password} onChange={(e) => setPw({ ...pw, current_password: e.target.value })} className="mt-1.5" /></div>
+            <div><Label>Neues Passwort</Label><Input type="password" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} className="mt-1.5" data-testid="new-password" /></div>
+            <Button onClick={changePw} disabled={!pw.new_password}>Passwort ändern</Button>
+          </div>
+        </TabsContent>
+
+        {isLandlord && org && (
+          <TabsContent value="org" className="mt-6">
+            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+              <div><Label>Firmenname</Label><Input value={org.name || ""} onChange={(e) => setOrg({ ...org, name: e.target.value })} className="mt-1.5" data-testid="org-name" /></div>
+              <div><Label>Beschreibung</Label><Textarea rows={3} value={org.description || ""} onChange={(e) => setOrg({ ...org, description: e.target.value })} className="mt-1.5" /></div>
+              <div><Label>Adresse</Label><Input value={org.address || ""} onChange={(e) => setOrg({ ...org, address: e.target.value })} className="mt-1.5" /></div>
+              <div><Label>Ansprechpartner / Kontakt</Label><Input value={org.contact || ""} onChange={(e) => setOrg({ ...org, contact: e.target.value })} className="mt-1.5" /></div>
+              <Button onClick={saveOrg} data-testid="save-org">Speichern</Button>
+            </div>
+          </TabsContent>
+        )}
+
+        {isLandlord && org && (
+          <TabsContent value="whitelabel" className="mt-6">
+            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div><p className="font-medium">White-Label aktivieren</p><p className="text-sm text-muted-foreground">Eigenes Branding auf der Bewerbungsseite (Add-on).</p></div>
+                <Switch checked={org.white_label?.enabled || false} onCheckedChange={(v) => setWL({ enabled: v })} data-testid="wl-toggle" />
+              </div>
+              {org.white_label?.enabled && (
+                <>
+                  <div><Label>Anzeigename / Firma</Label><Input value={org.white_label?.company_name || ""} onChange={(e) => setWL({ company_name: e.target.value })} className="mt-1.5" /></div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm">„Powered by MietGate" anzeigen</p>
+                    <Switch checked={org.white_label?.show_powered_by !== false} onCheckedChange={(v) => setWL({ show_powered_by: v })} />
+                  </div>
+                </>
+              )}
+              <Button onClick={saveOrg}>Speichern</Button>
+            </div>
+          </TabsContent>
+        )}
+      </Tabs>
+    </div>
+  );
+}

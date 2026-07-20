@@ -1,0 +1,42 @@
+{
+  "summary": "End-to-end validation of MietGate MVP. Backend: 42/42 pytest tests passed against the deployed backend covering auth (register/login/me/admin), properties (CRUD, plan-limit 402, link toggle/regenerate), public application (consent-gated), applications (matching score, status, meta), documents (auth/public upload, download w/ Bearer + query token, forbidden other-user), viewings (create/invite/my/respond), messaging + notifications, dashboard, Stripe checkout URL, and admin (stats/users/block-unblock/orgs/plans/promotions). Frontend: full landlord flow verified via Playwright — landing renders, register-as-landlord auto-logs in, property creation, copy application link, public application submitted in same session (success toast), pipeline shows the new card (1 card in 'Neu' column), status change via drawer moves card to 'Interessant' (toast 'Status aktualisiert'), admin login redirects to /admin and users page lists 12 users.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Application drawer (Pipeline)", "issues": ["Radix DialogContent missing DialogTitle and aria-describedby - accessibility warnings in console: 'DialogContent requires a DialogTitle' and 'Missing Description or aria-describedby={undefined} for {DialogContent}'. Screen readers will not announce the sheet correctly. Add a VisuallyHidden DialogTitle and DialogDescription (or aria-describedby={undefined}) to the applicant details sheet."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix a11y warning: add DialogTitle + DialogDescription (VisuallyHidden if needed) inside the Sheet/Dialog used for the application details drawer in /app/frontend/src/components/Pipeline.jsx.",
+    "Optional: pytest.ini pins '-n 2 --dist loadscope' but our suite shares session state across classes; regression runs should invoke with '-n 0' or the state fixture should be reworked as a module fixture. Current backend_test.py works reliably with '-n 0'."
+  ],
+  "critical_code_review_comments": [
+    "server.py wires all routers correctly with /api prefix; CORS uses allow_origin_regex='.*' plus allow_credentials=True — this works but is broad; consider restricting in production.",
+    "routes_application.py POST /public/apply always sets application.consent=True in the DB after passing the guard — fine but ensure the incoming consent flag is stored as-is if you want to audit user consent value.",
+    "routes_document.py download endpoint correctly supports Bearer header OR ?auth=<token> query for iframe/embed scenarios; unauthorized users return 403 as verified.",
+    "routes_property.py plan-limit enforced only on create when status='active'; PUT /properties/{id} does not re-check the limit if status is toggled from 'inactive' -> 'active' via update — potential bypass. Consider re-checking limit in update_property when status changes to 'active'.",
+    "routes_auth.py brute-force lockout works (5 attempts / 15 min); good. login_attempts collection could grow unbounded — add TTL index.",
+    "routes_viewing.py: viewings.count_documents({'datetime': {'$gte': now}}) in dashboard misses type='slots' viewings that have slots but no top-level datetime field.",
+    "constants.py DEFAULT_FORM_CONFIG marks many fields required including 'anzahl_personen', 'beschaeftigungsstatus', 'nettoeinkommen', 'gewuenschter_einzugstermin'. The Playwright test needed to fill all of them, which is expected UX; just note that mobile users must complete quite a few fields.",
+    "PublicApplication.jsx renders duplicate data-testid='field-<key>' for select fields (both the wrapper Div and the SelectTrigger use the same testid) — not a bug but can confuse selector-based tests."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {"backend": "100% (42/42)", "frontend": "100% for tested flows"},
+  "test_credentials": "Admin: admin@mietgate.de / MietGate2026! (from /app/memory/test_credentials.md). Test landlords/applicants were created dynamically per run using ...@example.com emails; .test TLD is rejected by pydantic EmailStr and must be avoided.",
+  "seed_data_creation": "Multiple test users/orgs/properties/applications created with names prefixed 'TEST_' or 'UI3_' via the register/create flows. Data is stored in Mongo 'mietgate' DB. Not cleaned up (idempotent because each run uses a random suffix).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend test suite is /app/backend/tests/backend_test.py. Run with: `python -m pytest backend/tests/backend_test.py -v -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml` (must use -n 0 because tests share a session-scoped state dict across classes). Use REACT_APP_BACKEND_URL from /app/frontend/.env for the base URL. Avoid .test emails (rejected by EmailStr). Public application flow requires filling all required fields (vorname, nachname, telefon, email, anzahl_personen, beschaeftigungsstatus, nettoeinkommen, gewuenschter_einzugstermin) plus consent checkbox before submit. Applicant login requires setting a password via POST /api/auth/reset-password with the activation_token returned from /api/public/apply.",
+  "rca of the issue": "No blocking bugs found. Only a11y warnings from Radix Dialog missing a title/description for the applicant details drawer."
+}

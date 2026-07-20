@@ -1,0 +1,199 @@
+import secrets
+from datetime import datetime, timezone, timedelta
+from fastapi import APIRouter, HTTPException, Depends, Request
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+from database import db, NO_ID
+from security import get_current_user, hash_password
+from helpers import new_id, now_iso, log_activity, notify, compute_matching_score
+from constants import FORM_FIELDS, STATUS_LABELS, PIPELINE_STATUSES
+from email_service import send_email
+
+router = APIRouter(prefix="/api", tags=["applications"])
+
+
+def _public_property(prop, org):
+    wl = (org or {}).get("white_label", {}) or {}
+    branding = {
+        "org_name": wl.get("company_name") if wl.get("enabled") else (org or {}).get("name"),
+        "logo_url": (wl.get("logo") if wl.get("enabled") else (org or {}).get("logo_url")),
+        "show_powered_by": not wl.get("enabled") or wl.get("show_powered_by", True),
+        "colors": wl.get("colors") if wl.get("enabled") else None,
+    }
+    return {
+        "title": prop["title"],
+        "area": prop.get("area"), "rooms": prop.get("rooms"),
+        "bathrooms": prop.get("bathrooms"), "floor": prop.get("floor"),
+        "city": prop.get("city"), "district": prop.get("district"),
+        "cold_rent": prop.get("cold_rent"), "extra_costs": prop.get("extra_costs"),
+        "warm_rent": prop.get("warm_rent"), "deposit": prop.get("deposit"),
+        "balcony": prop.get("balcony"), "cellar": prop.get("cellar"),
+        "parking": prop.get("parking"), "features": prop.get("features", []),
+        "earliest_move_in": prop.get("earliest_move_in"),
+        "description": prop.get("description"),
+        "external_listing_url": prop.get("external_listing_url"),
+        "document_timing": prop.get("document_timing", "before"),
+        "form_config": prop.get("form_config", {}),
+        "code": prop["application_code"],
+        "branding": branding,
+    }
+
+
+@router.get("/public/property/{code}")
+async def public_property(code: str):
+    prop = await db.properties.find_one({"application_code": code})
+    if not prop or not prop.get("link_active", True):
+        raise HTTPException(status_code=404, detail="Bewerbungslink ungültig oder deaktiviert")
+    org = await db.organizations.find_one({"id": prop["org_id"]}, NO_ID)
+    return {"property": _public_property(prop, org), "fields": FORM_FIELDS}
+
+
+class ApplyRequest(BaseModel):
+    code: str
+    email: str
+    form_data: Dict[str, Any]
+    consent: bool = False
+
+
+@router.post("/public/apply")
+async def submit_application(req: ApplyRequest):
+    if not req.consent:
+        raise HTTPException(status_code=400, detail="Bitte stimmen Sie der Datenverarbeitung zu")
+    prop = await db.properties.find_one({"application_code": req.code})
+    if not prop or not prop.get("link_active", True):
+        raise HTTPException(status_code=404, detail="Bewerbungslink ungültig")
+    email = req.email.lower().strip()
+    # find or create applicant account
+    user = await db.users.find_one({"email": email})
+    activation_link = None
+    if not user:
+        user_id = new_id()
+        fd = req.form_data
+        user = {
+            "id": user_id, "email": email, "password_hash": None,
+            "name": f"{fd.get('vorname','')} {fd.get('nachname','')}".strip() or email,
+            "first_name": fd.get("vorname", ""), "last_name": fd.get("nachname", ""),
+            "phone": fd.get("telefon"), "picture": None, "role": "applicant",
+            "org_id": None, "is_active": False, "is_blocked": False, "premium": False,
+            "auth_provider": "password", "created_at": now_iso(),
+        }
+        await db.users.insert_one(user)
+        token = secrets.token_urlsafe(32)
+        await db.password_reset_tokens.insert_one({
+            "id": new_id(), "user_id": user_id, "token": token, "used": False,
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+        })
+        activation_link = token
+    app_id = new_id()
+    application = {
+        "id": app_id, "property_id": prop["id"], "org_id": prop["org_id"],
+        "applicant_user_id": user["id"], "applicant_email": email,
+        "form_data": req.form_data, "status": "neu", "stars": 0, "tags": [],
+        "internal_notes": "", "consent": True, "created_at": now_iso(),
+    }
+    await db.applications.insert_one(application)
+    await log_activity(prop["org_id"], user["id"], "apply", "application", app_id, {"property": prop["title"]})
+    # notify landlord
+    await notify(prop.get("created_by"), "new_application", "Neue Bewerbung",
+                 f"Neue Bewerbung für „{prop['title']}“", f"/properties/{prop['id']}")
+    # emails
+    if activation_link:
+        await send_email(email, "Ihre Bewerbung bei MietGate", "Bewerbung eingegangen",
+                         f"<p>Vielen Dank für Ihre Bewerbung für <b>{prop['title']}</b>.</p>"
+                         f"<p>Wir haben für Sie ein MietGate-Konto angelegt. Aktivieren Sie es und "
+                         f"vergeben Sie ein Passwort:</p>"
+                         f"<p><a href='#' style='background:#0a2540;color:#fff;padding:10px 18px;"
+                         f"border-radius:6px;text-decoration:none;'>Konto aktivieren</a></p>"
+                         f"<p style='color:#94a3b8;font-size:12px'>Aktivierungs-Code: {activation_link}</p>")
+    else:
+        await send_email(email, "Ihre Bewerbung bei MietGate", "Bewerbung eingegangen",
+                         f"<p>Vielen Dank für Ihre Bewerbung für <b>{prop['title']}</b>. "
+                         f"Sie können den Status in Ihrem MietGate-Konto verfolgen.</p>")
+    return {"ok": True, "application_id": app_id, "activation_token": activation_link,
+            "account_created": activation_link is not None}
+
+
+async def _enrich(app, prop=None):
+    prop = prop or await db.properties.find_one({"id": app["property_id"]}, NO_ID)
+    doc_count = await db.documents.count_documents(
+        {"application_id": app["id"], "is_deleted": False})
+    app["_doc_count"] = doc_count
+    app["document_count"] = doc_count
+    app["matching_score"] = compute_matching_score(app, prop or {})
+    app["property_title"] = (prop or {}).get("title")
+    app.pop("_doc_count", None)
+    return app
+
+
+@router.get("/applications")
+async def list_applications(property_id: Optional[str] = None, user: dict = Depends(get_current_user)):
+    if not user.get("org_id"):
+        raise HTTPException(status_code=403, detail="Keine Organisation")
+    q = {"org_id": user["org_id"]}
+    if property_id:
+        q["property_id"] = property_id
+    apps = await db.applications.find(q, NO_ID).sort("created_at", -1).to_list(1000)
+    prop_cache = {}
+    for a in apps:
+        pid = a["property_id"]
+        if pid not in prop_cache:
+            prop_cache[pid] = await db.properties.find_one({"id": pid}, NO_ID)
+        await _enrich(a, prop_cache[pid])
+    return apps
+
+
+@router.get("/applications/{app_id}")
+async def get_application(app_id: str, user: dict = Depends(get_current_user)):
+    app = await db.applications.find_one({"id": app_id}, NO_ID)
+    if not app or app["org_id"] != user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    await _enrich(app)
+    docs = await db.documents.find({"application_id": app_id, "is_deleted": False}, NO_ID).to_list(100)
+    app["documents"] = docs
+    return app
+
+
+class StatusUpdate(BaseModel):
+    status: str
+
+
+@router.patch("/applications/{app_id}/status")
+async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(get_current_user)):
+    if body.status not in PIPELINE_STATUSES:
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    app = await db.applications.find_one({"id": app_id})
+    if not app or app["org_id"] != user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    await db.applications.update_one({"id": app_id}, {"$set": {"status": body.status}})
+    await log_activity(app["org_id"], user["id"], "status_change", "application", app_id, {"status": body.status})
+    await notify(app["applicant_user_id"], "status_change", "Statusänderung",
+                 f"Ihre Bewerbung hat den Status: {STATUS_LABELS.get(body.status, body.status)}")
+    return {"ok": True, "status": body.status}
+
+
+class AppMeta(BaseModel):
+    stars: Optional[int] = None
+    tags: Optional[List[str]] = None
+    internal_notes: Optional[str] = None
+
+
+@router.patch("/applications/{app_id}")
+async def update_app_meta(app_id: str, body: AppMeta, user: dict = Depends(get_current_user)):
+    app = await db.applications.find_one({"id": app_id})
+    if not app or app["org_id"] != user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    upd = {k: v for k, v in body.model_dump().items() if v is not None}
+    if upd:
+        await db.applications.update_one({"id": app_id}, {"$set": upd})
+    return {"ok": True}
+
+
+@router.get("/my/applications")
+async def my_applications(user: dict = Depends(get_current_user)):
+    apps = await db.applications.find({"applicant_user_id": user["id"]}, NO_ID).sort("created_at", -1).to_list(200)
+    for a in apps:
+        prop = await db.properties.find_one({"id": a["property_id"]}, NO_ID)
+        a["property_title"] = (prop or {}).get("title")
+        a["status_label"] = STATUS_LABELS.get(a["status"], a["status"])
+        a["document_count"] = await db.documents.count_documents({"application_id": a["id"], "is_deleted": False})
+    return apps
