@@ -2,26 +2,45 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import {
-  ArrowRight, Inbox, LayoutGrid, CalendarCheck, ShieldCheck, BarChart3,
-  Link2, Building2, Briefcase, Users, Check
+  ArrowRight, Inbox, BarChart3, Clock, ShieldCheck,
+  Building2, Briefcase, Users, Check
 } from "lucide-react";
 
 const fade = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.5 } };
 
-const benefits = [
-  { icon: Link2, t: "Ein Bewerbungslink", d: "Teilen Sie einen sicheren Link – auf ImmoScout, Kleinanzeigen, Social Media oder Ihrer Website." },
-  { icon: Inbox, t: "Strukturierte Bewerbungen", d: "Vollständig und vergleichbar dank Formular-Builder. Kein Nachfragen mehr." },
-  { icon: LayoutGrid, t: "Bewerberpipeline", d: "Alle Bewerber im Kanban-Board – von Eingang bis Zusage, per Drag & Drop." },
-  { icon: BarChart3, t: "Matching-Score", d: "Faire Entscheidungshilfe aus Einkommen, Haushalt, Termin & Dokumenten." },
-  { icon: CalendarCheck, t: "Besichtigungen", d: "Einzeltermine, Slots zum Selbstbuchen oder Massenbesichtigungen – mit Erinnerungen." },
-  { icon: ShieldCheck, t: "Sichere Dokumente", d: "Verschlüsselt, DSGVO-konform, nur für Sie – über zeitlich begrenzte Links." },
+const outcomes = [
+  { icon: Inbox, t: "Schluss mit dem Posteingang-Chaos", d: "Alle Bewerbungen strukturiert an einem Ort statt verstreut über E-Mail, WhatsApp und Portale." },
+  { icon: BarChart3, t: "Bessere Entscheidungen", d: "Vergleichbare Angaben und ein Matching-Score helfen Ihnen, fair und fundiert zu wählen." },
+  { icon: Clock, t: "Deutlich weniger Zeitaufwand", d: "Weniger Rückfragen, weniger Terminchaos – der Prozess läuft weitgehend von selbst." },
+  { icon: ShieldCheck, t: "Rechtssicher & entspannt", d: "DSGVO-konform, verschlüsselte Dokumente und automatische Löschfristen." },
 ];
 
-const audiences = [
-  { icon: Building2, t: "Private Vermieter", d: "Eine Wohnung stressfrei vermieten – ohne Verwaltungsaufwand." },
-  { icon: Briefcase, t: "Makler", d: "Mehrere Objekte, Mitarbeiter und Rollen professionell steuern." },
-  { icon: Users, t: "Hausverwaltungen", d: "Teams, Skalierung und White-Label für Ihr Unternehmen." },
+const personas = [
+  {
+    icon: Building2, t: "Private Vermieter",
+    scenario: "Sie vermieten eine Wohnung und ertrinken in unvollständigen Nachrichten.",
+    points: ["Ein Link statt 50 chaotische E-Mails", "Nur vollständige Bewerbungen", "In Minuten startklar – ohne Technik-Kenntnisse"],
+  },
+  {
+    icon: Briefcase, t: "Makler",
+    scenario: "Sie betreuen mehrere Objekte parallel und brauchen den Überblick.",
+    points: ["Mehrere Objekte & Pipelines gleichzeitig", "Team & Rollen für Ihre Mitarbeiter", "White-Label mit Ihrem Branding (Add-on)"],
+    highlight: true,
+  },
+  {
+    icon: Users, t: "Hausverwaltungen",
+    scenario: "Sie skalieren Vermietungen über ein ganzes Portfolio.",
+    points: ["Organisationsverwaltung & Teams", "Einheitliche, nachvollziehbare Prozesse", "Aktivitäten-Protokoll & Compliance"],
+  },
+];
+
+const faqs = [
+  { q: "Wie schnell bin ich startklar?", a: "In wenigen Minuten: Konto erstellen, Objekt anlegen, Bewerbungslink teilen. Es sind keine technischen Kenntnisse nötig." },
+  { q: "Was kostet mich der Start?", a: "Der Einstieg ist kostenlos. Eine Zahlungsmethode wird erst benötigt, wenn Sie Ihren Bewerbungslink veröffentlichen – dann startet Ihre 3-tägige Testphase." },
+  { q: "Ist das DSGVO-konform?", a: "Ja. Dokumente werden verschlüsselt gespeichert, das Hosting erfolgt in der EU und Bewerberdaten werden nach definierten Fristen automatisch gelöscht." },
+  { q: "Kann ich im Team arbeiten?", a: "Ja – ab dem Makler-Paket können Sie Mitarbeiter mit Rollen (Admin, Mitarbeiter, Assistent) einladen und Objekte gemeinsam verwalten." },
 ];
 
 export default function ForLandlords() {
@@ -34,53 +53,87 @@ export default function ForLandlords() {
           <motion.div {...fade}>
             <span className="inline-block text-xs font-semibold uppercase tracking-[0.15em] text-primary bg-primary/10 px-3 py-1 rounded-full">Für Vermieter, Makler & Hausverwaltungen</span>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mt-6 text-brand-dark">Weniger Chaos. Bessere Mieter. Schneller vermietet.</h1>
-            <p className="text-lg text-muted-foreground mt-5 max-w-2xl mx-auto">MietGate organisiert Ihren gesamten Vermietungsprozess – von der Bewerbung über Dokumente und Besichtigungen bis zur Zusage. An einem Ort, DSGVO-konform.</p>
+            <p className="text-lg text-muted-foreground mt-5 max-w-2xl mx-auto">MietGate nimmt Ihnen den Verwaltungsaufwand ab – von der Bewerbung bis zur Zusage. Damit Sie sich auf das Wesentliche konzentrieren: den passenden Mieter zu finden.</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
               <Button size="lg" asChild data-testid="landlord-cta"><Link to="/registrieren">Kostenlos starten <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
-              <Button size="lg" variant="outline" asChild><Link to="/preise">Preise ansehen</Link></Button>
+              <Button size="lg" variant="outline" asChild><Link to="/funktionen">Alle Funktionen im Detail</Link></Button>
             </div>
             <p className="text-sm text-muted-foreground mt-4">Kostenlos starten · Zahlung erst bei Veröffentlichung des Bewerbungslinks</p>
           </motion.div>
         </div>
       </section>
 
+      {/* Outcomes, not features */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <motion.div {...fade} className="max-w-2xl">
-          <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-brand-dark">Alles, was Sie nach dem Inserat brauchen</h2>
-          <p className="text-muted-foreground mt-3 text-lg">Sechs Kernbereiche, die Zeit sparen und bessere Entscheidungen ermöglichen.</p>
+          <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-brand-dark">Was sich für Sie ändert</h2>
+          <p className="text-muted-foreground mt-3 text-lg">Kein neues Tool um des Tools willen – sondern spürbar weniger Aufwand und bessere Entscheidungen.</p>
         </motion.div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-12">
-          {benefits.map((b, i) => (
-            <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: (i % 3) * 0.06 }}
-              className="rounded-xl border border-border bg-card p-6 hover:-translate-y-1 hover:shadow-md hover:border-primary/30 transition-all" data-testid={`landlord-benefit-${i}`}>
-              <div className="h-11 w-11 rounded-lg bg-accent flex items-center justify-center text-primary"><b.icon className="h-5 w-5" /></div>
-              <h3 className="font-display font-semibold text-lg mt-4 text-brand-dark">{b.t}</h3>
-              <p className="text-muted-foreground text-sm mt-2">{b.d}</p>
+        <div className="grid sm:grid-cols-2 gap-5 mt-12">
+          {outcomes.map((b, i) => (
+            <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: (i % 2) * 0.06 }}
+              className="rounded-xl border border-border bg-card p-6 flex gap-4 hover:-translate-y-1 hover:shadow-md hover:border-primary/30 transition-all" data-testid={`landlord-outcome-${i}`}>
+              <div className="h-11 w-11 rounded-lg bg-accent flex items-center justify-center text-primary shrink-0"><b.icon className="h-5 w-5" /></div>
+              <div>
+                <h3 className="font-display font-semibold text-lg text-brand-dark">{b.t}</h3>
+                <p className="text-muted-foreground text-sm mt-1.5">{b.d}</p>
+              </div>
             </motion.div>
           ))}
         </div>
       </section>
 
+      {/* Personas with scenarios */}
       <section className="bg-secondary/40 border-y border-border">
         <div className="max-w-6xl mx-auto px-6 py-20">
-          <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">Für jede Größe gemacht</motion.h2>
+          <motion.div {...fade} className="text-center max-w-2xl mx-auto">
+            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-brand-dark">Passt zu Ihrer Situation</h2>
+            <p className="text-muted-foreground mt-3 text-lg">Ob eine Wohnung oder ein ganzes Portfolio – MietGate wächst mit.</p>
+          </motion.div>
           <div className="grid md:grid-cols-3 gap-6 mt-12">
-            {audiences.map((g, i) => (
-              <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }} className="rounded-2xl border border-border bg-card p-8">
+            {personas.map((g, i) => (
+              <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }}
+                className={`rounded-2xl border bg-card p-8 flex flex-col ${g.highlight ? "border-2 border-primary shadow-lg shadow-primary/10 md:-translate-y-2" : "border-border"}`} data-testid={`landlord-persona-${i}`}>
                 <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><g.icon className="h-6 w-6" /></div>
                 <h3 className="font-display text-xl font-semibold mt-5 text-brand-dark">{g.t}</h3>
-                <p className="text-muted-foreground mt-2">{g.d}</p>
+                <p className="text-muted-foreground text-sm mt-2 italic">„{g.scenario}"</p>
+                <ul className="mt-5 space-y-2.5 flex-1">
+                  {g.points.map((p, k) => (
+                    <li key={k} className="flex items-start gap-2 text-sm text-foreground/90">
+                      <span className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5"><Check className="h-3 w-3" /></span>{p}
+                    </li>
+                  ))}
+                </ul>
+                <Button variant={g.highlight ? "default" : "outline"} className="mt-6 w-full" asChild><Link to="/registrieren">Passendes Paket wählen</Link></Button>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 py-20 text-center">
-        <motion.div {...fade}>
-          <h2 className="font-display text-3xl sm:text-4xl font-semibold text-brand-dark">Bereit, entspannter zu vermieten?</h2>
-          <p className="text-muted-foreground mt-3">Legen Sie Ihr erstes Objekt in wenigen Minuten an – kostenlos.</p>
-          <Button size="lg" className="mt-8" asChild><Link to="/registrieren">Jetzt kostenlos starten <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
+      {/* Landlord-specific FAQ */}
+      <section className="max-w-3xl mx-auto px-6 py-20">
+        <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">Häufige Fragen von Vermietern</motion.h2>
+        <motion.div {...fade} transition={{ duration: 0.5, delay: 0.08 }} className="mt-10">
+          <Accordion type="single" collapsible className="space-y-3">
+            {faqs.map((f, i) => (
+              <AccordionItem key={i} value={`f${i}`} className="border border-border rounded-xl px-5 bg-card" data-testid={`landlord-faq-${i}`}>
+                <AccordionTrigger className="text-left font-medium hover:no-underline">{f.q}</AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">{f.a}</AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </motion.div>
+        <p className="text-center text-sm text-muted-foreground mt-6">Mehr Fragen? <Link to="/faq" className="text-primary hover:underline">Zur vollständigen FAQ</Link></p>
+      </section>
+
+      {/* Final CTA */}
+      <section className="max-w-5xl mx-auto px-6 pb-20">
+        <motion.div {...fade} className="rounded-3xl bg-brand-dark text-white p-12 lg:p-16 text-center relative overflow-hidden grain">
+          <h2 className="font-display text-3xl sm:text-4xl font-semibold relative">Bereit, entspannter zu vermieten?</h2>
+          <p className="text-white/70 mt-3 relative">Legen Sie Ihr erstes Objekt in wenigen Minuten an – kostenlos.</p>
+          <Button size="lg" className="mt-8 relative" asChild><Link to="/registrieren">Jetzt kostenlos starten <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
+          <p className="text-white/50 text-sm mt-4 relative">Kostenlos starten · Zahlung erst bei Veröffentlichung · jederzeit kündbar</p>
         </motion.div>
       </section>
 
