@@ -3,6 +3,7 @@ import logging
 import stripe
 from datetime import datetime, timezone
 from database import db
+from email_service import send_email
 
 logger = logging.getLogger(__name__)
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY") or "sk_test_emergent"
@@ -121,12 +122,20 @@ async def _mark_paid(session_id, subscription, payment_intent):
     if tx.get("purpose") == "premium":
         if tx.get("user_id"):
             await db.users.update_one({"id": tx["user_id"]}, {"$set": {"premium": True}})
+            await _email_user(tx["user_id"], "Willkommen bei MietGate Premium",
+                              "Ihr Premium-Profil ist aktiv",
+                              "<p>Vielen Dank! Ihr Bewerber-Premium (4,99 €/Monat) ist ab sofort aktiv. "
+                              "Ihr Profil wird Vermietern nun bevorzugt angezeigt.</p>")
         return
     # White-Label is an add-on: activate the flag on the org, don't overwrite the base plan
     if tx.get("plan_key") == "whitelabel":
         if tx.get("org_id"):
             await db.organizations.update_one(
                 {"id": tx["org_id"]}, {"$set": {"white_label_addon": True}})
+        await _email_user(tx.get("user_id"), "White-Label freigeschaltet",
+                          "Ihr White-Label Add-on ist aktiv",
+                          "<p>Ihr White-Label Add-on wurde erfolgreich aktiviert. "
+                          "Sie können nun Logo, Farben und Firmennamen in den Einstellungen anpassen.</p>")
         return
     # Activate subscription for the org
     if tx.get("org_id"):
@@ -140,3 +149,16 @@ async def _mark_paid(session_id, subscription, payment_intent):
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }}, upsert=True,
         )
+        await _email_user(tx.get("user_id"), "Ihr MietGate-Abo ist aktiv",
+                          "Zahlung erfolgreich – Abo aktiviert",
+                          f"<p>Vielen Dank! Ihr <b>{(tx.get('plan_key') or '').capitalize()}</b>-Abo "
+                          f"({tx.get('interval','monthly')}) ist ab sofort aktiv.</p>"
+                          f"<p>Sie können jetzt alle Funktionen Ihres Pakets nutzen.</p>")
+
+
+async def _email_user(user_id, subject, title, body_html):
+    if not user_id:
+        return
+    u = await db.users.find_one({"id": user_id}, {"email": 1, "_id": 0})
+    if u and u.get("email"):
+        await send_email(u["email"], subject, title, body_html)

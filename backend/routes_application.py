@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from database import db, NO_ID
 from security import get_current_user, hash_password
-from helpers import new_id, now_iso, log_activity, notify, compute_matching_score
+from helpers import new_id, now_iso, log_activity, notify, compute_matching_score, email_user
 from constants import FORM_FIELDS, STATUS_LABELS, PIPELINE_STATUSES
 from email_service import send_email
 
@@ -124,6 +124,9 @@ async def submit_application(req: ApplyRequest):
     # notify landlord
     await notify(prop.get("created_by"), "new_application", "Neue Bewerbung",
                  f"Neue Bewerbung für „{prop['title']}“", f"/properties/{prop['id']}")
+    await email_user(prop.get("created_by"), "Neue Bewerbung eingegangen", "Neue Bewerbung",
+                     f"<p>Für Ihr Objekt <b>{prop['title']}</b> ist eine neue Bewerbung eingegangen.</p>"
+                     f"<p>Öffnen Sie Ihr MietGate-Dashboard, um die Bewerbung zu prüfen.</p>")
     # emails
     if activation_link:
         origin = (req.origin_url or "").rstrip("/")
@@ -196,8 +199,16 @@ async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(ge
         raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
     await db.applications.update_one({"id": app_id}, {"$set": {"status": body.status}})
     await log_activity(app["org_id"], user["id"], "status_change", "application", app_id, {"status": body.status})
+    status_label = STATUS_LABELS.get(body.status, body.status)
     await notify(app["applicant_user_id"], "status_change", "Statusänderung",
-                 f"Ihre Bewerbung hat den Status: {STATUS_LABELS.get(body.status, body.status)}")
+                 f"Ihre Bewerbung hat den Status: {status_label}")
+    prop = await db.properties.find_one({"id": app["property_id"]}, NO_ID)
+    ptitle = (prop or {}).get("title", "Ihre Bewerbung")
+    await email_user(app["applicant_user_id"], "Statusänderung Ihrer Bewerbung",
+                     "Es gibt ein Update zu Ihrer Bewerbung",
+                     f"<p>Der Status Ihrer Bewerbung für <b>{ptitle}</b> wurde aktualisiert:</p>"
+                     f"<p style='font-size:17px;font-weight:700;color:#0a2540'>{status_label}</p>"
+                     f"<p>Details finden Sie in Ihrem MietGate-Konto.</p>")
     return {"ok": True, "status": body.status}
 
 

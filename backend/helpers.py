@@ -1,6 +1,16 @@
 import uuid
 from datetime import datetime, timezone
 from database import db, NO_ID
+from email_service import send_email
+
+
+async def email_user(user_id, subject, title, body_html):
+    """Look up a user's email by id and send a transactional email (best-effort)."""
+    if not user_id:
+        return
+    u = await db.users.find_one({"id": user_id}, {"email": 1, "_id": 0})
+    if u and u.get("email"):
+        await send_email(u["email"], subject, title, body_html)
 
 
 def now_iso():

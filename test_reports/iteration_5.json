@@ -1,0 +1,39 @@
+{
+  "summary": "Verifizierte alle neu verkabelten E-Mail-Trigger (Application-Status, public/apply-an-Vermieter, viewings invite/respond/book-slot/delete). 28/28 pytest-Fälle in tests/test_email_wiring.py bestanden. Alle betroffenen Endpoints liefern 200/erwartete Statuscodes; keine 500-Fehler durch die best-effort E-Mail-Wiring. Regression (Login, Property-CRUD, Application-Liste, Viewings anlegen) intakt. Backend startet ohne Import-/Zirkularfehler (helpers <-> email_service <-> stripe_service).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "email_service.send_email (upstream: https://integrations.emergentagent.com/api/v1/email/send)",
+        "issue": "Emergent-Sandbox blockt Recipient-Domains wie example.com mit HTTP 422 'validation_error: Invalid `to` field. Please use our testing email address instead of domains like example.com'. Da alle Trigger best-effort sind (Fehler nur geloggt), brechen die Endpoints korrekt NICHT ab. In der Log-Datei erscheinen daher pro Test viele 'Email send error: Client error 422 unknown' Einträge — das sind KEINE Backend-Bugs, nur Sandbox-Ablehnungen fake Domains. Mit delivered@resend.dev antwortet der Endpoint 202 (verifiziert). Empfehlung: für Sandbox-Tests eine reale/whitelisted Adresse verwenden oder in dev die Empfängeradresse auf 'delivered@resend.dev' umzurouten."
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_email_wiring.py",
+    "/app/test_reports/pytest/pytest_email_wiring.xml"
+  ],
+  "action_items": [
+    "Keine Code-Fixes nötig. Optional: send_email so ergänzen, dass die Response-Statuscodes (422 vs. 500) differenziert geloggt werden (aktuell wird nur eine generische ERROR-Zeile geschrieben). Bereits jetzt bricht der Request NICHT ab — Erwartung erfüllt.",
+    "Optional: Rate-Limit oder Batching für Massen-invite (POST /api/viewings/{vid}/invite iteriert über application_ids und triggert pro Bewerber ein send_email — bei sehr vielen Einladungen könnte das Request-Latency + Log-Spam verursachen). Nicht blockierend."
+  ],
+  "critical_code_review_comments": [
+    "routes_application.py update_status: E-Mail-Body enthält property title und status_label — sauber. STATUS_LABELS wird als dict-.get(...) verwendet; unbekannter Status wird schon vorher durch PIPELINE_STATUSES-Check gefiltert → OK.",
+    "routes_viewing.py invite_participants: iteriert Bewerbungen und triggert pro Bewerber sowohl notify() + send_email() als auch db.applications.update_one(status='besichtigung'). Die Reihenfolge (E-Mail vor status-Update) ist unkritisch, da E-Mail best-effort. Der Endpoint liefert am Ende 200 + participants — verifiziert.",
+    "routes_viewing.py delete_viewing: sendet Absage-Mails an ALLE Teilnehmer, danach delete_one. Wenn viele Teilnehmer eingeladen sind, blockiert das den Request (jeder send_email = HTTP-Call mit 30s Timeout). Vielleicht in einen BackgroundTask verlagern, ist aber best-effort und aktuell akzeptabel.",
+    "helpers.email_user vs. stripe_service._email_user: doppelter Code (fast identisch). Da stripe_service.py bewusst nicht helpers importiert (Zirkularrisiko), ist die Duplikation gerechtfertigt — evtl. mit einem kurzen Kommentar dokumentieren.",
+    "email_service.send_email: fängt jede Exception generisch. Ein httpx.HTTPStatusError (422/500) wird als eine einzige log-Zeile ohne Response-Body-Inhalt geloggt → schwerer zu debuggen. Optional resp.text im Log anhängen (nur bei Fehler).",
+    "routes_viewing.py respond_viewing: labels dict hat KEIN Fallback für unbekannte action → label wird None und im E-Mail-Betreff erscheint 'Besichtigung: None'. Da nur confirm|decline|reschedule vorgesehen sind und andere Werte den participant-Status nicht ändern (ternary hält alten Wert), akzeptabel. Optional 400 werfen wenn action nicht in {confirm,decline,reschedule}."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_email_wiring.py"
+  ],
+  "success_rate": {"backend": "100% (28/28 email-wiring + prior 50/50 unverändert)", "frontend": "n/a (backend-only Auftrag)"},
+  "test_credentials": "Pro-Run Landlord+Applicant via /api/auth/register + /api/public/apply + /api/auth/reset-password mit zufälligem 6-hex Suffix (LL: em-ll-<hex>@example.com / Test1234! ; APP: em-app-<hex>@example.com / Applicant123!). Admin-Login nicht benötigt für diesen Auftrag.",
+  "seed_data_creation": "Pro-Run seed: 1 Vermieter-Org 'EmailOrg-<hex>' + 1 Property 'TEST_EmailWohnung-<hex>' + 1 Bewerber + 1 Bewerbung + mehrere Besichtigungen (alle mit TEST_-Prefix). Bleiben in der DB liegen (idempotenter Suffix, kollidiert nicht mit vorherigen Iterationen).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Neue Test-Datei: /app/backend/tests/test_email_wiring.py — MUSS mit `-n 0` gestartet werden, da pytest.ini default `-n 2 --dist loadscope` die Test-Klassen auf verschiedene Worker verteilt und das modul-scoped `state`-Fixture NUR sequentiell funktioniert. Aufruf: `REACT_APP_BACKEND_URL=<preview> python -m pytest /app/backend/tests/test_email_wiring.py -v -n 0 --junitxml=/app/test_reports/pytest/pytest_email_wiring.xml`. Backend-Log-Rauschen 'Email send error: 422 unknown' beim Testrun ist erwartet (Emergent-Sandbox lehnt example.com ab) — kein Bug.",
+  "rca of the issue": "Kein Bug. Beobachtung 'Email send error 422 unknown' in backend.err.log während Tests: die Emergent-Email-API antwortet mit HTTP 422 body '{\"statusCode\":422,\"name\":\"validation_error\",\"message\":\"Invalid `to` field. Please use our testing email address instead of domains like `example.com`.\"}' — sie akzeptiert im Sandbox-Modus keine example.com-Empfänger. Direkt gegen delivered@resend.dev getestet → HTTP 202. Da send_email jede Exception fängt und nur loggt, wird der jeweilige Endpoint (public/apply, invite, respond, book-slot, delete, status) NICHT betroffen — alle liefern die spezifizierten 200/erwarteten Codes."
+}

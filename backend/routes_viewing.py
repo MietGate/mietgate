@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 from database import db, NO_ID
 from security import get_current_user
-from helpers import new_id, now_iso, log_activity, notify
+from helpers import new_id, now_iso, log_activity, notify, email_user
+from email_service import send_email
 
 router = APIRouter(prefix="/api", tags=["viewings"])
 
@@ -74,6 +75,13 @@ async def invite_participants(vid: str, payload: InvitePayload, user: dict = Dep
         })
         await notify(app["applicant_user_id"], "viewing_invite", "Einladung zur Besichtigung",
                      f"Sie wurden zu einer Besichtigung eingeladen: {viewing['title']}")
+        when = viewing.get("datetime") or payload.slot_time
+        when_txt = f"<p>Termin: <b>{when}</b></p>" if when else ""
+        if app.get("applicant_email"):
+            await send_email(app["applicant_email"], "Einladung zur Besichtigung",
+                             "Sie sind zu einer Besichtigung eingeladen",
+                             f"<p>Sie wurden zur Besichtigung <b>{viewing['title']}</b> eingeladen.</p>{when_txt}"
+                             f"<p>Bitte bestätigen Sie den Termin in Ihrem MietGate-Konto.</p>")
         await db.applications.update_one({"id": app_id}, {"$set": {"status": "besichtigung"}})
     await db.viewings.update_one({"id": vid}, {"$set": {"participants": new_parts}})
     await log_activity(user["org_id"], user["id"], "invite", "viewing", vid)
@@ -88,6 +96,11 @@ async def delete_viewing(vid: str, user: dict = Depends(get_current_user)):
     for p in viewing.get("participants", []):
         await notify(p["applicant_user_id"], "viewing_cancel", "Besichtigung abgesagt",
                      f"Die Besichtigung „{viewing['title']}“ wurde abgesagt.")
+        if p.get("applicant_email"):
+            await send_email(p["applicant_email"], "Besichtigung abgesagt",
+                             "Ihre Besichtigung wurde abgesagt",
+                             f"<p>Die Besichtigung <b>{viewing['title']}</b> wurde vom Vermieter abgesagt.</p>"
+                             f"<p>Bei Fragen wenden Sie sich bitte an den Vermieter.</p>")
     await db.viewings.delete_one({"id": vid})
     return {"ok": True}
 
@@ -145,6 +158,9 @@ async def book_slot(vid: str, payload: BookSlotPayload, user: dict = Depends(get
     await db.viewings.update_one({"id": vid}, {"$set": {"slots": slots, "participants": parts}})
     await notify(viewing.get("created_by"), "viewing_response", "Zeitfenster gebucht",
                  f"{user.get('name')} hat ein Zeitfenster gebucht: {payload.slot_time}")
+    await email_user(viewing.get("created_by"), "Zeitfenster gebucht", "Ein Bewerber hat ein Zeitfenster gebucht",
+                     f"<p><b>{user.get('name')}</b> hat für die Besichtigung <b>{viewing['title']}</b> "
+                     f"das Zeitfenster <b>{payload.slot_time}</b> gebucht.</p>")
     return {"ok": True, "slot": payload.slot_time}
 
 
@@ -171,4 +187,10 @@ async def respond_viewing(vid: str, payload: RespondPayload, user: dict = Depend
     label = {"confirm": "bestätigt", "decline": "abgesagt", "reschedule": "Umbuchung angefragt"}.get(payload.action)
     await notify(viewing.get("created_by"), "viewing_response", "Besichtigung: Rückmeldung",
                  f"{user.get('name')} hat den Termin {label}." + (f" Nachricht: {payload.message}" if payload.message else ""))
+    msg_html = f"<p>Nachricht: {payload.message}</p>" if payload.message else ""
+    await email_user(viewing.get("created_by"), f"Besichtigung: {label}",
+                     "Rückmeldung zu Ihrer Besichtigung",
+                     f"<p><b>{user.get('name')}</b> hat den Termin <b>{viewing['title']}</b> "
+                     f"<b>{label}</b>.</p>{msg_html}"
+                     f"<p>Sehen Sie sich die Details in Ihrem MietGate-Dashboard an.</p>")
     return {"ok": True}
