@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, CalendarDays, MapPin, Clock } from "lucide-react";
+import { Loader2, CalendarDays, MapPin, Clock, CalendarPlus } from "lucide-react";
+import { downloadIcs } from "@/lib/ics";
 
 function ViewingCard({ v, onChanged }) {
   const [slot, setSlot] = useState("");
@@ -17,6 +18,12 @@ function ViewingCard({ v, onChanged }) {
     if (!slot) return;
     try { await api.post(`/viewings/${v.id}/book-slot`, { slot_time: slot }); toast.success("Zeitfenster gebucht"); onChanged(); }
     catch (e) { toast.error(e.response?.data?.detail || "Buchung fehlgeschlagen"); }
+  };
+  const when = v.slot || v.datetime;
+  const addToCalendar = () => {
+    const location = [v.property_title, v.city].filter(Boolean).join(" · ");
+    const ok = downloadIcs({ title: v.title, start: when, location, description: `Besichtigung: ${v.property_title || ""}` });
+    if (ok) toast.success("Kalenderdatei heruntergeladen"); else toast.error("Kein gültiges Datum vorhanden");
   };
   const badge = v.my_status === "confirmed" ? { v: "default", t: "Bestätigt" } : v.my_status === "declined" ? { v: "destructive", t: "Abgesagt" } : v.my_status === "reschedule_requested" ? { v: "secondary", t: "Umbuchung angefragt" } : { v: "secondary", t: "Eingeladen" };
 
@@ -35,6 +42,12 @@ function ViewingCard({ v, onChanged }) {
         </div>
         <Badge variant={badge.v}>{badge.t}</Badge>
       </div>
+
+      {when && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <Button variant="outline" size="sm" onClick={addToCalendar} data-testid={`ics-myviewing-${v.id}`}><CalendarPlus className="h-4 w-4 mr-1" /> Zum Kalender hinzufügen</Button>
+        </div>
+      )}
 
       {v.type === "slots" && v.my_status !== "confirmed" && (
         <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">

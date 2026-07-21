@@ -11,7 +11,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { CalendarDays, Plus, Users, Trash2, Loader2, UserPlus } from "lucide-react";
+import { CalendarDays, Plus, Users, Trash2, Loader2, UserPlus, CalendarPlus } from "lucide-react";
+import { downloadIcs } from "@/lib/ics";
 
 const TYPE_LABEL = { single: "Einzelbesichtigung", slots: "Zeitfenster", group: "Massenbesichtigung" };
 
@@ -115,7 +116,7 @@ function InviteDialog({ viewing, propertyId, onDone }) {
   );
 }
 
-export function Viewings({ propertyId }) {
+export function Viewings({ propertyId, property }) {
   const [views, setViews] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -126,6 +127,12 @@ export function Viewings({ propertyId }) {
   useEffect(() => { load(); }, [load]);
 
   const del = async (id) => { await api.delete(`/viewings/${id}`); toast.success("Termin gelöscht"); load(); };
+
+  const addToCalendar = (v) => {
+    const location = property ? [property.street, property.house_number, property.zip, property.city].filter(Boolean).join(" ") : "";
+    const ok = downloadIcs({ title: v.title, start: v.datetime, location, description: v.notes || "" });
+    if (ok) toast.success("Kalenderdatei heruntergeladen"); else toast.error("Kein gültiges Datum für diesen Termin");
+  };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
@@ -152,6 +159,9 @@ export function Viewings({ propertyId }) {
                   <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1"><Users className="h-3.5 w-3.5" /> {v.participants?.length || 0} Teilnehmer</p>
                 </div>
                 <div className="flex gap-2">
+                  {v.type !== "slots" && v.datetime && (
+                    <Button variant="outline" size="sm" onClick={() => addToCalendar(v)} data-testid={`ics-viewing-${v.id}`}><CalendarPlus className="h-4 w-4 mr-1" /> Zum Kalender</Button>
+                  )}
                   <InviteDialog viewing={v} propertyId={propertyId} onDone={load} />
                   <Button variant="ghost" size="icon" onClick={() => del(v.id)} data-testid={`del-viewing-${v.id}`}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>

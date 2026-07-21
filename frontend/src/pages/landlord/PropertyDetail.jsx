@@ -85,7 +85,7 @@ export default function PropertyDetail() {
           </div>
         </TabsContent>
 
-        <TabsContent value="viewings" className="mt-6"><Viewings propertyId={id} /></TabsContent>
+        <TabsContent value="viewings" className="mt-6"><Viewings propertyId={id} property={prop} /></TabsContent>
 
         <TabsContent value="overview" className="mt-6">
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
