@@ -1,4 +1,4 @@
-export const LOGO_URL = "https://customer-assets-jai6qajn.emergentagent.net/job_property-manager-373/artifacts/o3ek6ie3_mietgate_logo_symbol%20%281%29.png";
+export const LOGO_URL = "/mietgate-logo.png";
 
 export function Logo({ className = "h-8", showText = true, textClass = "text-brand-dark", dataTestId }) {
   return (

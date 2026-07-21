@@ -195,6 +195,20 @@ export default function PublicApplication() {
                 </p>
               </div>
             </div>
+
+            <div className="mt-4 rounded-xl bg-brand-dark text-white p-5 text-left" data-testid="premium-upsell">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <p className="font-display font-bold">Verifiziertes Mieterprofil – schneller zur Wohnung</p>
+              </div>
+              <p className="text-sm text-white/70 mt-2">Erstellen Sie ein geprüftes Profil mit teilbarem Link und bewerben Sie sich mit einem Klick – auch außerhalb von MietGate. Vermieter sehen sofort, dass Ihre Angaben vollständig sind.</p>
+              <div className="flex items-center gap-3 mt-4">
+                <a href="/fuer-mieter" className="inline-flex items-center gap-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity" data-testid="premium-upsell-cta">
+                  Profil aktivieren – 4,99 €/Monat <ArrowRight className="h-4 w-4" />
+                </a>
+                <span className="text-xs text-white/50">Jederzeit kündbar</span>
+              </div>
+            </div>
           </div>
         ) : (
           <>
