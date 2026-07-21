@@ -94,10 +94,10 @@ export default function PropertyForm() {
             <div className="col-span-2"><Label>Straße</Label><Input value={form.street} onChange={set("street")} className="mt-1.5" /></div>
             <div><Label>Hausnr.</Label><Input value={form.house_number} onChange={set("house_number")} className="mt-1.5" /></div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div><Label>PLZ</Label><Input value={form.zip} onChange={set("zip")} className="mt-1.5" /></div>
             <div><Label>Ort</Label><Input value={form.city} onChange={set("city")} className="mt-1.5" /></div>
-            <div><Label>Stadtteil</Label><Input value={form.district} onChange={set("district")} className="mt-1.5" /></div>
+            <div className="col-span-2 sm:col-span-1"><Label>Stadtteil</Label><Input value={form.district} onChange={set("district")} className="mt-1.5" /></div>
           </div>
         </div>
       </Section>

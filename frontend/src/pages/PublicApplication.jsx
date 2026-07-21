@@ -253,8 +253,20 @@ export default function PublicApplication() {
 
                 {current.key === "__consent" && (
                   <div>
-                    <h2 className="font-display font-bold text-lg mb-1">Fast geschafft!</h2>
-                    <p className="text-sm text-muted-foreground mb-4">Bitte bestätigen Sie die Datenverarbeitung, um Ihre Bewerbung abzusenden.</p>
+                    <h2 className="font-display font-bold text-lg mb-1">Ihre Angaben im Überblick</h2>
+                    <p className="text-sm text-muted-foreground mb-4">Bitte prüfen Sie Ihre Angaben, bevor Sie die Bewerbung absenden.</p>
+                    <div className="rounded-xl border border-border divide-y divide-border mb-6" data-testid="summary-review">
+                      <div className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm">
+                        <span className="text-muted-foreground">E-Mail-Adresse</span>
+                        <span className="font-medium text-right break-all">{email || form.email || "—"}</span>
+                      </div>
+                      {activeFields.filter((f) => form[f.key] !== undefined && form[f.key] !== "").map((f) => (
+                        <div key={f.key} className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm">
+                          <span className="text-muted-foreground">{f.label}</span>
+                          <span className="font-medium text-right break-words">{f.option_labels?.[form[f.key]] || String(form[f.key])}</span>
+                        </div>
+                      ))}
+                    </div>
                     <label className="flex items-start gap-3 cursor-pointer">
                       <Checkbox checked={consent} onCheckedChange={setConsent} className="mt-0.5" data-testid="consent-checkbox" />
                       <span className="text-sm text-muted-foreground">

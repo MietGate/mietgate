@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import api, { API } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   const [notes, setNotes] = useState("");
   const [viewings, setViewings] = useState([]);
   const [selViewing, setSelViewing] = useState("");
+  const msgEndRef = useRef(null);
   const token = localStorage.getItem("mg_token");
 
   const load = useCallback(async () => {
@@ -45,6 +46,7 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   }, [appId, propertyId]);
 
   useEffect(() => { if (open) load(); }, [open, load]);
+  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   if (!open) return null;
 
@@ -162,13 +164,23 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
 
               <div>
                 <Label2>Nachrichten</Label2>
-                <div className="mt-2 space-y-2 max-h-52 overflow-y-auto">
-                  {messages.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Nachrichten.</p>}
-                  {messages.map((m) => (
-                    <div key={m.id} className={`text-sm rounded-lg px-3 py-2 max-w-[85%] ${m.sender_role === "landlord" ? "ml-auto bg-primary text-primary-foreground" : "bg-secondary"}`}>
-                      {m.body}
-                    </div>
-                  ))}
+                <div className="mt-2 space-y-3 max-h-64 overflow-y-auto rounded-lg bg-secondary/40 p-3" data-testid="chat-messages">
+                  {messages.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Noch keine Nachrichten.</p>}
+                  {messages.map((m) => {
+                    const mine = m.sender_role === "landlord";
+                    return (
+                      <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
+                        <div className={`text-sm rounded-2xl px-3.5 py-2 max-w-[80%] shadow-sm ${mine ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}>
+                          {m.body}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground mt-1 px-1">
+                          {!mine && m.sender_name ? `${m.sender_name} · ` : ""}
+                          {m.created_at ? new Date(m.created_at).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div ref={msgEndRef} />
                 </div>
                 <div className="flex gap-2 mt-3">
                   <Input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Nachricht…" data-testid="msg-input"
