@@ -87,7 +87,16 @@ export function DashboardShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const nav = user?.role === "admin" ? adminNav : user?.role === "applicant" ? applicantNav : landlordNav;
+  const [supportsTeam, setSupportsTeam] = useState(true);
+
+  useEffect(() => {
+    if (user?.role === "landlord" || (user?.role !== "admin" && user?.role !== "applicant" && user?.org_id)) {
+      api.get("/me/entitlements").then((r) => setSupportsTeam(!!r.data.supports_team)).catch(() => setSupportsTeam(false));
+    }
+  }, [user]);
+
+  const baseNav = user?.role === "admin" ? adminNav : user?.role === "applicant" ? applicantNav : landlordNav;
+  const nav = baseNav.filter((n) => n.to !== "/team" || supportsTeam);
 
   const doLogout = async () => { await logout(); navigate("/"); };
 

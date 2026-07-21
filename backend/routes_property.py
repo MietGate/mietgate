@@ -1,11 +1,13 @@
 import random
 import string
-from fastapi import APIRouter, HTTPException, Depends
+import uuid
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Response
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from database import db, NO_ID
 from security import get_current_user
-from helpers import new_id, now_iso, log_activity, get_plan_limit, active_property_count
+from helpers import new_id, now_iso, log_activity, get_plan_limit, active_property_count, plan_supports_team
+from storage import put_object, get_object, guess_mime, APP_NAME
 from constants import FORM_FIELDS, DEFAULT_FORM_CONFIG, DOCUMENT_TYPES
 
 router = APIRouter(prefix="/api", tags=["properties"])
@@ -53,6 +55,16 @@ async def _require_org(user):
 @router.get("/form-fields")
 async def get_form_fields():
     return {"fields": FORM_FIELDS, "default_config": DEFAULT_FORM_CONFIG, "document_types": DOCUMENT_TYPES}
+
+
+@router.get("/me/entitlements")
+async def my_entitlements(user: dict = Depends(get_current_user)):
+    if not user.get("org_id"):
+        return {"supports_team": False, "limit": 0}
+    return {
+        "supports_team": await plan_supports_team(user["org_id"]),
+        "limit": await get_plan_limit(user["org_id"]),
+    }
 
 
 @router.get("/properties")
@@ -148,3 +160,65 @@ async def toggle_link(pid: str, user: dict = Depends(get_current_user)):
     new_state = not prop.get("link_active", True)
     await db.properties.update_one({"id": pid}, {"$set": {"link_active": new_state}})
     return {"link_active": new_state}
+
+
+# ---------- Object images ----------
+async def _owned_property(pid, user):
+    prop = await db.properties.find_one({"id": pid})
+    if not prop or prop["org_id"] != user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    return prop
+
+
+@router.post("/properties/{pid}/images")
+async def add_property_image(pid: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    prop = await _owned_property(pid, user)
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Bild zu groß (max. 10 MB)")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "png"
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+        raise HTTPException(status_code=400, detail="Nur Bilddateien erlaubt (JPG, PNG, WEBP)")
+    path = f"{APP_NAME}/property-images/{pid}/{uuid.uuid4()}.{ext}"
+    ct = file.content_type or guess_mime(file.filename)
+    result = put_object(path, data, ct)
+    img = {"id": new_id(), "storage_path": result["path"], "content_type": ct}
+    images = prop.get("images", []) + [img]
+    upd = {"images": images}
+    if not prop.get("title_image_id"):
+        upd["title_image_id"] = img["id"]
+    await db.properties.update_one({"id": pid}, {"$set": upd})
+    return {"images": images, "title_image_id": upd.get("title_image_id", prop.get("title_image_id"))}
+
+
+@router.delete("/properties/{pid}/images/{img_id}")
+async def delete_property_image(pid: str, img_id: str, user: dict = Depends(get_current_user)):
+    prop = await _owned_property(pid, user)
+    images = [i for i in prop.get("images", []) if i["id"] != img_id]
+    upd = {"images": images}
+    if prop.get("title_image_id") == img_id:
+        upd["title_image_id"] = images[0]["id"] if images else None
+    await db.properties.update_one({"id": pid}, {"$set": upd})
+    return {"images": images, "title_image_id": upd["title_image_id"]}
+
+
+@router.post("/properties/{pid}/images/{img_id}/set-title")
+async def set_title_image(pid: str, img_id: str, user: dict = Depends(get_current_user)):
+    prop = await _owned_property(pid, user)
+    if not any(i["id"] == img_id for i in prop.get("images", [])):
+        raise HTTPException(status_code=404, detail="Bild nicht gefunden")
+    await db.properties.update_one({"id": pid}, {"$set": {"title_image_id": img_id}})
+    return {"title_image_id": img_id}
+
+
+@router.get("/public/properties/{pid}/images/{img_id}")
+async def serve_property_image(pid: str, img_id: str):
+    prop = await db.properties.find_one({"id": pid}, NO_ID)
+    if not prop:
+        raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    img = next((i for i in prop.get("images", []) if i["id"] == img_id), None)
+    if not img:
+        raise HTTPException(status_code=404, detail="Bild nicht gefunden")
+    data, ct = get_object(img["storage_path"])
+    return Response(content=data, media_type=img.get("content_type", ct),
+                    headers={"Cache-Control": "public, max-age=86400"})

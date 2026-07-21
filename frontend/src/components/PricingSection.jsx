@@ -41,6 +41,11 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen" }) {
               <span className="text-muted-foreground text-sm">/ {yearly ? "Jahr" : "Monat"}</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">bis zu {p.max_properties} aktive{p.max_properties === 1 ? "s" : ""} Objekt{p.max_properties === 1 ? "" : "e"}</p>
+            {yearly && !p.promo && p.price_monthly > 0 && (p.price_monthly * 12 - p.price_yearly) > 0 && (
+              <p className="text-sm font-semibold text-success mt-1" data-testid={`savings-${p.key}`}>
+                Sie sparen {(p.price_monthly * 12 - p.price_yearly).toFixed(2)}€ pro Jahr
+              </p>
+            )}
             <ul className="mt-6 space-y-2.5 flex-1">
               {p.features?.map((f, i) => (
                 f.startsWith("Alles aus") ? (

@@ -24,6 +24,16 @@ class RegisterRequest(BaseModel):
     phone: Optional[str] = None
     org_name: Optional[str] = None
     org_type: Optional[str] = "private"  # private | makler | hausverwaltung
+    origin_url: Optional[str] = None
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+    origin_url: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
@@ -65,6 +75,24 @@ async def _create_org_for_user(user_id, org_name, org_type, owner_name):
     return org_id
 
 
+async def _send_verification_email(user_id, email, name, origin_url):
+    token = secrets.token_urlsafe(32)
+    await db.email_verification_tokens.insert_one({
+        "id": new_id(), "user_id": user_id, "token": token, "used": False,
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=24),
+    })
+    o = (origin_url or "").rstrip("/")
+    link = f"{o}/email-bestaetigen?token={token}" if o else "#"
+    await send_email(email, "Bitte bestätigen Sie Ihre E-Mail", "E-Mail-Adresse bestätigen",
+                     f"<p>Willkommen bei MietGate{(', ' + name) if name else ''}!</p>"
+                     f"<p>Bitte bestätigen Sie Ihre E-Mail-Adresse, um Ihr Konto zu aktivieren "
+                     f"(Link gültig 24 Stunden):</p>"
+                     f"<p><a href='{link}' style='background:#0a2540;color:#fff;padding:10px 18px;"
+                     f"border-radius:6px;text-decoration:none;display:inline-block'>E-Mail bestätigen</a></p>"
+                     f"<p style='color:#94a3b8;font-size:12px'>Oder Link kopieren: {link}</p>")
+    print(f"[EMAIL VERIFY] {email}: verify token = {token}")
+
+
 @router.post("/register")
 async def register(req: RegisterRequest):
     email = req.email.lower().strip()
@@ -80,13 +108,41 @@ async def register(req: RegisterRequest):
         "id": user_id, "email": email, "password_hash": hash_password(req.password),
         "name": f"{req.first_name} {req.last_name}", "first_name": req.first_name,
         "last_name": req.last_name, "phone": req.phone, "picture": None,
-        "role": role, "org_id": org_id, "is_active": True, "is_blocked": False,
+        "role": role, "org_id": org_id, "is_active": False, "is_blocked": False,
         "premium": False, "auth_provider": "password", "created_at": now_iso(),
     }
     await db.users.insert_one(doc)
     await log_activity(org_id, user_id, "register", "user", user_id)
-    token = create_access_token(user_id, email)
-    return {"token": token, "user": _public_user({k: v for k, v in doc.items() if k != "password_hash"})}
+    await _send_verification_email(user_id, email, doc["name"], req.origin_url)
+    return {"ok": True, "requires_verification": True, "email": email}
+
+
+@router.post("/verify-email")
+async def verify_email(req: VerifyEmailRequest):
+    rec = await db.email_verification_tokens.find_one({"token": req.token, "used": False})
+    if not rec:
+        raise HTTPException(status_code=400, detail="Bestätigungslink ungültig oder bereits verwendet")
+    expires = rec["expires_at"]
+    if isinstance(expires, str):
+        expires = datetime.fromisoformat(expires)
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Bestätigungslink abgelaufen. Bitte fordern Sie einen neuen an.")
+    await db.users.update_one({"id": rec["user_id"]}, {"$set": {"is_active": True}})
+    await db.email_verification_tokens.update_one({"token": req.token}, {"$set": {"used": True}})
+    user = await db.users.find_one({"id": rec["user_id"]}, NO_ID)
+    user.pop("password_hash", None)
+    token = create_access_token(user["id"], user["email"])
+    return {"ok": True, "token": token, "user": user}
+
+
+@router.post("/resend-verification")
+async def resend_verification(req: ResendVerificationRequest):
+    user = await db.users.find_one({"email": req.email.lower().strip()})
+    if user and user.get("auth_provider") == "password" and not user.get("is_active", True):
+        await _send_verification_email(user["id"], user["email"], user.get("name"), req.origin_url)
+    return {"ok": True, "message": "Falls ein unbestätigtes Konto existiert, wurde die Bestätigungs-E-Mail erneut versendet."}
 
 
 @router.post("/login")
@@ -113,6 +169,8 @@ async def login(req: LoginRequest, request: Request):
         raise HTTPException(status_code=401, detail="E-Mail oder Passwort ungültig")
     if user.get("is_blocked"):
         raise HTTPException(status_code=403, detail="Konto gesperrt")
+    if user.get("auth_provider") == "password" and not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse. Prüfen Sie Ihren Posteingang.")
     await db.login_attempts.delete_one({"identifier": identifier})
     await log_activity(user.get("org_id"), user["id"], "login", "user", user["id"])
     token = create_access_token(user["id"], email)

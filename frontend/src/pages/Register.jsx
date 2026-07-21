@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Building2, User } from "lucide-react";
+import { Loader2, Building2, User, MailCheck } from "lucide-react";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -17,22 +17,27 @@ export default function Register() {
   const [role, setRole] = useState(params.get("role") === "applicant" ? "applicant" : "landlord");
   const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "", org_name: "", org_type: "private" });
   const [loading, setLoading] = useState(false);
+  const [sentTo, setSentTo] = useState(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/register", { ...form, role });
+      const { data } = await api.post("/auth/register", { ...form, role, origin_url: window.location.origin });
+      if (data.requires_verification) { setSentTo(data.email); toast.success("Bestätigungs-E-Mail versendet"); return; }
       login(data.token, data.user);
-      toast.success("Konto erstellt!");
-      if (role === "applicant") navigate("/bewerber");
-      else navigate(planIntent && planIntent !== "starter" ? `/abo?plan=${planIntent}` : "/dashboard");
+      navigate(role === "applicant" ? "/bewerber" : "/dashboard");
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const resend = async () => {
+    try { await api.post("/auth/resend-verification", { email: sentTo, origin_url: window.location.origin }); toast.success("E-Mail erneut versendet"); }
+    catch { toast.error("Fehler beim erneuten Versenden"); }
   };
 
   const googleLogin = () => {
@@ -55,6 +60,19 @@ export default function Register() {
       <div className="flex items-center justify-center p-6 lg:p-12 bg-background overflow-y-auto">
         <div className="w-full max-w-sm py-8">
           <div className="lg:hidden mb-8"><Logo /></div>
+          {sentTo ? (
+            <div data-testid="verify-sent">
+              <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><MailCheck className="h-6 w-6" /></div>
+              <h1 className="font-display text-3xl font-bold mt-5">Bestätigen Sie Ihre E-Mail</h1>
+              <p className="text-muted-foreground mt-2 text-sm">Wir haben eine Bestätigungs-E-Mail an <span className="font-semibold text-foreground">{sentTo}</span> gesendet. Bitte klicken Sie auf den Link darin, um Ihr Konto zu aktivieren.</p>
+              <p className="text-muted-foreground mt-4 text-sm">Keine E-Mail erhalten? Prüfen Sie Ihren Spam-Ordner oder</p>
+              <Button variant="outline" className="w-full mt-3" onClick={resend} data-testid="resend-verify">E-Mail erneut senden</Button>
+              <p className="text-center text-sm text-muted-foreground mt-6">
+                <Link to="/login" className="text-primary font-medium hover:underline">Zurück zur Anmeldung</Link>
+              </p>
+            </div>
+          ) : (
+          <>
           <h1 className="font-display text-3xl font-bold">Konto erstellen</h1>
           <p className="text-muted-foreground mt-1 mb-6 text-sm">Kostenlos starten. Zahlungsmethode erst bei Veröffentlichung des Bewerbungslinks nötig.</p>
           {planIntent && planIntent !== "starter" && (
@@ -101,6 +119,8 @@ export default function Register() {
           <p className="text-center text-sm text-muted-foreground mt-6">
             Bereits registriert? <Link to="/login" className="text-primary font-medium hover:underline">Anmelden</Link>
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>

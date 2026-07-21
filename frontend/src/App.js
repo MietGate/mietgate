@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardShell } from "@/components/DashboardShell";
 import { CookieConsent } from "@/components/CookieConsent";
 import { AuthCallback } from "@/pages/AuthCallback";
+import EmailVerify from "@/pages/EmailVerify";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -59,6 +60,7 @@ function AppRouter() {
       <Route path="/widerruf" element={<Widerruf />} />
       <Route path="/cookies" element={<Cookies />} />
       <Route path="/plattformregeln" element={<Plattformregeln />} />
+      <Route path="/email-bestaetigen" element={<EmailVerify />} />
       <Route path="/b/:code" element={<PublicApplication />} />
       <Route path="/payment/success" element={<PaymentResult />} />
       <Route path="/payment/cancel" element={<PaymentResult />} />

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "@/lib/api";
 import { Pipeline } from "@/components/Pipeline";
 import { Viewings } from "@/components/Viewings";
+import { PropertyImages } from "@/components/PropertyImages";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -52,6 +53,7 @@ export default function PropertyDetail() {
           <TabsTrigger value="pipeline" data-testid="tab-pipeline">Bewerber ({prop.application_count})</TabsTrigger>
           <TabsTrigger value="link" data-testid="tab-link">Bewerbungslink</TabsTrigger>
           <TabsTrigger value="viewings" data-testid="tab-viewings">Besichtigungen</TabsTrigger>
+          <TabsTrigger value="images" data-testid="tab-images">Bilder</TabsTrigger>
           <TabsTrigger value="overview" data-testid="tab-overview">Details</TabsTrigger>
         </TabsList>
 
@@ -86,6 +88,8 @@ export default function PropertyDetail() {
         </TabsContent>
 
         <TabsContent value="viewings" className="mt-6"><Viewings propertyId={id} property={prop} /></TabsContent>
+
+        <TabsContent value="images" className="mt-6"><PropertyImages property={prop} onChanged={load} /></TabsContent>
 
         <TabsContent value="overview" className="mt-6">
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
