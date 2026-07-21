@@ -16,6 +16,7 @@ Vermieter-zentrierte Multi-Tenant SaaS für den deutschen Immobilienmarkt zur Di
 Bewerbungslink, Formular-Builder (Pflicht/Optional/Aus), Dokumente + Sicherheit, Besichtigungen (Einzel/Slots/Massen), Bewerberpipeline (Kanban), Matching Score (nicht-diskriminierend), Stripe, Admin, Organisationen, White-Label-Vorbereitung, DSGVO.
 
 ## Implemented (2026-07-21 — Fork session)
+- ✅ #12 Bewerbungs-Funnel: Öffentliches Bewerbungsformular (/b/:code) von langer Liste zu mehrstufigem Funnel umgebaut (Fortschrittsanzeige „Schritt X von N", ein Schritt pro Ansicht: Kontakt → je Kategorie → Bestätigung, Weiter/Zurück, Pflichtfeld-Validierung je Schritt). Per Screenshot verifiziert.
 - ✅ Phase-1 Quick Wins + Kalender: (#1) Jahres-Ersparnis auf Preiskarten, (#7) Team-Nav nur bei team-fähigem Paket via GET /api/me/entitlements, (#2) E-Mail-Bestätigung für neue Accounts (register→inaktiv+Token-Mail, /auth/verify-email, /auth/resend-verification, Login-Block für unbestätigt; Google/Bestehende unberührt), (#6) Objektbilder (Titelbild + mehrere, Upload/Set-Title/Delete via Object Storage, öffentliches Serve-Endpoint) im PropertyDetail-Tab "Bilder". Kalender Option A: `.ics`-Download-Button ("Zum Kalender hinzufügen") für Vermieter (Besichtigungen) und Mieter (Termine), clientseitig, kein externer Dienst. Alle Backend-Flows per curl verifiziert, Frontend-Smoke ok.
 
 ## Implemented (2026-07-20 — Fork session)

@@ -32,7 +32,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Loader2, ExternalLink, MapPin, Home, CheckCircle2, Upload, FileText, ShieldCheck, Sparkles
+  Loader2, ExternalLink, MapPin, Home, CheckCircle2, Upload, FileText, ShieldCheck, Sparkles, ArrowLeft, ArrowRight
 } from "lucide-react";
 
 const DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
@@ -47,6 +47,7 @@ export default function PublicApplication() {
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null); // { application_id }
+  const [step, setStep] = useState(0);
   const [docType, setDocType] = useState("SCHUFA");
   const [uploads, setUploads] = useState([]);
   const fileRef = useRef();
@@ -63,6 +64,27 @@ export default function PublicApplication() {
   const activeFields = fields.filter((f) => cfg[f.key] && cfg[f.key] !== "disabled" && f.key !== "email");
   const categories = [...new Set(activeFields.map((f) => f.category))];
   const set = (k, v) => setForm({ ...form, [k]: v });
+
+  // Funnel steps: Kontakt -> je Kategorie -> Bestätigung
+  const stepsDef = [
+    { key: "__email", title: "Kontakt" },
+    ...categories.map((cat) => ({ key: cat, title: cat, fields: activeFields.filter((f) => f.category === cat) })),
+    { key: "__consent", title: "Bestätigung" },
+  ];
+  const lastStep = stepsDef.length - 1;
+  const current = stepsDef[Math.min(step, lastStep)];
+
+  const validStep = () => {
+    if (current.key === "__email") return !!(email && /\S+@\S+\.\S+/.test(email));
+    if (current.key === "__consent") return consent;
+    return (current.fields || []).every((f) => cfg[f.key] !== "required" || (form[f.key] !== undefined && form[f.key] !== ""));
+  };
+  const goNext = () => {
+    if (!validStep()) { toast.error(current.key === "__email" ? "Bitte geben Sie eine gültige E-Mail-Adresse ein." : "Bitte füllen Sie die Pflichtfelder aus."); return; }
+    setStep((s) => Math.min(s + 1, lastStep)); window.scrollTo(0, 0);
+  };
+  const goBack = () => { setStep((s) => Math.max(s - 1, 0)); window.scrollTo(0, 0); };
+  const onFormSubmit = (e) => { e.preventDefault(); if (step < lastStep) { goNext(); return; } submit(e); };
 
   const renderField = (f) => {
     const required = cfg[f.key] === "required";
@@ -197,36 +219,68 @@ export default function PublicApplication() {
               )}
             </div>
 
-            {/* Application form */}
-            <form onSubmit={submit} className="space-y-6 animate-fade-up">
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <Label htmlFor="app-email">Ihre E-Mail-Adresse *</Label>
-                <Input id="app-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" placeholder="name@beispiel.de" data-testid="app-email" />
-                <p className="text-xs text-muted-foreground mt-1">Für Ihr Bewerberkonto und die Statusverfolgung.</p>
-              </div>
-
-              {categories.map((cat) => (
-                <div key={cat} className="rounded-2xl border border-border bg-card p-6">
-                  <h2 className="font-display font-bold text-lg mb-4">{cat}</h2>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {activeFields.filter((f) => f.category === cat).map(renderField)}
-                  </div>
+            {/* Application funnel */}
+            <form onSubmit={onFormSubmit} className="animate-fade-up">
+              {/* Progress */}
+              <div className="mb-5">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="font-medium text-foreground">{current.title}</span>
+                  <span className="text-muted-foreground" data-testid="funnel-progress">Schritt {step + 1} von {stepsDef.length}</span>
                 </div>
-              ))}
-
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <Checkbox checked={consent} onCheckedChange={setConsent} className="mt-0.5" data-testid="consent-checkbox" />
-                  <span className="text-sm text-muted-foreground">
-                    Ich willige ein, dass meine personenbezogenen Daten zur Bearbeitung meiner Bewerbung verarbeitet und dem Vermieter bereitgestellt werden. Die Datenschutzerklärung habe ich zur Kenntnis genommen. <ShieldCheck className="inline h-4 w-4 text-primary" />
-                  </span>
-                </label>
+                <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                  <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${((step + 1) / stepsDef.length) * 100}%` }} />
+                </div>
               </div>
 
-              <Button type="submit" size="lg" className="w-full" disabled={submitting} data-testid="submit-application">
-                {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Bewerbung absenden
-              </Button>
-              {b.show_powered_by !== false && <p className="text-center text-xs text-muted-foreground">Powered by <span className="font-semibold">MietGate</span></p>}
+              <div className="rounded-2xl border border-border bg-card p-6 min-h-[220px]">
+                {current.key === "__email" && (
+                  <div>
+                    <h2 className="font-display font-bold text-lg mb-1">Ihre Kontaktdaten</h2>
+                    <p className="text-sm text-muted-foreground mb-4">Wir legen ein Bewerberkonto an, damit Sie den Status verfolgen können.</p>
+                    <Label htmlFor="app-email">E-Mail-Adresse *</Label>
+                    <Input id="app-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" placeholder="name@beispiel.de" data-testid="app-email" />
+                  </div>
+                )}
+
+                {current.fields && (
+                  <div>
+                    <h2 className="font-display font-bold text-lg mb-4">{current.title}</h2>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {current.fields.map(renderField)}
+                    </div>
+                  </div>
+                )}
+
+                {current.key === "__consent" && (
+                  <div>
+                    <h2 className="font-display font-bold text-lg mb-1">Fast geschafft!</h2>
+                    <p className="text-sm text-muted-foreground mb-4">Bitte bestätigen Sie die Datenverarbeitung, um Ihre Bewerbung abzusenden.</p>
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <Checkbox checked={consent} onCheckedChange={setConsent} className="mt-0.5" data-testid="consent-checkbox" />
+                      <span className="text-sm text-muted-foreground">
+                        Ich willige ein, dass meine personenbezogenen Daten zur Bearbeitung meiner Bewerbung verarbeitet und dem Vermieter bereitgestellt werden. Die <a href="/datenschutz" target="_blank" rel="noreferrer" className="text-primary hover:underline">Datenschutzerklärung</a> habe ich zur Kenntnis genommen. <ShieldCheck className="inline h-4 w-4 text-primary" />
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation */}
+              <div className="flex items-center justify-between gap-3 mt-5">
+                <Button type="button" variant="ghost" onClick={goBack} disabled={step === 0} data-testid="funnel-back">
+                  <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
+                </Button>
+                {step < lastStep ? (
+                  <Button type="button" onClick={goNext} data-testid="funnel-next">
+                    Weiter <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button type="submit" size="lg" disabled={submitting} data-testid="submit-application">
+                    {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Bewerbung absenden
+                  </Button>
+                )}
+              </div>
+              {b.show_powered_by !== false && <p className="text-center text-xs text-muted-foreground mt-5">Powered by <span className="font-semibold">MietGate</span></p>}
             </form>
           </>
         )}
