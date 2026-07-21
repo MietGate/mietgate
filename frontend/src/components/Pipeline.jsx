@@ -11,10 +11,10 @@ import { toast } from "sonner";
 import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus } from "lucide-react";
 
 const COLUMNS = [
-  { key: "neu", label: "Neu" }, { key: "pruefung", label: "Prüfung" },
-  { key: "interessant", label: "Interessant" }, { key: "besichtigung", label: "Besichtigung" },
-  { key: "favorit", label: "Favorit" }, { key: "zusage", label: "Zusage" },
-  { key: "absage", label: "Absage" }, { key: "archiv", label: "Archiv" },
+  { key: "neu", label: "Neu", dot: "bg-slate-400" }, { key: "pruefung", label: "Prüfung", dot: "bg-blue-500" },
+  { key: "interessant", label: "Interessant", dot: "bg-violet-500" }, { key: "besichtigung", label: "Besichtigung", dot: "bg-primary" },
+  { key: "favorit", label: "Favorit", dot: "bg-amber-500" }, { key: "zusage", label: "Zusage", dot: "bg-success" },
+  { key: "absage", label: "Absage", dot: "bg-destructive" }, { key: "archiv", label: "Archiv", dot: "bg-muted-foreground" },
 ];
 
 function scoreColor(s) {
@@ -220,12 +220,12 @@ export function Pipeline({ propertyId }) {
               <Droppable droppableId={col.key} key={col.key}>
                 {(provided, snapshot) => (
                   <div ref={provided.innerRef} {...provided.droppableProps} data-testid={`kanban-column-${col.key}`}
-                    className={`min-w-[280px] w-[280px] rounded-xl border border-border bg-secondary/40 p-3 ${snapshot.isDraggingOver ? "ring-2 ring-primary/40" : ""}`}>
-                    <div className="flex items-center justify-between mb-3 px-1">
-                      <span className="font-semibold text-sm">{col.label}</span>
-                      <Badge variant="secondary">{items.length}</Badge>
+                    className={`min-w-[270px] w-[270px] rounded-xl border border-border bg-secondary/30 flex flex-col ${snapshot.isDraggingOver ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}>
+                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-border sticky top-0 bg-secondary/60 backdrop-blur rounded-t-xl">
+                      <span className="flex items-center gap-2 font-semibold text-sm"><span className={`h-2 w-2 rounded-full ${col.dot}`} />{col.label}</span>
+                      <span className="text-xs font-semibold text-muted-foreground bg-card rounded-full px-2 py-0.5 min-w-[22px] text-center">{items.length}</span>
                     </div>
-                    <div className="space-y-2 min-h-[40px]">
+                    <div className="space-y-2 min-h-[60px] p-2.5 flex-1">
                       {items.map((a, idx) => (
                         <Draggable draggableId={a.id} index={idx} key={a.id}>
                           {(prov) => (
