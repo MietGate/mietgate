@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import api from "@/lib/api";
 import {
   LayoutDashboard, Building2, Users, Settings, LogOut, Bell, Menu, X,
-  CreditCard, ShieldCheck, FileText, CalendarDays, Home, ChevronRight, Link2
+  CreditCard, ShieldCheck, FileText, CalendarDays, Home, ChevronRight, Link2, Contact
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,6 +34,7 @@ const adminNav = [
   { to: "/admin/organisationen", label: "Organisationen", icon: Building2 },
   { to: "/admin/pakete", label: "Pakete & Aktionen", icon: CreditCard },
   { to: "/admin/partner", label: "Partner-Links", icon: Link2 },
+  { to: "/admin/leads", label: "Leads & CRM", icon: Contact },
   { to: "/admin/support", label: "Support & Logs", icon: ShieldCheck },
 ];
 

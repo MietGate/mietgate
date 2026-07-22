@@ -188,3 +188,87 @@ async def admin_update_partners(body: PartnersPayload, user: dict = Depends(admi
 async def run_maintenance(user: dict = Depends(admin)):
     import maintenance
     return await maintenance.run_once()
+
+
+# ---------- CRM / Leads (#14) ----------
+LEAD_STATUSES = ["neu", "kontaktiert", "interessiert", "gewonnen", "verloren"]
+
+
+class LeadPayload(BaseModel):
+    name: str
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    company: Optional[str] = ""
+    source: Optional[str] = ""
+    status: str = "neu"
+    notes: Optional[str] = ""
+
+
+class LeadPatch(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    source: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class LeadImport(BaseModel):
+    csv: str
+
+
+@router.get("/leads")
+async def list_leads(user: dict = Depends(admin)):
+    return await db.leads.find({}, NO_ID).sort("created_at", -1).to_list(1000)
+
+
+@router.post("/leads")
+async def create_lead(body: LeadPayload, user: dict = Depends(admin)):
+    doc = body.model_dump()
+    if doc.get("status") not in LEAD_STATUSES:
+        doc["status"] = "neu"
+    doc["id"] = new_id()
+    doc["created_at"] = now_iso()
+    await db.leads.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.post("/leads/import")
+async def import_leads(body: LeadImport, user: dict = Depends(admin)):
+    import csv, io
+    reader = csv.DictReader(io.StringIO(body.csv.strip()))
+    docs = []
+    for row in reader:
+        low = {(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
+        name = low.get("name") or low.get("firma") or low.get("company") or ""
+        if not name:
+            continue
+        docs.append({
+            "id": new_id(), "name": name,
+            "email": low.get("email") or low.get("e-mail") or "",
+            "phone": low.get("phone") or low.get("telefon") or low.get("tel") or "",
+            "company": low.get("company") or low.get("firma") or "",
+            "source": low.get("source") or low.get("quelle") or "CSV-Import",
+            "status": "neu", "notes": low.get("notes") or low.get("notiz") or "",
+            "created_at": now_iso(),
+        })
+    if docs:
+        await db.leads.insert_many(docs)
+    return {"imported": len(docs)}
+
+
+@router.patch("/leads/{lid}")
+async def update_lead(lid: str, body: LeadPatch, user: dict = Depends(admin)):
+    upd = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "status" in upd and upd["status"] not in LEAD_STATUSES:
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    await db.leads.update_one({"id": lid}, {"$set": upd})
+    return await db.leads.find_one({"id": lid}, NO_ID)
+
+
+@router.delete("/leads/{lid}")
+async def delete_lead(lid: str, user: dict = Depends(admin)):
+    await db.leads.delete_one({"id": lid})
+    return {"ok": True}
