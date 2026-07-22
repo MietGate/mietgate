@@ -199,6 +199,9 @@ class LeadPayload(BaseModel):
     email: Optional[str] = ""
     phone: Optional[str] = ""
     company: Optional[str] = ""
+    address: Optional[str] = ""
+    zip: Optional[str] = ""
+    city: Optional[str] = ""
     source: Optional[str] = ""
     status: str = "neu"
     notes: Optional[str] = ""
@@ -209,6 +212,9 @@ class LeadPatch(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     company: Optional[str] = None
+    address: Optional[str] = None
+    zip: Optional[str] = None
+    city: Optional[str] = None
     source: Optional[str] = None
     status: Optional[str] = None
     notes: Optional[str] = None
@@ -250,6 +256,9 @@ async def import_leads(body: LeadImport, user: dict = Depends(admin)):
             "email": low.get("email") or low.get("e-mail") or "",
             "phone": low.get("phone") or low.get("telefon") or low.get("tel") or "",
             "company": low.get("company") or low.get("firma") or "",
+            "address": low.get("address") or low.get("adresse") or low.get("straße") or low.get("strasse") or "",
+            "zip": low.get("zip") or low.get("plz") or low.get("postleitzahl") or "",
+            "city": low.get("city") or low.get("ort") or low.get("stadt") or "",
             "source": low.get("source") or low.get("quelle") or "CSV-Import",
             "status": "neu", "notes": low.get("notes") or low.get("notiz") or "",
             "created_at": now_iso(),
