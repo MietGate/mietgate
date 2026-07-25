@@ -13,7 +13,7 @@ function LegalShell({ title, subtitle, children }) {
         <h1 className="font-display text-4xl font-semibold tracking-tight text-brand-dark">{title}</h1>
         {subtitle && <p className="text-muted-foreground mt-3">{subtitle}</p>}
         <div className="mt-10 space-y-8 text-[15px] leading-relaxed text-foreground/80">{children}</div>
-        <p className="mt-14 text-xs text-muted-foreground border-t border-border pt-6">Stand: Juni 2026 · MietGate – ein Angebot der BORK Solutions UG (haftungsbeschränkt) i. Gr.</p>
+        <p className="mt-14 text-xs text-muted-foreground border-t border-border pt-6">Stand: Juli 2026 · MietGate – ein Projekt von BORK Solutions</p>
       </article>
       <MarketingFooter />
     </div>
@@ -30,21 +30,16 @@ export function Impressum() {
   return (
     <LegalShell title="Impressum" subtitle="Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz)">
       <Sec title="Anbieter">
-        <p>MietGate – ein Angebot der<br />
-        <strong>BORK Solutions UG (haftungsbeschränkt) i. Gr.</strong><br />
-        Fährstraße 217<br />40221 Düsseldorf<br />Deutschland</p>
+        <p>MietGate ist ein Projekt von<br />
+        <strong>BORK Solutions</strong><br />
+        Inhaber: Henry Bork<br />
+        Pestalozzistraße 25<br />22305 Hamburg<br />Deutschland</p>
       </Sec>
-      <Sec title="Vertreten durch">
-        <p>Geschäftsführer: Henry Bork</p>
+      <Sec title="Steuernummer">
+        <p>43/027/06145</p>
       </Sec>
       <Sec title="Kontakt">
         <p>E-Mail: support@mietgate.de</p>
-      </Sec>
-      <Sec title="Gesellschaft in Gründung">
-        <p>Die BORK Solutions UG (haftungsbeschränkt) befindet sich derzeit in Gründung (i. Gr.). Bis zur Eintragung in das Handelsregister handeln die Gründer für die Gesellschaft. Eine Handelsregisternummer liegt zum jetzigen Zeitpunkt noch nicht vor; sie wird nach erfolgter Eintragung an dieser Stelle ergänzt.</p>
-      </Sec>
-      <Sec title="Umsatzsteuer">
-        <p>Eine Umsatzsteuer-Identifikationsnummer gemäß § 27a Umsatzsteuergesetz wurde bislang nicht erteilt und wird nach Erteilung an dieser Stelle ergänzt.</p>
       </Sec>
       <Sec title="Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV">
         <p>Henry Bork, Anschrift wie oben.</p>
@@ -73,7 +68,7 @@ export function Datenschutz() {
     <LegalShell title="Datenschutzerklärung" subtitle="Informationen zur Verarbeitung personenbezogener Daten gemäß DSGVO">
       <Sec title="1. Verantwortlicher">
         <p>Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:</p>
-        <p>BORK Solutions UG (haftungsbeschränkt) i. Gr.<br />Fährstraße 217, 40221 Düsseldorf, Deutschland<br />Geschäftsführer: Henry Bork<br />E-Mail: support@mietgate.de</p>
+        <p>BORK Solutions<br />Pestalozzistraße 25, 22305 Hamburg, Deutschland<br />Inhaber: Henry Bork<br />E-Mail: support@mietgate.de</p>
         <p>Für alle Fragen zum Datenschutz erreichen Sie uns unter support@mietgate.de. Ein Datenschutzbeauftragter ist gesetzlich nicht verpflichtend bestellt.</p>
       </Sec>
 
@@ -146,7 +141,7 @@ export function Datenschutz() {
       </Sec>
 
       <Sec title="12. Beschwerderecht bei der Aufsichtsbehörde">
-        <p>Sie haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren. Zuständig ist insbesondere die Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen (LDI NRW), Kavalleriestraße 2–4, 40213 Düsseldorf.</p>
+        <p>Sie haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren. Zuständig ist insbesondere der Landesbeauftragte für Datenschutz und Informationsfreiheit Hamburg (HmbBfDI), Klosterwall 6, 20095 Hamburg.</p>
       </Sec>
 
       <Sec title="13. Pflicht zur Bereitstellung">
@@ -160,7 +155,7 @@ export function AGB() {
   return (
     <LegalShell title="Allgemeine Geschäftsbedingungen (AGB)" subtitle="Bedingungen für die Nutzung der MietGate-Plattform">
       <Sec title="§ 1 Geltungsbereich und Anbieter">
-        <p>Diese AGB gelten für die Nutzung der Plattform „MietGate" (nachfolgend „Plattform"), betrieben von der BORK Solutions UG (haftungsbeschränkt) i. Gr., Fährstraße 217, 40221 Düsseldorf (nachfolgend „MietGate", „wir"). Sie gelten gegenüber Vermietern, Maklern, Hausverwaltungen (nachfolgend „Vermieter") sowie gegenüber Mietinteressenten und Bewerbern (nachfolgend „Mieter"). Abweichende Bedingungen der Nutzer finden keine Anwendung.</p>
+        <p>Diese AGB gelten für die Nutzung der Plattform „MietGate" (nachfolgend „Plattform"), betrieben von BORK Solutions (nachfolgend „MietGate", „wir"). Sie gelten gegenüber Vermietern, Maklern, Hausverwaltungen (nachfolgend „Vermieter") sowie gegenüber Mietinteressenten und Bewerbern (nachfolgend „Mieter"). Abweichende Bedingungen der Nutzer finden keine Anwendung.</p>
       </Sec>
       <Sec title="§ 2 Leistungsgegenstand">
         <p>MietGate stellt eine technische Plattform bereit, die insbesondere folgende Funktionen ermöglicht: Erstellung von Wohnungsinseraten durch Vermieter, Erstellung von Such- und Bewerbungsprofilen durch Mieter, Upload von Bewerbungsunterlagen, gebündelte Verwaltung eingehender Bewerbungen, Kommunikation zwischen den Parteien sowie die digitale Organisation des Vermietungsprozesses.</p>
@@ -220,7 +215,7 @@ export function AGB() {
         <p>Wir können diese AGB mit Wirkung für die Zukunft ändern, sofern dies aus triftigem Grund erforderlich ist. Über Änderungen informieren wir rechtzeitig. Widerspricht der Nutzer nicht innerhalb der genannten Frist, gelten die geänderten Bedingungen als angenommen; hierauf wird gesondert hingewiesen.</p>
       </Sec>
       <Sec title="§ 17 Anwendbares Recht und Gerichtsstand">
-        <p>Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts. Zwingende verbraucherschützende Vorschriften des Staates, in dem der Verbraucher seinen gewöhnlichen Aufenthalt hat, bleiben unberührt. Ist der Nutzer Kaufmann, juristische Person des öffentlichen Rechts oder öffentlich-rechtliches Sondervermögen, ist Gerichtsstand Düsseldorf.</p>
+        <p>Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts. Zwingende verbraucherschützende Vorschriften des Staates, in dem der Verbraucher seinen gewöhnlichen Aufenthalt hat, bleiben unberührt. Ist der Nutzer Kaufmann, juristische Person des öffentlichen Rechts oder öffentlich-rechtliches Sondervermögen, ist Gerichtsstand Hamburg.</p>
       </Sec>
       <Sec title="§ 18 Salvatorische Klausel">
         <p>Sollten einzelne Bestimmungen dieser AGB unwirksam sein oder werden, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt. An die Stelle der unwirksamen Regelung tritt die gesetzlich zulässige Regelung, die dem wirtschaftlichen Zweck der unwirksamen am nächsten kommt.</p>
@@ -234,7 +229,7 @@ export function Widerruf() {
     <LegalShell title="Widerrufsbelehrung" subtitle="Für Verbraucher bei kostenpflichtigen digitalen Diensten und Abonnements">
       <Sec title="Widerrufsrecht">
         <p>Sie haben das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des Vertragsschlusses.</p>
-        <p>Um Ihr Widerrufsrecht auszuüben, müssen Sie uns (BORK Solutions UG (haftungsbeschränkt) i. Gr., Fährstraße 217, 40221 Düsseldorf, E-Mail: support@mietgate.de) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder eine E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren. Sie können dafür das beigefügte Muster-Widerrufsformular verwenden, das jedoch nicht vorgeschrieben ist.</p>
+        <p>Um Ihr Widerrufsrecht auszuüben, müssen Sie uns (BORK Solutions, Pestalozzistraße 25, 22305 Hamburg, E-Mail: support@mietgate.de) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder eine E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren. Sie können dafür das beigefügte Muster-Widerrufsformular verwenden, das jedoch nicht vorgeschrieben ist.</p>
         <p>Zur Wahrung der Widerrufsfrist reicht es aus, dass Sie die Mitteilung über die Ausübung des Widerrufsrechts vor Ablauf der Widerrufsfrist absenden.</p>
       </Sec>
       <Sec title="Folgen des Widerrufs">
@@ -252,7 +247,7 @@ export function Widerruf() {
       <Sec title="Muster-Widerrufsformular">
         <p>(Wenn Sie den Vertrag widerrufen wollen, füllen Sie bitte dieses Formular aus und senden Sie es zurück.)</p>
         <div className="rounded-xl border border-border bg-card p-5 text-sm space-y-2">
-          <p>An: BORK Solutions UG (haftungsbeschränkt) i. Gr., Fährstraße 217, 40221 Düsseldorf, E-Mail: support@mietgate.de</p>
+          <p>An: BORK Solutions, Pestalozzistraße 25, 22305 Hamburg, E-Mail: support@mietgate.de</p>
           <p>Hiermit widerrufe(n) ich/wir (*) den von mir/uns (*) abgeschlossenen Vertrag über die Erbringung der folgenden Dienstleistung (*):</p>
           <p>________________________________________________</p>
           <p>Bestellt am (*) / erhalten am (*): ____________________</p>
@@ -279,8 +274,7 @@ export function Cookies() {
       <Sec title="Kategorien">
         <List items={[
           "Notwendig: Für den Betrieb erforderlich (z. B. Anmeldung/Session, Sicherheit, Speicherung Ihrer Cookie-Auswahl). Diese Cookies sind nicht abwählbar und werden auf Grundlage von § 25 Abs. 2 TDDDG gesetzt.",
-          "Statistik: Helfen uns, die Nutzung anonymisiert bzw. pseudonymisiert zu verstehen und die Plattform zu verbessern. Nur mit Ihrer Einwilligung.",
-          "Marketing: Ermöglichen relevante Inhalte und Reichweitenmessung. Nur mit Ihrer Einwilligung.",
+          "Statistik & Marketing: Aktuell setzt MietGate keine Statistik- oder Marketing-Cookies ein. Sollten wir künftig solche Cookies einführen, werden sie ausschließlich nach Ihrer Einwilligung über \"Alle akzeptieren\" gesetzt (Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG) — eine separate Auswahl je Kategorie bieten wir derzeit nicht an; wählen Sie stattdessen \"Nur notwendige\", um beide Kategorien abzulehnen.",
         ]} />
       </Sec>
       <Sec title="Einwilligungsverwaltung">
