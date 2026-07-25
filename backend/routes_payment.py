@@ -100,6 +100,22 @@ async def stripe_webhook(request: Request):
     return {"status": "ok"}
 
 
+class BillingPortalRequest(BaseModel):
+    origin_url: str
+
+
+@router.post("/subscription/billing-portal")
+async def billing_portal(req: BillingPortalRequest, user: dict = Depends(get_current_user)):
+    sub = await db.subscriptions.find_one({"org_id": user.get("org_id")}, NO_ID)
+    if not sub or not sub.get("stripe_customer_id"):
+        raise HTTPException(status_code=404, detail="Kein Stripe-Kunde hinterlegt")
+    try:
+        session = stripe_service.create_billing_portal_session(sub["stripe_customer_id"], f"{req.origin_url}/abo")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Portal fehlgeschlagen: {e}")
+    return {"portal_url": session.url}
+
+
 @router.post("/subscription/cancel")
 async def cancel_subscription(user: dict = Depends(get_current_user)):
     sub = await db.subscriptions.find_one({"org_id": user.get("org_id")})

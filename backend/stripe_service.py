@@ -69,18 +69,25 @@ def setup_catalog():
         logger.error(f"Stripe catalog setup failed: {e}")
 
 
-def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_id: str, purpose: str = "subscription"):
+def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_id: str,
+                            purpose: str = "subscription", trial_days: int = None, property_id: str = None):
     prices = stripe.Price.list(lookup_keys=[lookup_key], active=True, limit=1).data
     if not prices:
         raise ValueError(f"Price not found: {lookup_key}")
     price = prices[0]
+    metadata = {"user_id": user_id or "", "org_id": org_id or "", "lookup_key": lookup_key, "purpose": purpose}
+    if property_id:
+        metadata["property_id"] = property_id
     kwargs = dict(
         line_items=[{"price": price.id, "quantity": 1}],
         mode="subscription",
         success_url=f"{origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{origin_url}/payment/cancel",
-        metadata={"user_id": user_id or "", "org_id": org_id or "", "lookup_key": lookup_key, "purpose": purpose},
+        metadata=metadata,
     )
+    if trial_days:
+        kwargs["subscription_data"] = {"trial_period_days": trial_days, "metadata": metadata}
+        kwargs["payment_method_collection"] = "always"
     try:
         session = stripe.checkout.Session.create(**kwargs, managed_payments={"enabled": True})
     except stripe.error.InvalidRequestError as e:
@@ -91,6 +98,10 @@ def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_
         else:
             raise
     return session, price
+
+
+def create_billing_portal_session(customer_id: str, return_url: str):
+    return stripe.billing_portal.Session.create(customer=customer_id, return_url=return_url)
 
 
 async def sync_status(session_id: str):
@@ -140,20 +151,35 @@ async def _mark_paid(session_id, subscription, payment_intent):
         return
     # Activate subscription for the org
     if tx.get("org_id"):
+        sub_status, customer_id = "active", None
+        if subscription:
+            try:
+                s = stripe.Subscription.retrieve(subscription)
+                sub_status = s.status
+                customer_id = s.customer
+            except Exception:
+                pass
         await db.subscriptions.update_one(
             {"org_id": tx["org_id"]},
             {"$set": {
                 "org_id": tx["org_id"], "plan_key": tx.get("plan_key"),
-                "status": "active", "interval": tx.get("interval"),
+                "status": sub_status, "interval": tx.get("interval"),
                 "stripe_subscription_id": subscription,
+                "stripe_customer_id": customer_id,
                 "cancel_at_period_end": False,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }}, upsert=True,
         )
+        if tx.get("property_id"):
+            await db.properties.update_one(
+                {"id": tx["property_id"]},
+                {"$set": {"link_active": True, "link_deactivated_by_payment": False}})
+        trial_note = ("<p>Ihr 3-tägiger Testzeitraum hat begonnen — die erste Abbuchung erfolgt danach automatisch.</p>"
+                      if sub_status == "trialing" else "")
         await _email_user(tx.get("user_id"), "Ihr MietGate-Abo ist aktiv",
                           "Zahlung erfolgreich – Abo aktiviert",
                           f"<p>Vielen Dank! Ihr <b>{(tx.get('plan_key') or '').capitalize()}</b>-Abo "
-                          f"({tx.get('interval','monthly')}) ist ab sofort aktiv.</p>"
+                          f"({tx.get('interval','monthly')}) ist ab sofort aktiv.</p>{trial_note}"
                           f"<p>Sie können jetzt alle Funktionen Ihres Pakets nutzen.</p>")
 
 
@@ -184,8 +210,30 @@ async def sync_subscription_status(subscription_obj):
             "status": subscription_obj["status"],
             "cancel_at_period_end": bool(subscription_obj.get("cancel_at_period_end")),
             "current_period_end": subscription_obj.get("current_period_end"),
+            "stripe_customer_id": subscription_obj.get("customer"),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }},
+    )
+
+
+async def _lock_org_links(org_id):
+    """Payment lapsed: deactivate every currently-live link, remembering which ones
+    we turned off so a later recovery only restores those (not ones the landlord
+    had already switched off manually)."""
+    if not org_id:
+        return
+    await db.properties.update_many(
+        {"org_id": org_id, "link_active": True},
+        {"$set": {"link_active": False, "link_deactivated_by_payment": True}},
+    )
+
+
+async def _unlock_org_links(org_id):
+    if not org_id:
+        return
+    await db.properties.update_many(
+        {"org_id": org_id, "link_deactivated_by_payment": True},
+        {"$set": {"link_active": True, "link_deactivated_by_payment": False}},
     )
 
 
@@ -198,10 +246,11 @@ async def handle_subscription_deleted(subscription_obj):
         {"stripe_subscription_id": sub_id},
         {"$set": {"status": "canceled", "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    await _lock_org_links(sub.get("org_id"))
     owner_id = await _org_owner_user_id(sub.get("org_id"))
     if owner_id:
         await notify(owner_id, "subscription_canceled", "Abo beendet",
-                     "Ihr MietGate-Abo wurde beendet.", "/abo")
+                     "Ihr MietGate-Abo wurde beendet, Ihre Bewerbungslinks wurden deaktiviert.", "/abo")
 
 
 async def handle_invoice_payment_failed(invoice_obj):
@@ -215,17 +264,19 @@ async def handle_invoice_payment_failed(invoice_obj):
         {"stripe_subscription_id": sub_id},
         {"$set": {"status": "past_due", "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    await _lock_org_links(sub.get("org_id"))
     owner_id = await _org_owner_user_id(sub.get("org_id"))
     if owner_id:
         await notify(owner_id, "payment_failed", "Zahlung fehlgeschlagen",
-                     "Ihre Zahlung ist fehlgeschlagen — bitte aktualisieren Sie Ihre Zahlungsmethode, um weiter Bewerbungen zu erhalten.", "/abo")
+                     "Ihre Zahlung ist fehlgeschlagen — Ihr Bewerbungslink wurde deaktiviert. Bitte aktualisieren Sie Ihre Zahlungsmethode, um weiter Bewerbungen zu erhalten.", "/abo")
         await _email_user(owner_id, "Zahlung fehlgeschlagen", "Ihre Zahlung ist fehlgeschlagen",
-                          "<p>Wir konnten die Zahlung für Ihr MietGate-Abo nicht abbuchen. "
-                          "Bitte aktualisieren Sie Ihre Zahlungsmethode, damit Ihr Bewerbungslink aktiv bleibt.</p>")
+                          "<p>Wir konnten die Zahlung für Ihr MietGate-Abo nicht abbuchen. Ihr Bewerbungslink wurde "
+                          "deshalb deaktiviert und Ihre Bewerber-Ansicht gesperrt, Ihre Daten bleiben aber erhalten. "
+                          "Bitte aktualisieren Sie Ihre Zahlungsmethode, damit Ihr Zugriff sofort wiederhergestellt wird.</p>")
 
 
 async def handle_invoice_payment_succeeded(invoice_obj):
-    """Clear a past_due state once a retried/renewed payment goes through."""
+    """Clear a past_due state and restore access once a retried/renewed payment goes through."""
     sub_id = invoice_obj.get("subscription")
     if not sub_id:
         return
@@ -236,10 +287,11 @@ async def handle_invoice_payment_succeeded(invoice_obj):
         {"stripe_subscription_id": sub_id},
         {"$set": {"status": "active", "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    await _unlock_org_links(sub.get("org_id"))
     owner_id = await _org_owner_user_id(sub.get("org_id"))
     if owner_id:
         await notify(owner_id, "payment_recovered", "Zahlung erfolgreich",
-                     "Ihre Zahlungsmethode wurde erfolgreich belastet — Ihr Zugriff ist wieder vollständig freigeschaltet.", "/abo")
+                     "Ihre Zahlungsmethode wurde erfolgreich belastet — Ihr Bewerbungslink und Zugriff sind wieder vollständig freigeschaltet.", "/abo")
 
 
 async def handle_trial_will_end(subscription_obj):

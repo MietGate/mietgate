@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import api from "@/lib/api";
+import api, { formatApiError } from "@/lib/api";
 import { Pipeline } from "@/components/Pipeline";
 import { Viewings } from "@/components/Viewings";
 import { PropertyImages } from "@/components/PropertyImages";
+import { PricingSection } from "@/components/PricingSection";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check
+  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check, Lock, CreditCard, Zap
 } from "lucide-react";
 
 export default function PropertyDetail() {
@@ -18,6 +19,9 @@ export default function PropertyDetail() {
   const navigate = useNavigate();
   const [prop, setProp] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [activating, setActivating] = useState(false);
+  const [planPickerOpen, setPlanPickerOpen] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const load = () => api.get(`/properties/${id}`).then((r) => setProp(r.data)).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
@@ -26,8 +30,40 @@ export default function PropertyDetail() {
 
   const appLink = `${window.location.origin}/b/${prop.application_code}`;
   const copy = () => { navigator.clipboard.writeText(appLink); setCopied(true); toast.success("Link kopiert"); setTimeout(() => setCopied(false), 2000); };
-  const toggle = async () => { const { data } = await api.post(`/properties/${id}/link/toggle`); setProp({ ...prop, link_active: data.link_active }); };
-  const regen = async () => { const { data } = await api.post(`/properties/${id}/link/regenerate`); setProp({ ...prop, application_code: data.application_code, link_active: true }); toast.success("Neuer Link generiert"); };
+  const deactivate = async () => { const { data } = await api.post(`/properties/${id}/link/toggle`); setProp({ ...prop, link_active: data.link_active }); };
+  const regen = async () => { const { data } = await api.post(`/properties/${id}/link/regenerate`); setProp({ ...prop, application_code: data.application_code }); toast.success("Neuer Link generiert"); };
+
+  const activate = async () => {
+    setActivating(true);
+    try {
+      const { data } = await api.post(`/properties/${id}/link/activate`, {});
+      if (data.activated) { setProp(data.property); toast.success("Bewerbungslink aktiviert"); }
+      else if (data.needs_payment) { setPlanPickerOpen(true); }
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setActivating(false); }
+  };
+
+  const choosePlan = async (plan, interval) => {
+    if (plan.key === "enterprise" || plan.key === "whitelabel") {
+      toast.info("Bitte kontaktieren Sie uns unter support@mietgate.de"); return;
+    }
+    try {
+      const { data } = await api.post(`/properties/${id}/link/activate`, {
+        plan_key: plan.key, interval, origin_url: window.location.origin,
+      });
+      if (data.checkout_url) window.location.href = data.checkout_url;
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+
+  const openBillingPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { data } = await api.post("/subscription/billing-portal", { origin_url: window.location.origin });
+      window.location.href = data.portal_url;
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); setPortalLoading(false); }
+  };
+
+  const paymentLocked = !!prop.link_deactivated_by_payment;
 
   const Row = ({ label, value }) => value != null && value !== "" ? (
     <div className="flex justify-between py-2 border-b border-border last:border-0 text-sm">
@@ -48,6 +84,21 @@ export default function PropertyDetail() {
         <Button variant="outline" asChild data-testid="edit-property"><Link to={`/objekte/${id}/bearbeiten`}><Pencil className="h-4 w-4 mr-1" /> Bearbeiten</Link></Button>
       </div>
 
+      {paymentLocked && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 flex flex-wrap items-center justify-between gap-3" data-testid="payment-locked-banner">
+          <div className="flex items-center gap-3">
+            <Lock className="h-5 w-5 text-destructive shrink-0" />
+            <div>
+              <p className="font-semibold text-sm">Zugriff eingeschränkt — Zahlung fehlgeschlagen</p>
+              <p className="text-sm text-muted-foreground">Ihr Bewerbungslink wurde deaktiviert. Ihre Bewerberdaten bleiben erhalten, sind aber gesperrt, bis die Zahlung aktualisiert ist.</p>
+            </div>
+          </div>
+          <Button onClick={openBillingPortal} disabled={portalLoading} data-testid="update-payment-btn">
+            {portalLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />} Zahlungsmethode aktualisieren
+          </Button>
+        </div>
+      )}
+
       <Tabs defaultValue="pipeline">
         <TabsList>
           <TabsTrigger value="pipeline" data-testid="tab-pipeline">Bewerber ({prop.application_count})</TabsTrigger>
@@ -57,34 +108,69 @@ export default function PropertyDetail() {
           <TabsTrigger value="overview" data-testid="tab-overview">Details</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pipeline" className="mt-6"><Pipeline propertyId={id} /></TabsContent>
-
-        <TabsContent value="link" className="mt-6">
-          <div className="rounded-xl border border-border bg-card p-6 max-w-2xl">
-            <div className="flex items-center gap-2 mb-2"><Link2 className="h-5 w-5 text-primary" /><h2 className="font-display font-bold text-lg">Ihr Bewerbungslink</h2></div>
-            <p className="text-sm text-muted-foreground mb-4">Teilen Sie diesen Link auf ImmoScout, Kleinanzeigen, Social Media oder Ihrer Website. Keine Adresse sichtbar, sicher & teilbar.</p>
-            <div className="flex gap-2">
-              <div className="flex-1 font-mono text-sm bg-secondary rounded-md px-4 py-3 truncate flex items-center" data-testid="app-link">{appLink}</div>
-              <Button onClick={copy} data-testid="copy-link">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</Button>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-4 mt-5 pt-5 border-t border-border">
-              <label className="flex items-center gap-3 text-sm">
-                <Switch checked={prop.link_active} onCheckedChange={toggle} data-testid="toggle-link" />
-                Link {prop.link_active ? "aktiv" : "deaktiviert"}
-              </label>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground"><b className="font-mono">{prop.application_count}</b> Bewerbungen</span>
-                <Button variant="outline" size="sm" onClick={regen} data-testid="regen-link"><RefreshCw className="h-4 w-4 mr-1" /> Neu generieren</Button>
+        <TabsContent value="pipeline" className="mt-6 relative">
+          {paymentLocked ? (
+            <div className="relative">
+              <div className="pointer-events-none select-none blur-sm opacity-60"><Pipeline propertyId={id} /></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="rounded-xl border border-border bg-card/95 shadow-lg p-6 text-center max-w-sm">
+                  <Lock className="h-6 w-6 text-destructive mx-auto mb-2" />
+                  <p className="font-semibold text-sm">Bewerber-Ansicht gesperrt</p>
+                  <p className="text-sm text-muted-foreground mt-1 mb-4">Aktualisieren Sie Ihre Zahlungsmethode, um wieder Zugriff auf Ihre Bewerber zu erhalten.</p>
+                  <Button size="sm" onClick={openBillingPortal} disabled={portalLoading}>
+                    {portalLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />} Zahlungsmethode aktualisieren
+                  </Button>
+                </div>
               </div>
             </div>
-            <div className="mt-5 pt-5 border-t border-border">
-              <Button variant="ghost" size="sm" asChild><a href={appLink} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4 mr-1" /> Bewerbungsseite ansehen</a></Button>
+          ) : <Pipeline propertyId={id} />}
+        </TabsContent>
+
+        <TabsContent value="link" className="mt-6">
+          {prop.link_active ? (
+            <>
+              <div className="rounded-xl border border-border bg-card p-6 max-w-2xl">
+                <div className="flex items-center gap-2 mb-2"><Link2 className="h-5 w-5 text-primary" /><h2 className="font-display font-bold text-lg">Ihr Bewerbungslink</h2></div>
+                <p className="text-sm text-muted-foreground mb-4">Teilen Sie diesen Link auf ImmoScout, Kleinanzeigen, Social Media oder Ihrer Website. Keine Adresse sichtbar, sicher & teilbar.</p>
+                <div className="flex gap-2">
+                  <div className="flex-1 font-mono text-sm bg-secondary rounded-md px-4 py-3 truncate flex items-center" data-testid="app-link">{appLink}</div>
+                  <Button onClick={copy} data-testid="copy-link">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</Button>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-4 mt-5 pt-5 border-t border-border">
+                  <label className="flex items-center gap-3 text-sm">
+                    <Switch checked={prop.link_active} onCheckedChange={deactivate} data-testid="toggle-link" />
+                    Link {prop.link_active ? "aktiv" : "deaktiviert"}
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground"><b className="font-mono">{prop.application_count}</b> Bewerbungen</span>
+                    <Button variant="outline" size="sm" onClick={regen} data-testid="regen-link"><RefreshCw className="h-4 w-4 mr-1" /> Neu generieren</Button>
+                  </div>
+                </div>
+                <div className="mt-5 pt-5 border-t border-border">
+                  <Button variant="ghost" size="sm" asChild><a href={appLink} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4 mr-1" /> Bewerbungsseite ansehen</a></Button>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-accent/50 border border-accent p-4 max-w-2xl text-sm">
+                <p className="font-medium">Beispieltext für Ihr Inserat:</p>
+                <p className="text-muted-foreground mt-1 italic">„Bitte bewerben Sie sich ausschließlich über folgenden Link: {appLink}"</p>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border bg-card p-8 max-w-2xl text-center" data-testid="link-activate-panel">
+              <Zap className="h-8 w-8 text-primary mx-auto mb-3" />
+              <h2 className="font-display font-bold text-lg">Bewerbungslink aktivieren</h2>
+              <p className="text-sm text-muted-foreground mt-1 mb-5">
+                {paymentLocked
+                  ? "Der Link wurde wegen einer fehlgeschlagenen Zahlung deaktiviert — aktualisieren Sie oben Ihre Zahlungsmethode, um ihn wieder freizuschalten."
+                  : "Objekt anlegen und bearbeiten ist kostenlos. Erst wenn Sie den Bewerbungslink veröffentlichen, wählen Sie ein Paket — mit 3 Tagen kostenlosem Test."}
+              </p>
+              {!paymentLocked && (
+                <Button onClick={activate} disabled={activating} data-testid="activate-link-btn">
+                  {activating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />} Bewerbungslink aktivieren
+                </Button>
+              )}
             </div>
-          </div>
-          <div className="mt-4 rounded-lg bg-accent/50 border border-accent p-4 max-w-2xl text-sm">
-            <p className="font-medium">Beispieltext für Ihr Inserat:</p>
-            <p className="text-muted-foreground mt-1 italic">„Bitte bewerben Sie sich ausschließlich über folgenden Link: {appLink}"</p>
-          </div>
+          )}
         </TabsContent>
 
         <TabsContent value="viewings" className="mt-6"><Viewings propertyId={id} property={prop} /></TabsContent>
@@ -120,6 +206,16 @@ export default function PropertyDetail() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={planPickerOpen} onOpenChange={setPlanPickerOpen}>
+        <DialogContent aria-describedby={undefined} className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Paket wählen — 3 Tage kostenlos testen</DialogTitle>
+            <p className="text-sm text-muted-foreground">Ihre Zahlungsmethode wird hinterlegt, aber erst nach 3 Tagen belastet. Jederzeit vorher kündbar.</p>
+          </DialogHeader>
+          <PricingSection onSelect={choosePlan} ctaLabel="Trial starten" />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

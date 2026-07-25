@@ -76,12 +76,13 @@ export default function LandlordDashboard() {
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="font-display font-bold text-lg mb-4">Abo-Status</h2>
           <div className="flex items-center gap-2">
-            <Badge className={data.subscription_status === "active" ? "bg-success text-success-foreground" : ""} variant={data.subscription_status === "active" ? "default" : "secondary"}>
-              {data.subscription_status === "active" ? "Aktiv" : "Kein aktives Abo"}
+            <Badge className={["active", "trialing"].includes(data.subscription_status) ? "bg-success text-success-foreground" : data.subscription_status === "past_due" ? "bg-destructive text-destructive-foreground" : ""}
+              variant={["active", "trialing"].includes(data.subscription_status) ? "default" : "secondary"}>
+              {data.subscription_status === "active" ? "Aktiv" : data.subscription_status === "trialing" ? "Testphase" : data.subscription_status === "past_due" ? "Zahlung fehlgeschlagen" : "Kein aktives Abo"}
             </Badge>
             {data.plan_key && <span className="text-sm text-muted-foreground capitalize">{data.plan_key}</span>}
           </div>
-          {data.subscription_status !== "active" && (
+          {!["active", "trialing"].includes(data.subscription_status) && (
             <>
               <p className="text-sm text-muted-foreground mt-3">Schalten Sie mehr Objekte und Funktionen frei.</p>
               <Button asChild variant="outline" size="sm" className="mt-4 w-full"><Link to="/abo">Paket wählen</Link></Button>

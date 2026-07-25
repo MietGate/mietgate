@@ -10,6 +10,7 @@ from security import get_current_user
 from helpers import new_id, now_iso, log_activity, get_plan_limit, active_property_count, plan_supports_team
 from storage import put_object, get_object, get_object_ranged, guess_mime, APP_NAME
 from constants import FORM_FIELDS, DEFAULT_FORM_CONFIG, DOCUMENT_TYPES
+import stripe_service
 
 router = APIRouter(prefix="/api", tags=["properties"])
 
@@ -80,12 +81,6 @@ async def list_properties(user: dict = Depends(get_current_user)):
 @router.post("/properties")
 async def create_property(payload: PropertyPayload, user: dict = Depends(get_current_user)):
     org_id = await _require_org(user)
-    if payload.status == "active":
-        limit = await get_plan_limit(org_id)
-        current = await active_property_count(org_id)
-        if current >= limit:
-            raise HTTPException(status_code=402,
-                                detail=f"Objekt-Limit erreicht ({limit}). Bitte Paket upgraden.")
     pid = new_id()
     code = gen_code()
     while await db.properties.find_one({"application_code": code}):
@@ -93,7 +88,7 @@ async def create_property(payload: PropertyPayload, user: dict = Depends(get_cur
     doc = payload.model_dump()
     doc.update({
         "id": pid, "org_id": org_id, "created_by": user["id"],
-        "application_code": code, "link_active": True,
+        "application_code": code, "link_active": False,
         "form_config": payload.form_config or DEFAULT_FORM_CONFIG,
         "created_at": now_iso(),
     })
@@ -120,12 +115,6 @@ async def update_property(pid: str, payload: PropertyPayload, user: dict = Depen
     upd = payload.model_dump(exclude_none=False)
     if payload.form_config is None:
         upd.pop("form_config", None)
-    # Re-check plan limit if activating a previously inactive property
-    if payload.status == "active" and prop.get("status") != "active":
-        limit = await get_plan_limit(prop["org_id"])
-        current = await active_property_count(prop["org_id"])
-        if current >= limit:
-            raise HTTPException(status_code=402, detail=f"Objekt-Limit erreicht ({limit}). Bitte Paket upgraden.")
     await db.properties.update_one({"id": pid}, {"$set": upd})
     await log_activity(prop["org_id"], user["id"], "update", "property", pid)
     return await db.properties.find_one({"id": pid}, NO_ID)
@@ -152,18 +141,75 @@ async def regenerate_link(pid: str, user: dict = Depends(get_current_user)):
     code = gen_code()
     while await db.properties.find_one({"application_code": code}):
         code = gen_code()
-    await db.properties.update_one({"id": pid}, {"$set": {"application_code": code, "link_active": True}})
-    return {"application_code": code, "link_active": True}
+    await db.properties.update_one({"id": pid}, {"$set": {"application_code": code}})
+    return {"application_code": code, "link_active": prop.get("link_active", False)}
 
 
 @router.post("/properties/{pid}/link/toggle")
 async def toggle_link(pid: str, user: dict = Depends(get_current_user)):
+    """Deactivating a live link is always free. Activating one is payment-gated —
+    that only happens through /link/activate, never here."""
     prop = await db.properties.find_one({"id": pid})
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
-    new_state = not prop.get("link_active", True)
-    await db.properties.update_one({"id": pid}, {"$set": {"link_active": new_state}})
-    return {"link_active": new_state}
+    if not prop.get("link_active"):
+        raise HTTPException(status_code=400,
+                            detail="Link ist bereits deaktiviert. Nutzen Sie 'Aktivieren', um ihn freizuschalten.")
+    await db.properties.update_one({"id": pid}, {"$set": {"link_active": False}})
+    return {"link_active": False}
+
+
+class ActivateLinkRequest(BaseModel):
+    plan_key: Optional[str] = None
+    interval: str = "monthly"
+    origin_url: Optional[str] = None
+
+
+@router.post("/properties/{pid}/link/activate")
+async def activate_link(pid: str, body: ActivateLinkRequest, user: dict = Depends(get_current_user)):
+    prop = await db.properties.find_one({"id": pid})
+    if not prop or prop["org_id"] != user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    if prop.get("link_active"):
+        prop.pop("_id", None)
+        return {"activated": True, "property": prop}
+
+    org_id = prop["org_id"]
+    sub = await db.subscriptions.find_one({"org_id": org_id}, NO_ID)
+    has_paid_access = bool(sub and sub.get("status") in ("active", "trialing"))
+
+    if has_paid_access:
+        limit = await get_plan_limit(org_id)
+        current = await active_property_count(org_id)
+        if current >= limit:
+            raise HTTPException(status_code=402, detail=f"Objekt-Limit erreicht ({limit}). Bitte Paket upgraden.")
+        await db.properties.update_one(
+            {"id": pid}, {"$set": {"link_active": True, "link_deactivated_by_payment": False}})
+        await log_activity(org_id, user["id"], "link_activate", "property", pid)
+        return {"activated": True, "property": await db.properties.find_one({"id": pid}, NO_ID)}
+
+    # No active/trialing subscription yet: first activation always starts a 3-day trial checkout.
+    if not body.plan_key or not body.origin_url:
+        return {"needs_payment": True}
+    plan = await db.plans.find_one({"key": body.plan_key}, NO_ID)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Paket nicht gefunden")
+    lookup_key = plan["yearly_lookup"] if body.interval == "yearly" else plan["monthly_lookup"]
+    try:
+        session, price = stripe_service.create_checkout_session(
+            lookup_key, body.origin_url, user["id"], org_id,
+            purpose="link_activation", trial_days=3, property_id=pid)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Checkout fehlgeschlagen: {e}")
+    await db.payment_transactions.insert_one({
+        "id": new_id(), "session_id": session.id, "user_id": user["id"],
+        "org_id": org_id, "plan_key": body.plan_key, "interval": body.interval,
+        "lookup_key": lookup_key, "amount": (price.unit_amount or 0) / 100,
+        "currency": price.currency, "status": "initiated", "payment_status": "pending",
+        "purpose": "link_activation", "property_id": pid,
+        "created_at": now_iso(), "updated_at": now_iso(),
+    })
+    return {"checkout_url": session.url, "session_id": session.id}
 
 
 # ---------- Object images ----------

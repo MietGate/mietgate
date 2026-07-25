@@ -47,19 +47,23 @@ async def get_user_org(user):
 
 
 async def active_property_count(org_id):
-    return await db.properties.count_documents({"org_id": org_id, "status": "active"})
+    """Counts properties with a live (paid) application link — the actual metered resource."""
+    return await db.properties.count_documents({"org_id": org_id, "link_active": True})
+
+
+PAID_SUB_STATUSES = ["active", "trialing"]
 
 
 async def get_plan_limit(org_id):
-    sub = await db.subscriptions.find_one({"org_id": org_id, "status": "active"}, NO_ID)
+    sub = await db.subscriptions.find_one({"org_id": org_id, "status": {"$in": PAID_SUB_STATUSES}}, NO_ID)
     if not sub:
-        return 1  # free/no-sub fallback: allow 1 property to try the product
+        return 0  # no subscription yet: no free live link, must activate via checkout first
     plan = await db.plans.find_one({"key": sub["plan_key"]}, NO_ID)
-    return plan["max_properties"] if plan else 1
+    return plan["max_properties"] if plan else 0
 
 
 async def plan_supports_team(org_id):
-    sub = await db.subscriptions.find_one({"org_id": org_id, "status": "active"}, NO_ID)
+    sub = await db.subscriptions.find_one({"org_id": org_id, "status": {"$in": PAID_SUB_STATUSES}}, NO_ID)
     if not sub:
         return False
     plan = await db.plans.find_one({"key": sub["plan_key"]}, NO_ID)

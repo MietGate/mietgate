@@ -111,21 +111,64 @@ class TestProperties:
         assert r.status_code == 200
         assert r.json()["id"] == state["property_id"]
 
-    def test_plan_limit_enforcement(self, session_client, state):
-        """Free plan allows only 1 active property; second active must return 402."""
+    def test_no_creation_time_limit(self, session_client, state):
+        """Property creation/editing is free and unlimited; the plan limit only
+        applies to activating an application link (see TestLinkActivation)."""
         payload = {"title": f"TEST_Second-{_RUN}", "status": "active"}
         h = {"Authorization": f"Bearer {state['landlord_token']}"}
         r = session_client.post(f"{API}/properties", json=payload, headers=h)
-        assert r.status_code == 402, f"Expected 402, got {r.status_code}: {r.text}"
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        assert r.json()["link_active"] is False, "new properties start with an inactive (unpaid) link"
 
-    def test_link_toggle(self, session_client, state):
+    def test_link_toggle_requires_active_link(self, session_client, state):
+        """A freshly created property's link starts inactive; toggling an already-inactive
+        link is rejected (activation only happens through /link/activate)."""
         h = {"Authorization": f"Bearer {state['landlord_token']}"}
         r = session_client.post(f"{API}/properties/{state['property_id']}/link/toggle", headers=h)
+        assert r.status_code == 400, f"Expected 400, got {r.status_code}: {r.text}"
+
+    def test_link_activate_needs_payment(self, session_client, state):
+        """No subscription exists yet for this org, so activating a link must
+        require checkout (a 3-day trial) rather than activating for free."""
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        r = session_client.post(f"{API}/properties/{state['property_id']}/link/activate", json={}, headers=h)
+        assert r.status_code == 200, r.text
+        assert r.json().get("needs_payment") is True
+
+    def test_entitlements_zero_without_subscription(self, session_client, state):
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        r = session_client.get(f"{API}/me/entitlements", headers=h)
         assert r.status_code == 200
-        assert r.json()["link_active"] is False
-        # toggle back
-        r2 = session_client.post(f"{API}/properties/{state['property_id']}/link/toggle", headers=h)
-        assert r2.json()["link_active"] is True
+        assert r.json()["limit"] == 0
+
+    def test_admin_grants_manual_subscription(self, session_client, state):
+        """Simulates a completed Stripe checkout via the admin manual-override
+        endpoint (ROADMAP item 9), so the rest of the suite can exercise the
+        paid link-activation and public-application flow without a real Stripe
+        checkout, which can't be driven headlessly."""
+        h = {"Authorization": f"Bearer {state['admin_token']}"}
+        r = session_client.post(f"{API}/organizations/{state['landlord_user']['org_id']}/subscription",
+                                json={"plan_key": "starter", "status": "active"}, headers=h)
+        assert r.status_code == 200, r.text
+        assert r.json()["status"] == "active"
+
+    def test_link_activate_succeeds_within_plan(self, session_client, state):
+        """With an active subscription and usage under the plan's limit, activation is free."""
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        r = session_client.post(f"{API}/properties/{state['property_id']}/link/activate", json={}, headers=h)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d.get("activated") is True
+        assert d["property"]["link_active"] is True
+        state["application_code"] = d["property"]["application_code"]
+
+    def test_link_activate_second_property_hits_limit(self, session_client, state):
+        """Starter plan allows only 1 active link; a second activation must 402."""
+        h = {"Authorization": f"Bearer {state['landlord_token']}"}
+        props = session_client.get(f"{API}/properties", headers=h).json()
+        second = next(p for p in props if p["id"] != state["property_id"])
+        r = session_client.post(f"{API}/properties/{second['id']}/link/activate", json={}, headers=h)
+        assert r.status_code == 402, f"Expected 402, got {r.status_code}: {r.text}"
 
     def test_link_regenerate(self, session_client, state):
         h = {"Authorization": f"Bearer {state['landlord_token']}"}

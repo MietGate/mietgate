@@ -107,7 +107,7 @@ export default function Register() {
           <p className="text-muted-foreground mt-1 mb-4 text-sm">Kostenlos starten. Zahlungsmethode erst bei Veröffentlichung des Bewerbungslinks nötig.</p>
           {planIntent && planIntent !== "starter" && (
             <div className="mb-4 rounded-lg border border-primary/30 bg-accent/50 px-4 py-3 text-sm" data-testid="plan-intent-banner">
-              Gewähltes Paket: <span className="font-semibold capitalize">{planIntent}</span> · Nach der Registrierung schließen Sie die Buchung ab.
+              Gewähltes Paket: <span className="font-semibold capitalize">{planIntent}</span> · Sie wählen es, sobald Sie Ihren ersten Bewerbungslink aktivieren.
             </div>
           )}
 

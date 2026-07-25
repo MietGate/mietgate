@@ -36,11 +36,11 @@ export default function Billing() {
       <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center gap-2 mb-4"><CreditCard className="h-5 w-5 text-primary" /><h2 className="font-display font-bold text-lg">Aktuelles Paket</h2></div>
-          {sub.subscription?.status === "active" ? (
+          {["active", "trialing"].includes(sub.subscription?.status) ? (
             <>
               <div className="flex items-center gap-2">
                 <span className="font-display text-2xl font-bold capitalize">{sub.plan?.name || sub.subscription.plan_key}</span>
-                <Badge className="bg-success text-success-foreground">Aktiv</Badge>
+                <Badge className="bg-success text-success-foreground">{sub.subscription.status === "trialing" ? "Testphase" : "Aktiv"}</Badge>
               </div>
               {sub.subscription.cancel_at_period_end && <p className="text-sm text-amber-600 mt-2">Gekündigt zum Periodenende.</p>}
               {!sub.subscription.cancel_at_period_end && <Button variant="outline" size="sm" className="mt-4" onClick={cancel} data-testid="cancel-sub">Kündigen</Button>}
