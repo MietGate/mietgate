@@ -16,6 +16,8 @@ export default function Settings() {
   const isLandlord = user?.role === "landlord";
   const [profile, setProfile] = useState({ first_name: user?.first_name || "", last_name: user?.last_name || "", phone: user?.phone || "" });
   const [pw, setPw] = useState({ current_password: "", new_password: "" });
+  const [confirmPw, setConfirmPw] = useState("");
+  const isGoogleUser = user?.auth_provider === "google";
   const [org, setOrg] = useState(null);
   const [wlAddon, setWlAddon] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -33,8 +35,12 @@ export default function Settings() {
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); } finally { setSaving(false); }
   };
   const changePw = async () => {
-    try { await api.post("/me/password", pw); toast.success("Passwort geändert"); setPw({ current_password: "", new_password: "" }); }
-    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    if (pw.new_password.length < 6) { toast.error("Das neue Passwort muss mindestens 6 Zeichen lang sein."); return; }
+    if (pw.new_password !== confirmPw) { toast.error("Die Passwörter stimmen nicht überein."); return; }
+    try {
+      await api.post("/me/password", isGoogleUser ? { new_password: pw.new_password } : pw);
+      toast.success("Passwort geändert"); setPw({ current_password: "", new_password: "" }); setConfirmPw("");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
   const saveOrg = async () => {
     try { await api.put("/organization", org); toast.success("Organisation gespeichert"); }
@@ -76,9 +82,14 @@ export default function Settings() {
 
         <TabsContent value="password" className="mt-6">
           <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-            <div><Label>Aktuelles Passwort</Label><Input type="password" value={pw.current_password} onChange={(e) => setPw({ ...pw, current_password: e.target.value })} className="mt-1.5" /></div>
-            <div><Label>Neues Passwort</Label><Input type="password" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} className="mt-1.5" data-testid="new-password" /></div>
-            <Button onClick={changePw} disabled={!pw.new_password}>Passwort ändern</Button>
+            {isGoogleUser ? (
+              <p className="text-sm text-muted-foreground">Sie sind mit Google angemeldet. Hier können Sie zusätzlich ein Passwort für den direkten Login vergeben.</p>
+            ) : (
+              <div><Label>Aktuelles Passwort</Label><Input type="password" value={pw.current_password} onChange={(e) => setPw({ ...pw, current_password: e.target.value })} className="mt-1.5" /></div>
+            )}
+            <div><Label>Neues Passwort</Label><Input type="password" minLength={6} value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} className="mt-1.5" data-testid="new-password" /><p className="text-xs text-muted-foreground mt-1">Mindestens 6 Zeichen.</p></div>
+            <div><Label>Neues Passwort bestätigen</Label><Input type="password" minLength={6} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="mt-1.5" data-testid="confirm-password" /></div>
+            <Button onClick={changePw} disabled={!pw.new_password || !confirmPw}>Passwort ändern</Button>
           </div>
         </TabsContent>
 

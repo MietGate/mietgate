@@ -60,7 +60,7 @@ async def upload_document(doc_type: str = Form("Sonstiges"),
     if org_id:
         prop = await db.properties.find_one({"id": property_id}, NO_ID)
         await notify(prop.get("created_by"), "new_document", "Neues Dokument",
-                     f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).")
+                     f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).", f"/objekte/{property_id}")
     return rec
 
 
@@ -126,7 +126,7 @@ async def request_documents(application_id: str = Form(...), message: str = Form
     if not app or app["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
     await notify(app["applicant_user_id"], "document_request", "Dokumente angefordert",
-                 message or "Der Vermieter bittet Sie, Dokumente hochzuladen.")
+                 message or "Der Vermieter bittet Sie, Dokumente hochzuladen.", "/bewerber/dokumente")
     await log_activity(app["org_id"], user["id"], "document_request", "application", application_id)
     return {"ok": True}
 

@@ -123,7 +123,7 @@ async def submit_application(req: ApplyRequest):
     await log_activity(prop["org_id"], user["id"], "apply", "application", app_id, {"property": prop["title"]})
     # notify landlord
     await notify(prop.get("created_by"), "new_application", "Neue Bewerbung",
-                 f"Neue Bewerbung für „{prop['title']}“", f"/properties/{prop['id']}")
+                 f"Neue Bewerbung für „{prop['title']}“", f"/objekte/{prop['id']}")
     await email_user(prop.get("created_by"), "Neue Bewerbung eingegangen", "Neue Bewerbung",
                      f"<p>Für Ihr Objekt <b>{prop['title']}</b> ist eine neue Bewerbung eingegangen.</p>"
                      f"<p>Öffnen Sie Ihr MietGate-Dashboard, um die Bewerbung zu prüfen.</p>")
@@ -201,7 +201,7 @@ async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(ge
     await log_activity(app["org_id"], user["id"], "status_change", "application", app_id, {"status": body.status})
     status_label = STATUS_LABELS.get(body.status, body.status)
     await notify(app["applicant_user_id"], "status_change", "Statusänderung",
-                 f"Ihre Bewerbung hat den Status: {status_label}")
+                 f"Ihre Bewerbung hat den Status: {status_label}", "/bewerber")
     prop = await db.properties.find_one({"id": app["property_id"]}, NO_ID)
     ptitle = (prop or {}).get("title", "Ihre Bewerbung")
     await email_user(app["applicant_user_id"], "Statusänderung Ihrer Bewerbung",

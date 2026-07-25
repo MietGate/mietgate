@@ -20,4 +20,5 @@ async def ensure_indexes():
     await db.user_sessions.create_index("session_token")
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.login_attempts.create_index("identifier")
+    await db.login_attempts.create_index("expires_at", expireAfterSeconds=0)
     await db.oauth_states.create_index("expires_at", expireAfterSeconds=0)

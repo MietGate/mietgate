@@ -106,7 +106,7 @@ function InviteDialog({ viewing, propertyId, onDone }) {
           {apps.map((a) => (
             <label key={a.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-2 cursor-pointer hover:bg-secondary">
               <Checkbox checked={selected.includes(a.id)} onCheckedChange={(c) => setSelected(c ? [...selected, a.id] : selected.filter((x) => x !== a.id))} />
-              <span className="text-sm">{a.form_data?.vorname} {a.form_data?.nachname || a.applicant_email}</span>
+              <span className="text-sm">{[a.form_data?.vorname, a.form_data?.nachname].filter(Boolean).join(" ") || a.applicant_email}</span>
             </label>
           ))}
         </div>

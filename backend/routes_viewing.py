@@ -74,7 +74,7 @@ async def invite_participants(vid: str, payload: InvitePayload, user: dict = Dep
             "status": "invited", "slot": payload.slot_time,
         })
         await notify(app["applicant_user_id"], "viewing_invite", "Einladung zur Besichtigung",
-                     f"Sie wurden zu einer Besichtigung eingeladen: {viewing['title']}")
+                     f"Sie wurden zu einer Besichtigung eingeladen: {viewing['title']}", "/bewerber/termine")
         when = viewing.get("datetime") or payload.slot_time
         when_txt = f"<p>Termin: <b>{when}</b></p>" if when else ""
         if app.get("applicant_email"):
@@ -95,7 +95,7 @@ async def delete_viewing(vid: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     for p in viewing.get("participants", []):
         await notify(p["applicant_user_id"], "viewing_cancel", "Besichtigung abgesagt",
-                     f"Die Besichtigung „{viewing['title']}“ wurde abgesagt.")
+                     f"Die Besichtigung „{viewing['title']}“ wurde abgesagt.", "/bewerber/termine")
         if p.get("applicant_email"):
             await send_email(p["applicant_email"], "Besichtigung abgesagt",
                              "Ihre Besichtigung wurde abgesagt",
@@ -157,7 +157,8 @@ async def book_slot(vid: str, payload: BookSlotPayload, user: dict = Depends(get
     mine["status"] = "confirmed"
     await db.viewings.update_one({"id": vid}, {"$set": {"slots": slots, "participants": parts}})
     await notify(viewing.get("created_by"), "viewing_response", "Zeitfenster gebucht",
-                 f"{user.get('name')} hat ein Zeitfenster gebucht: {payload.slot_time}")
+                 f"{user.get('name')} hat ein Zeitfenster gebucht: {payload.slot_time}",
+                 f"/objekte/{viewing['property_id']}")
     await email_user(viewing.get("created_by"), "Zeitfenster gebucht", "Ein Bewerber hat ein Zeitfenster gebucht",
                      f"<p><b>{user.get('name')}</b> hat für die Besichtigung <b>{viewing['title']}</b> "
                      f"das Zeitfenster <b>{payload.slot_time}</b> gebucht.</p>")
@@ -186,7 +187,8 @@ async def respond_viewing(vid: str, payload: RespondPayload, user: dict = Depend
     await db.viewings.update_one({"id": vid}, {"$set": {"participants": parts}})
     label = {"confirm": "bestätigt", "decline": "abgesagt", "reschedule": "Umbuchung angefragt"}.get(payload.action)
     await notify(viewing.get("created_by"), "viewing_response", "Besichtigung: Rückmeldung",
-                 f"{user.get('name')} hat den Termin {label}." + (f" Nachricht: {payload.message}" if payload.message else ""))
+                 f"{user.get('name')} hat den Termin {label}." + (f" Nachricht: {payload.message}" if payload.message else ""),
+                 f"/objekte/{viewing['property_id']}")
     msg_html = f"<p>Nachricht: {payload.message}</p>" if payload.message else ""
     await email_user(viewing.get("created_by"), f"Besichtigung: {label}",
                      "Rückmeldung zu Ihrer Besichtigung",

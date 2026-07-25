@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from database import db, NO_ID
@@ -103,7 +103,7 @@ async def update_profile(body: ProfileUpdate, user: dict = Depends(get_current_u
 
 class PasswordChange(BaseModel):
     current_password: Optional[str] = None
-    new_password: str
+    new_password: str = Field(min_length=6)
 
 
 @router.post("/me/password")
@@ -199,7 +199,7 @@ async def invite_member(body: InviteMember, user: dict = Depends(get_current_use
     org_name = (org or {}).get("name") or "einer Organisation"
     inviter_name = user.get("name") or user.get("email")
     await notify(invitee["id"], "team_invite", "Sie wurden zu einem Team hinzugefügt",
-                 f'{inviter_name} hat Sie zur Organisation "{org_name}" hinzugefügt.')
+                 f'{inviter_name} hat Sie zur Organisation "{org_name}" hinzugefügt.', "/dashboard")
     await email_user(invitee["id"], "Sie wurden zu einem MietGate-Team hinzugefügt", "Team-Einladung",
                      f"<p>Hallo,</p><p>{inviter_name} hat Sie zur Organisation <strong>{org_name}</strong> "
                      f"auf MietGate hinzugefügt. Loggen Sie sich wie gewohnt ein, um Zugriff auf die "

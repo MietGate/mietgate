@@ -69,13 +69,13 @@ Basis ist die bestehende `AdminLeads.jsx`-Kanban (aktuell schon der solideste Te
 - Team-Mitglied entfernen
 - Dokument löschen (Bewerber-Seite)
 
-## 11. Bewerberpipeline: Sortierung/Filter + mobiltaugliche Ansicht
+## 11. Bewerberpipeline: Sortierung/Filter + mobiltaugliche Ansicht ✅ erledigt (2026-07-25)
 - Sortierung nach Score/Sternen/Einkommen, Filter, ggf. kompakte Listenansicht für Handy statt 8-Spalten-Kanban
 
 ## 12. Draft-Speicherung im öffentlichen Bewerbungsformular ✅ erledigt (2026-07-25)
 - Fortschritt in `localStorage` sichern, damit ein Tab-Crash/Sperrbildschirm nicht alle Eingaben löscht
 
-## 13. Benachrichtigungen klickbar machen
+## 13. Benachrichtigungen klickbar machen ✅ erledigt (2026-07-25)
 - Glocken-Benachrichtigungen sollen zur relevanten Stelle verlinken (aktuell inert)
 
 ## 14. Fehlerbehandlung vereinheitlichen ✅ erledigt (2026-07-25)
@@ -85,7 +85,7 @@ Basis ist die bestehende `AdminLeads.jsx`-Kanban (aktuell schon der solideste Te
 - "Angebot anfordern" auf Landing zu `/kontakt` statt `/registrieren?plan=enterprise`
 - Catch-all 404-Seite ergänzen
 
-## 16. Restliche Polish-Punkte (siehe UX_AUDIT_2026-07-25.md für Details)
+## 16. Restliche Polish-Punkte ✅ erledigt (2026-07-25) (siehe UX_AUDIT_2026-07-25.md für Details)
 TTL-Index auf `login_attempts`, Cookie-Banner erneut öffnbar machen (Footer-Link), Bewerbername-Anzeigefehler ("Vorname email@x.de"), Matching-Score-Tooltip/Erklärung, Passwort-Formular für Google-Login-Nutzer anpassen, Slot-Termine Absage-Option, Zeitfenster-Rebooking, u.v.m.
 
 ---

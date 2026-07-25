@@ -172,7 +172,7 @@ async def login(req: LoginRequest, request: Request):
     user = await db.users.find_one({"email": email})
     if not user or not verify_password(req.password, user.get("password_hash", "")):
         new_count = (attempt.get("count", 0) if attempt else 0) + 1
-        upd = {"count": new_count}
+        upd = {"count": new_count, "expires_at": datetime.now(timezone.utc) + timedelta(hours=24)}
         if new_count >= MAX_ATTEMPTS:
             upd["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MIN)).isoformat()
         await db.login_attempts.update_one({"identifier": identifier}, {"$set": upd}, upsert=True)

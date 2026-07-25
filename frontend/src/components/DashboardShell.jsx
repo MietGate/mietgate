@@ -40,6 +40,7 @@ const adminNav = [
 ];
 
 function NotificationBell() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [count, setCount] = useState(0);
   const load = async () => {
@@ -54,6 +55,10 @@ function NotificationBell() {
   };
   useEffect(() => { load(); const i = setInterval(load, 30000); return () => clearInterval(i); }, []);
   const markAll = async () => { await api.post("/notifications/read-all"); load(); };
+  const openNotification = async (n) => {
+    if (!n.read) { try { await api.post(`/notifications/${n.id}/read`); load(); } catch {} }
+    if (n.link) navigate(n.link);
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -74,10 +79,11 @@ function NotificationBell() {
         <DropdownMenuSeparator />
         {items.length === 0 && <div className="px-3 py-6 text-sm text-muted-foreground text-center">Keine Benachrichtigungen</div>}
         {items.map((n) => (
-          <div key={n.id} className={`px-3 py-2 text-sm border-b border-border last:border-0 ${!n.read ? "bg-accent/40" : ""}`}>
+          <button key={n.id} onClick={() => openNotification(n)}
+            className={`w-full text-left px-3 py-2 text-sm border-b border-border last:border-0 transition-colors ${n.link ? "cursor-pointer hover:bg-secondary" : "cursor-default"} ${!n.read ? "bg-accent/40" : ""}`}>
             <div className="font-medium text-foreground">{n.title}</div>
             <div className="text-muted-foreground text-xs mt-0.5">{n.body}</div>
-          </div>
+          </button>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

@@ -85,11 +85,14 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
                 <div className="flex items-center gap-3">
                   <div className="h-11 w-11 rounded-full bg-primary/15 text-primary flex items-center justify-center"><User className="h-5 w-5" /></div>
                   <div>
-                    <SheetTitle className="text-left">{app.form_data?.vorname} {app.form_data?.nachname || app.applicant_email}</SheetTitle>
+                    <SheetTitle className="text-left">{getApplicantName(app)}</SheetTitle>
                     <p className="text-sm text-muted-foreground">{app.applicant_email}</p>
                   </div>
                 </div>
-                <span className={`font-mono text-sm font-bold px-2.5 py-1 rounded-md border ${scoreColor(app.matching_score)}`}>{app.matching_score}/100</span>
+                <span className={`font-mono text-sm font-bold px-2.5 py-1 rounded-md border ${scoreColor(app.matching_score)}`}
+                  title="Automatische Einschätzung als Entscheidungshilfe (Einkommen im Verhältnis zur Miete, Haushaltsgröße vs. Zimmerzahl, Einzugstermin angegeben, Vollständigkeit der Dokumente). Ersetzt keine eigene Prüfung.">
+                  {app.matching_score}/100
+                </span>
               </div>
             </SheetHeader>
 
@@ -201,10 +204,20 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
 
 const Label2 = ({ children }) => <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</span>;
 
+const getApplicantName = (a) => [a.form_data?.vorname, a.form_data?.nachname].filter(Boolean).join(" ") || a.applicant_email;
+
+const SORTERS = {
+  new: (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
+  score: (a, b) => (b.matching_score || 0) - (a.matching_score || 0),
+  stars: (a, b) => (b.stars || 0) - (a.stars || 0),
+};
+
 export function Pipeline({ propertyId }) {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("new");
 
   const load = useCallback(async () => {
     const { data } = await api.get(`/applications?property_id=${propertyId}`);
@@ -226,12 +239,56 @@ export function Pipeline({ propertyId }) {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   if (apps.length === 0) return <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground">Noch keine Bewerbungen für dieses Objekt.</div>;
 
+  const q = search.trim().toLowerCase();
+  const visible = q ? apps.filter((a) => getApplicantName(a)?.toLowerCase().includes(q) || a.applicant_email?.toLowerCase().includes(q)) : apps;
+  const sortFn = SORTERS[sortBy] || SORTERS.new;
+
   return (
     <>
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <Input placeholder="Suchen (Name, E-Mail)…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" data-testid="pipeline-search" />
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-52" data-testid="pipeline-sort"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="new">Neueste zuerst</SelectItem>
+            <SelectItem value="score">Höchster Score zuerst</SelectItem>
+            <SelectItem value="stars">Meiste Sterne zuerst</SelectItem>
+          </SelectContent>
+        </Select>
+        {q && <span className="text-sm text-muted-foreground">{visible.length} von {apps.length}</span>}
+      </div>
+
+      {/* Mobile: compact sortable/filterable list instead of the multi-column kanban */}
+      <div className="sm:hidden space-y-2">
+        {visible.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Keine Treffer.</p>}
+        {[...visible].sort(sortFn).map((a) => {
+          const col = COLUMNS.find((c) => c.key === a.status);
+          return (
+            <div key={a.id} onClick={() => setActiveId(a.id)} data-testid={`mobile-app-card-${a.id}`}
+              className="rounded-lg border border-border bg-card p-3 cursor-pointer active:bg-secondary/50 transition-colors">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{getApplicantName(a)}</p>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                    <span className={`h-1.5 w-1.5 rounded-full ${col?.dot}`} /> {col?.label || a.status}
+                  </span>
+                </div>
+                <span className={`font-mono text-[11px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${scoreColor(a.matching_score)}`}>{a.matching_score}</span>
+              </div>
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                {a.stars > 0 && <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{a.stars}</span>}
+                <span className="flex items-center gap-0.5"><FileText className="h-3 w-3" />{a.document_count}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: drag-and-drop kanban */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4 kanban-scroll">
+        <div className="hidden sm:flex gap-4 overflow-x-auto pb-4 kanban-scroll">
           {COLUMNS.map((col) => {
-            const items = apps.filter((a) => a.status === col.key);
+            const items = visible.filter((a) => a.status === col.key).sort(sortFn);
             return (
               <Droppable droppableId={col.key} key={col.key}>
                 {(provided, snapshot) => (
@@ -249,8 +306,9 @@ export function Pipeline({ propertyId }) {
                               onClick={() => setActiveId(a.id)} data-testid={`app-card-${a.id}`}
                               className="rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="font-medium text-sm truncate">{a.form_data?.vorname} {a.form_data?.nachname || a.applicant_email?.split("@")[0]}</p>
-                                <span className={`font-mono text-[11px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${scoreColor(a.matching_score)}`}>{a.matching_score}</span>
+                                <p className="font-medium text-sm truncate">{getApplicantName(a)}</p>
+                                <span className={`font-mono text-[11px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${scoreColor(a.matching_score)}`}
+                                  title="Automatische Einschätzung als Entscheidungshilfe, keine Garantie. Details beim Öffnen der Bewerbung.">{a.matching_score}</span>
                               </div>
                               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                                 {a.stars > 0 && <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{a.stars}</span>}

@@ -47,8 +47,9 @@ async def send_message(payload: MessagePayload, user: dict = Depends(get_current
         "read": False, "created_at": now_iso(),
     }
     await db.messages.insert_one(msg)
+    link = "/bewerber" if is_landlord else f"/objekte/{app['property_id']}"
     await notify(recipient_id, "message", "Neue Nachricht",
-                 f"{user.get('name')}: {payload.body[:60]}")
+                 f"{user.get('name')}: {payload.body[:60]}", link)
     msg.pop("_id", None)
     return msg
 

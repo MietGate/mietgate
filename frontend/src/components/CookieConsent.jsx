@@ -15,6 +15,12 @@ export function CookieConsent() {
     }
   }, []);
 
+  useEffect(() => {
+    const reopen = () => setShow(true);
+    window.addEventListener("mg:open-cookie-settings", reopen);
+    return () => window.removeEventListener("mg:open-cookie-settings", reopen);
+  }, []);
+
   const decide = (value) => {
     localStorage.setItem(KEY, value);
     setShow(false);

@@ -107,7 +107,7 @@ export function MarketingFooter() {
               <li><Link to="/preise" className="hover:text-white">Preise</Link></li>
               <li><Link to="/faq" className="hover:text-white">FAQ</Link></li>
               <li><Link to="/registrieren" className="hover:text-white">Registrieren</Link></li>
-              <li><Link to="/login" className="hover:text-white">Bewerber-Login</Link></li>
+              <li><Link to="/login" className="hover:text-white">Anmelden</Link></li>
             </ul>
           </div>
           <div>
@@ -118,6 +118,7 @@ export function MarketingFooter() {
               <li><Link to="/agb" className="hover:text-white">AGB</Link></li>
               <li><Link to="/widerruf" className="hover:text-white">Widerruf</Link></li>
               <li><Link to="/cookies" className="hover:text-white">Cookies</Link></li>
+              <li><button type="button" onClick={() => window.dispatchEvent(new Event("mg:open-cookie-settings"))} className="hover:text-white text-left">Cookie-Einstellungen</button></li>
               <li><Link to="/plattformregeln" className="hover:text-white">Plattformregeln</Link></li>
             </ul>
           </div>

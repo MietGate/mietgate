@@ -49,17 +49,22 @@ function ViewingCard({ v, onChanged }) {
         </div>
       )}
 
-      {v.type === "slots" && v.my_status !== "confirmed" && (
-        <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
+      {v.type === "slots" && v.my_status !== "declined" && (
+        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border">
           <Select value={slot} onValueChange={setSlot}>
             <SelectTrigger className="max-w-xs" data-testid={`slot-select-${v.id}`}>
-              <SelectValue placeholder={v.free_slots?.length ? "Freies Zeitfenster wählen" : "Keine freien Zeitfenster"} />
+              <SelectValue placeholder={v.free_slots?.length ? (v.my_status === "confirmed" ? "Anderes Zeitfenster wählen" : "Freies Zeitfenster wählen") : "Keine freien Zeitfenster"} />
             </SelectTrigger>
             <SelectContent>
               {v.free_slots?.map((s) => <SelectItem key={s} value={s}>{new Date(s).toLocaleString("de-DE")}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={bookSlot} disabled={!slot} data-testid={`book-slot-${v.id}`}><Clock className="h-4 w-4 mr-1" /> Buchen</Button>
+          <Button size="sm" onClick={bookSlot} disabled={!slot} data-testid={`book-slot-${v.id}`}>
+            <Clock className="h-4 w-4 mr-1" /> {v.my_status === "confirmed" ? "Umbuchen" : "Buchen"}
+          </Button>
+          {v.my_status === "confirmed" && (
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => respond("decline")}>Absagen</Button>
+          )}
         </div>
       )}
 
