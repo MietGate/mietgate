@@ -11,7 +11,7 @@ Nummerierung dient nur der Ansprache ("mach Nummer X") — keine strikte Chronol
 - Team-Einladung benachrichtigt den Eingeladenen (E-Mail/In-App) statt seine Org kommentarlos zu wechseln
 - Team.jsx blendet Einladen/Entfernen-Buttons für nicht-berechtigte Rollen aus statt 403 zu werfen
 
-## 2. Dokumente-Kernfixes
+## 2. Dokumente-Kernfixes ✅ erledigt (2026-07-25)
 - "Meine Dokumente"-Upload mit `application_id` verknüpfen, damit Vermieter sie tatsächlich sehen (aktuell komplett unsichtbar)
 - Echte Löschung aus Cloudflare R2 bei Dokument-Löschung (aktuell nur DB-Flag, DSGVO-Löschrecht nicht erfüllt)
 - Auth-Token aus Download-URL entfernen, stattdessen per Header übertragen (betrifft `ApplicantDocuments.jsx`, `Pipeline.jsx`, `Settings.jsx` Logo-Download)
@@ -22,12 +22,12 @@ Nummerierung dient nur der Ansprache ("mach Nummer X") — keine strikte Chronol
 - Google-Login-Rolle-Bug auf der Login-Seite fixen (legt aktuell immer Landlord-Konto an)
 - Organisationstyp (Privat/Makler/Hausverwaltung) bei Registrierung tatsächlich abfragen statt hartcodiert "private"
 
-## 4. Stripe-Webhook ausbauen (Grundlage für Punkt 5)
+## 4. Stripe-Webhook ausbauen (Grundlage für Punkt 5) ✅ erledigt (2026-07-25)
 - Handler für `customer.subscription.deleted`, `customer.subscription.updated`, `invoice.payment_failed`, Trial-Ende-Events ergänzen
 - `subscriptions.status` bleibt dadurch synchron zu Stripes tatsächlichem Zustand — behebt gleichzeitig den falschen "Monatl. Umsatz"-Wert im Admin-Dashboard
 - **Notwendige Voraussetzung für Punkt 5**, da die neue Trial-/Sperrlogik in Echtzeit wissen muss, wann eine Zahlung fehlschlägt
 
-## 5. Neuer Workflow: Kostenlose Registrierung + bezahlpflichtiger Link mit 3-Tage-Trial
+## 5. Neuer Workflow: Kostenlose Registrierung + bezahlpflichtiger Link mit 3-Tage-Trial ✅ erledigt (2026-07-25)
 Wie besprochen:
 - Vermieter/Hausverwaltung/Makler registrieren sich **kostenlos** und können Objekte beliebig anlegen/bearbeiten — keine Zahlungspflicht an diesem Punkt
 - Erst der Klick auf **"Bewerbungslink generieren"** löst den Zahlungs-Workflow aus: Plan wählen → Stripe-Checkout mit `trial_period_days: 3`, **Kreditkarte wird sofort hinterlegt**, automatische Abbuchung nach 3 Tagen
@@ -39,7 +39,7 @@ Wie besprochen:
 - Betrifft: `PropertyForm.jsx`/`PropertyDetail.jsx` (Link-Generieren-Button + Bezahl-Trigger), `routes_property.py` (Limit-Logik entkoppeln von Objekt-Erstellung, stattdessen an Link-Aktivierung binden), `stripe_service.py` (Trial-Checkout), neue Middleware/Guard für "gesperrter Zugriff wegen Zahlung", Pipeline/Dashboard-UI (Blur-Zustand), E-Mail-Vorlage für Zahlungsfehlschlag
 - Der bisherige Bug "Gewähltes Paket geht nach Registrierung verloren" (aus dem alten Audit) erledigt sich durch diesen Umbau automatisch mit, da Checkout nicht mehr bei Registrierung, sondern bei Link-Generierung passiert
 
-## 6. Admin-Vertriebspipeline auf Pipedrive-Minimal-Niveau ausbauen
+## 6. Admin-Vertriebspipeline auf Pipedrive-Minimal-Niveau ausbauen ✅ erledigt (2026-07-25)
 Basis ist die bestehende `AdminLeads.jsx`-Kanban (aktuell schon der solideste Teil des Admin-Bereichs). Gewünschte Erweiterungen:
 - **Aufgaben/Erinnerungen** — Follow-up-Termine pro Lead, fällige Aufgaben auf einen Blick (z.B. eigene "Heute fällig"-Ansicht)
 - **Aktivitäten-Timeline** — Notizen, Anrufe, E-Mails chronologisch pro Lead protokollieren
