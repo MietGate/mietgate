@@ -226,8 +226,11 @@ async def run_maintenance(user: dict = Depends(admin)):
     return await maintenance.run_once()
 
 
-# ---------- CRM / Leads (#14) ----------
-LEAD_STATUSES = ["neu", "kontaktiert", "interessiert", "gewonnen", "verloren"]
+# ---------- CRM / Leads (#14, extended #6) ----------
+
+async def _lead_stage_keys():
+    stages = await db.lead_stages.find({}, NO_ID).to_list(100)
+    return [s["key"] for s in stages]
 
 
 class LeadPayload(BaseModel):
@@ -241,6 +244,7 @@ class LeadPayload(BaseModel):
     source: Optional[str] = ""
     status: str = "neu"
     notes: Optional[str] = ""
+    deal_value: Optional[float] = 0
 
 
 class LeadPatch(BaseModel):
@@ -254,6 +258,7 @@ class LeadPatch(BaseModel):
     source: Optional[str] = None
     status: Optional[str] = None
     notes: Optional[str] = None
+    deal_value: Optional[float] = None
 
 
 class LeadImport(BaseModel):
@@ -268,8 +273,9 @@ async def list_leads(user: dict = Depends(admin)):
 @router.post("/leads")
 async def create_lead(body: LeadPayload, user: dict = Depends(admin)):
     doc = body.model_dump()
-    if doc.get("status") not in LEAD_STATUSES:
-        doc["status"] = "neu"
+    stage_keys = await _lead_stage_keys()
+    if doc.get("status") not in stage_keys:
+        doc["status"] = stage_keys[0] if stage_keys else "neu"
     doc["id"] = new_id()
     doc["created_at"] = now_iso()
     await db.leads.insert_one(doc)
@@ -296,7 +302,7 @@ async def import_leads(body: LeadImport, user: dict = Depends(admin)):
             "zip": low.get("zip") or low.get("plz") or low.get("postleitzahl") or "",
             "city": low.get("city") or low.get("ort") or low.get("stadt") or "",
             "source": low.get("source") or low.get("quelle") or "CSV-Import",
-            "status": "neu", "notes": low.get("notes") or low.get("notiz") or "",
+            "status": "neu", "notes": low.get("notes") or low.get("notiz") or "", "deal_value": 0,
             "created_at": now_iso(),
         })
     if docs:
@@ -307,8 +313,18 @@ async def import_leads(body: LeadImport, user: dict = Depends(admin)):
 @router.patch("/leads/{lid}")
 async def update_lead(lid: str, body: LeadPatch, user: dict = Depends(admin)):
     upd = {k: v for k, v in body.model_dump().items() if v is not None}
-    if "status" in upd and upd["status"] not in LEAD_STATUSES:
-        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    if "status" in upd:
+        stage_keys = await _lead_stage_keys()
+        if upd["status"] not in stage_keys:
+            raise HTTPException(status_code=400, detail="Ungültige Pipeline-Stufe")
+        prev = await db.leads.find_one({"id": lid}, NO_ID)
+        if prev and prev.get("status") != upd["status"]:
+            stages = {s["key"]: s["label"] for s in await db.lead_stages.find({}, NO_ID).to_list(100)}
+            await db.lead_activities.insert_one({
+                "id": new_id(), "lead_id": lid, "type": "status_change",
+                "text": f"Stufe geändert: {stages.get(prev.get('status'), prev.get('status'))} → {stages.get(upd['status'], upd['status'])}",
+                "created_by": user["id"], "created_at": now_iso(),
+            })
     await db.leads.update_one({"id": lid}, {"$set": upd})
     return await db.leads.find_one({"id": lid}, NO_ID)
 
@@ -316,4 +332,152 @@ async def update_lead(lid: str, body: LeadPatch, user: dict = Depends(admin)):
 @router.delete("/leads/{lid}")
 async def delete_lead(lid: str, user: dict = Depends(admin)):
     await db.leads.delete_one({"id": lid})
+    await db.lead_activities.delete_many({"lead_id": lid})
+    await db.lead_tasks.delete_many({"lead_id": lid})
     return {"ok": True}
+
+
+# ---------- Pipeline-Stufen (konfigurierbar) ----------
+
+class StagePayload(BaseModel):
+    key: str
+    label: str
+    color: str = "bg-slate-400"
+    is_won: bool = False
+    is_lost: bool = False
+
+
+class StagePatch(BaseModel):
+    label: Optional[str] = None
+    color: Optional[str] = None
+    order: Optional[int] = None
+    is_won: Optional[bool] = None
+    is_lost: Optional[bool] = None
+
+
+@router.get("/lead-stages")
+async def list_lead_stages(user: dict = Depends(admin)):
+    return await db.lead_stages.find({}, NO_ID).sort("order", 1).to_list(100)
+
+
+@router.post("/lead-stages")
+async def create_lead_stage(body: StagePayload, user: dict = Depends(admin)):
+    if await db.lead_stages.find_one({"key": body.key}):
+        raise HTTPException(status_code=400, detail="Diese Stufe existiert bereits")
+    last = await db.lead_stages.find({}, NO_ID).sort("order", -1).to_list(1)
+    doc = body.model_dump()
+    doc["id"] = new_id()
+    doc["order"] = (last[0]["order"] + 1) if last else 1
+    await db.lead_stages.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.patch("/lead-stages/{sid}")
+async def update_lead_stage(sid: str, body: StagePatch, user: dict = Depends(admin)):
+    upd = {k: v for k, v in body.model_dump().items() if v is not None}
+    await db.lead_stages.update_one({"id": sid}, {"$set": upd})
+    return await db.lead_stages.find_one({"id": sid}, NO_ID)
+
+
+@router.delete("/lead-stages/{sid}")
+async def delete_lead_stage(sid: str, user: dict = Depends(admin)):
+    stage = await db.lead_stages.find_one({"id": sid})
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stufe nicht gefunden")
+    remaining = await db.lead_stages.count_documents({})
+    if remaining <= 1:
+        raise HTTPException(status_code=400, detail="Mindestens eine Pipeline-Stufe muss bestehen bleiben")
+    in_use = await db.leads.count_documents({"status": stage["key"]})
+    if in_use:
+        raise HTTPException(status_code=400, detail=f"{in_use} Lead(s) sind noch in dieser Stufe — zuerst verschieben")
+    await db.lead_stages.delete_one({"id": sid})
+    return {"ok": True}
+
+
+# ---------- Aktivitäten-Timeline pro Lead ----------
+
+class ActivityPayload(BaseModel):
+    type: str = "note"  # note | call | email
+    text: str
+
+
+@router.get("/leads/{lid}/activities")
+async def list_lead_activities(lid: str, user: dict = Depends(admin)):
+    return await db.lead_activities.find({"lead_id": lid}, NO_ID).sort("created_at", -1).to_list(500)
+
+
+@router.post("/leads/{lid}/activities")
+async def add_lead_activity(lid: str, body: ActivityPayload, user: dict = Depends(admin)):
+    if not await db.leads.find_one({"id": lid}):
+        raise HTTPException(status_code=404, detail="Lead nicht gefunden")
+    doc = body.model_dump()
+    doc["id"] = new_id()
+    doc["lead_id"] = lid
+    doc["created_by"] = user["id"]
+    doc["created_at"] = now_iso()
+    await db.lead_activities.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+# ---------- Aufgaben/Erinnerungen pro Lead ----------
+
+class TaskPayload(BaseModel):
+    title: str
+    due_at: Optional[str] = None
+
+
+class TaskPatch(BaseModel):
+    title: Optional[str] = None
+    due_at: Optional[str] = None
+    done: Optional[bool] = None
+
+
+@router.get("/leads/{lid}/tasks")
+async def list_lead_tasks(lid: str, user: dict = Depends(admin)):
+    return await db.lead_tasks.find({"lead_id": lid}, NO_ID).sort("due_at", 1).to_list(200)
+
+
+@router.post("/leads/{lid}/tasks")
+async def add_lead_task(lid: str, body: TaskPayload, user: dict = Depends(admin)):
+    if not await db.leads.find_one({"id": lid}):
+        raise HTTPException(status_code=404, detail="Lead nicht gefunden")
+    doc = body.model_dump()
+    doc["id"] = new_id()
+    doc["lead_id"] = lid
+    doc["done"] = False
+    doc["reminder_sent"] = False
+    doc["created_at"] = now_iso()
+    await db.lead_tasks.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.patch("/lead-tasks/{tid}")
+async def update_lead_task(tid: str, body: TaskPatch, user: dict = Depends(admin)):
+    upd = {k: v for k, v in body.model_dump().items() if v is not None}
+    await db.lead_tasks.update_one({"id": tid}, {"$set": upd})
+    return await db.lead_tasks.find_one({"id": tid}, NO_ID)
+
+
+@router.delete("/lead-tasks/{tid}")
+async def delete_lead_task(tid: str, user: dict = Depends(admin)):
+    await db.lead_tasks.delete_one({"id": tid})
+    return {"ok": True}
+
+
+@router.get("/lead-tasks/due")
+async def due_lead_tasks(user: dict = Depends(admin)):
+    """Open tasks due today or overdue, across all leads — for a 'Heute fällig' panel."""
+    from datetime import datetime, timezone
+    today_end = datetime.now(timezone.utc).replace(hour=23, minute=59, second=59, microsecond=0).isoformat()
+    tasks = await db.lead_tasks.find(
+        {"done": {"$ne": True}, "due_at": {"$ne": None, "$lte": today_end}}, NO_ID
+    ).sort("due_at", 1).to_list(200)
+    lead_ids = list({t["lead_id"] for t in tasks})
+    leads = await db.leads.find({"id": {"$in": lead_ids}}, NO_ID).to_list(len(lead_ids) or 1)
+    lead_names = {l["id"]: l["name"] for l in leads}
+    for t in tasks:
+        t["lead_name"] = lead_names.get(t["lead_id"], "—")
+    return tasks

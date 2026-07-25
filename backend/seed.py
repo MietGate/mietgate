@@ -100,8 +100,25 @@ async def seed_partners():
         await db.settings.insert_one(dict(DEFAULT_PARTNERS))
 
 
+DEFAULT_LEAD_STAGES = [
+    {"key": "neu", "label": "Neu", "color": "bg-slate-400", "order": 1, "is_won": False, "is_lost": False},
+    {"key": "kontaktiert", "label": "Kontaktiert", "color": "bg-blue-500", "order": 2, "is_won": False, "is_lost": False},
+    {"key": "interessiert", "label": "Interessiert", "color": "bg-violet-500", "order": 3, "is_won": False, "is_lost": False},
+    {"key": "gewonnen", "label": "Gewonnen", "color": "bg-success", "order": 4, "is_won": True, "is_lost": False},
+    {"key": "verloren", "label": "Verloren", "color": "bg-destructive", "order": 5, "is_won": False, "is_lost": True},
+]
+
+
+async def seed_lead_stages():
+    existing = await db.lead_stages.count_documents({})
+    if existing == 0:
+        for stage in DEFAULT_LEAD_STAGES:
+            await db.lead_stages.insert_one({**stage, "id": str(uuid.uuid4())})
+
+
 async def seed_all():
     await seed_admin()
     await seed_plans()
     await seed_partners()
+    await seed_lead_stages()
     logger.info("Seed complete")

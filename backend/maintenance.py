@@ -81,10 +81,31 @@ async def run_gdpr_cleanup():
     return deleted
 
 
+async def send_lead_task_reminders():
+    """Notify admins once about lead tasks due today or overdue."""
+    now = datetime.now(timezone.utc)
+    today_end = now.replace(hour=23, minute=59, second=59, microsecond=0).isoformat()
+    cursor = db.lead_tasks.find({"done": {"$ne": True}, "reminder_sent": {"$ne": True}, "due_at": {"$ne": None, "$lte": today_end}})
+    admins = await db.users.find({"role": "admin"}, NO_ID).to_list(50)
+    count = 0
+    async for t in cursor:
+        lead = await db.leads.find_one({"id": t["lead_id"]}, NO_ID)
+        lead_name = lead["name"] if lead else "unbekannt"
+        for a in admins:
+            await notify(a["id"], "lead_task_due", "Aufgabe fällig",
+                         f'Aufgabe "{t["title"]}" für Lead "{lead_name}" ist fällig.', "/admin/leads")
+        await db.lead_tasks.update_one({"id": t["id"]}, {"$set": {"reminder_sent": True}})
+        count += 1
+    if count:
+        logger.info(f"Sent reminders for {count} lead tasks")
+    return count
+
+
 async def run_once():
     r = await send_viewing_reminders()
     d = await run_gdpr_cleanup()
-    return {"reminders": r, "deleted_applications": d}
+    lt = await send_lead_task_reminders()
+    return {"reminders": r, "deleted_applications": d, "lead_task_reminders": lt}
 
 
 async def maintenance_loop():
