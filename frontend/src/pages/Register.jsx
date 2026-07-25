@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Building2, User, MailCheck } from "lucide-react";
 
@@ -18,13 +19,21 @@ export default function Register() {
   const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "", org_name: "", org_type: "private" });
   const [loading, setLoading] = useState(false);
   const [sentTo, setSentTo] = useState(null);
+  const [agreed, setAgreed] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  useEffect(() => {
+    if (params.get("error") === "terms_required") {
+      toast.error("Bitte akzeptieren Sie die AGB und Datenschutzerklärung, bevor Sie sich mit Google registrieren.");
+    }
+  }, [params]);
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!agreed) { toast.error("Bitte akzeptieren Sie die AGB und Datenschutzerklärung."); return; }
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/register", { ...form, role, origin_url: window.location.origin });
+      const { data } = await api.post("/auth/register", { ...form, role, origin_url: window.location.origin, agreed_terms: agreed });
       if (data.requires_verification) { setSentTo(data.email); toast.success("Bestätigungs-E-Mail versendet"); return; }
       login(data.token, data.user);
       navigate(role === "applicant" ? "/bewerber" : "/dashboard");
@@ -41,7 +50,8 @@ export default function Register() {
   };
 
   const googleLogin = () => {
-    window.location.href = `${process.env.REACT_APP_BACKEND_URL}/api/auth/google/login?role=${role}`;
+    if (!agreed) { toast.error("Bitte akzeptieren Sie die AGB und Datenschutzerklärung."); return; }
+    window.location.href = `${process.env.REACT_APP_BACKEND_URL}/api/auth/google/login?role=${role}&agreed_terms=true`;
   };
 
   return (
@@ -97,11 +107,31 @@ export default function Register() {
             <div><Label>E-Mail</Label><Input type="email" required value={form.email} onChange={set("email")} className="mt-1.5" data-testid="reg-email" /></div>
             <div><Label>Passwort</Label><Input type="password" required minLength={6} value={form.password} onChange={set("password")} className="mt-1.5" data-testid="reg-password" /></div>
             {role === "landlord" && (
-              <div><Label>Organisation / Firma (optional)</Label>
-                <Input value={form.org_name} onChange={set("org_name")} className="mt-1.5" placeholder="z.B. Mustermann Immobilien" data-testid="reg-org" />
-              </div>
+              <>
+                <div><Label>Organisation / Firma (optional)</Label>
+                  <Input value={form.org_name} onChange={set("org_name")} className="mt-1.5" placeholder="z.B. Mustermann Immobilien" data-testid="reg-org" />
+                </div>
+                <div><Label>Sie sind</Label>
+                  <Select value={form.org_type} onValueChange={(v) => setForm({ ...form, org_type: v })}>
+                    <SelectTrigger className="mt-1.5" data-testid="reg-org-type"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="private">Privater Vermieter</SelectItem>
+                      <SelectItem value="makler">Makler</SelectItem>
+                      <SelectItem value="hausverwaltung">Hausverwaltung</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
-            <Button type="submit" className="w-full" disabled={loading} data-testid="reg-submit">
+            <label className="flex items-start gap-2 text-xs text-muted-foreground pt-1">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5" data-testid="reg-agree" />
+              <span>
+                Ich akzeptiere die <Link to="/agb" target="_blank" className="text-primary hover:underline">AGB</Link> und die{" "}
+                <Link to="/datenschutz" target="_blank" className="text-primary hover:underline">Datenschutzerklärung</Link>.
+              </span>
+            </label>
+            <Button type="submit" className="w-full" disabled={loading || !agreed} data-testid="reg-submit">
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Konto erstellen
             </Button>
           </form>
@@ -109,10 +139,11 @@ export default function Register() {
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
             <div className="relative flex justify-center text-xs"><span className="bg-background px-2 text-muted-foreground">oder</span></div>
           </div>
-          <Button variant="outline" className="w-full" onClick={googleLogin} data-testid="reg-google">
+          <Button variant="outline" className="w-full" onClick={googleLogin} disabled={!agreed} data-testid="reg-google">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="h-4 w-4 mr-2" />
             Mit Google registrieren
           </Button>
+          {!agreed && <p className="text-center text-xs text-muted-foreground mt-2">Bitte akzeptieren Sie zuerst die AGB und Datenschutzerklärung.</p>}
           <p className="text-center text-sm text-muted-foreground mt-6">
             Bereits registriert? <Link to="/login" className="text-primary font-medium hover:underline">Anmelden</Link>
           </p>

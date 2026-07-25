@@ -55,7 +55,10 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
     load(); onChanged?.();
   };
   const setStars = (n) => { setApp({ ...app, stars: n }); saveMeta({ stars: n }); };
-  const changeStatus = async (s) => { await api.patch(`/applications/${appId}/status`, { status: s }); toast.success("Status aktualisiert"); load(); onChanged?.(); };
+  const changeStatus = async (s) => {
+    if (s === "absage" && !window.confirm("Status auf \"Absage\" setzen? Der Bewerber erhält dadurch sofort eine Absage-E-Mail.")) return;
+    await api.patch(`/applications/${appId}/status`, { status: s }); toast.success("Status aktualisiert"); load(); onChanged?.();
+  };
   const sendMsg = async () => {
     if (!msg.trim()) return;
     await api.post("/messages", { application_id: appId, body: msg });
@@ -214,6 +217,7 @@ export function Pipeline({ propertyId }) {
     const { destination, draggableId, source } = result;
     if (!destination || destination.droppableId === source.droppableId) return;
     const newStatus = destination.droppableId;
+    if (newStatus === "absage" && !window.confirm("Status auf \"Absage\" setzen? Der Bewerber erhält dadurch sofort eine Absage-E-Mail.")) return;
     setApps((prev) => prev.map((a) => (a.id === draggableId ? { ...a, status: newStatus } : a)));
     try { await api.patch(`/applications/${draggableId}/status`, { status: newStatus }); }
     catch { toast.error("Statusänderung fehlgeschlagen"); load(); }

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import api, { API } from "@/lib/api";
+import api, { API, formatApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -25,7 +25,11 @@ export default function ApplicantDocuments() {
     try { await api.post("/documents/upload", fd); toast.success("Dokument hochgeladen"); load(); }
     catch { toast.error("Upload fehlgeschlagen"); } finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   };
-  const del = async (id) => { await api.delete(`/documents/${id}`); toast.success("Gelöscht"); load(); };
+  const del = async (id) => {
+    if (!window.confirm("Dokument wirklich löschen? Dies kann nicht rückgängig gemacht werden.")) return;
+    try { await api.delete(`/documents/${id}`); toast.success("Gelöscht"); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
 
   if (!docs) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 

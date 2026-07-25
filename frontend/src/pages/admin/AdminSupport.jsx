@@ -1,21 +1,37 @@
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { formatApiError } from "@/lib/api";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { Loader2, Mail } from "lucide-react";
+
+const TICKET_STATUSES = ["open", "in_bearbeitung", "erledigt"];
+const TICKET_LABEL = { open: "Offen", in_bearbeitung: "In Bearbeitung", erledigt: "Erledigt" };
 
 export default function AdminSupport() {
   const [tickets, setTickets] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
+    setError(false);
     Promise.all([api.get("/admin/support-tickets"), api.get("/admin/activities")]).then(([t, a]) => {
       setTickets(t.data); setActivities(a.data); setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
+    }).catch(() => { setError(true); setLoading(false); });
+  };
+  useEffect(() => { load(); }, []);
+
+  const setStatus = async (tid, status) => {
+    try {
+      await api.patch(`/admin/support-tickets/${tid}`, null, { params: { status } });
+      setTickets(tickets.map((t) => (t.id === tid ? { ...t, status } : t)));
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  if (error) return <p className="text-sm text-destructive py-10 text-center">Daten konnten nicht geladen werden. <button className="underline" onClick={load}>Erneut versuchen</button></p>;
 
   return (
     <div className="space-y-6 animate-fade-up max-w-4xl">
@@ -26,7 +42,13 @@ export default function AdminSupport() {
           {tickets.length === 0 && <p className="text-sm text-muted-foreground">Keine Anfragen.</p>}
           {tickets.map((t) => (
             <div key={t.id} className="rounded-lg border border-border bg-card p-4">
-              <div className="flex items-center justify-between"><p className="font-medium">{t.name} · <span className="text-muted-foreground">{t.email}</span></p><Badge variant={t.status === "open" ? "default" : "secondary"}>{t.status}</Badge></div>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium">{t.name} · <a href={`mailto:${t.email}`} className="text-primary hover:underline inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{t.email}</a></p>
+                <Select value={t.status} onValueChange={(v) => setStatus(t.id, v)}>
+                  <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{TICKET_STATUSES.map((s) => <SelectItem key={s} value={s}>{TICKET_LABEL[s]}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
               <p className="text-sm text-muted-foreground mt-1">{t.message}</p>
             </div>
           ))}

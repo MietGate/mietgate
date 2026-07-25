@@ -36,6 +36,7 @@ import AdminPlans from "@/pages/admin/AdminPlans";
 import AdminPartners from "@/pages/admin/AdminPartners";
 import AdminLeads from "@/pages/admin/AdminLeads";
 import AdminSupport from "@/pages/admin/AdminSupport";
+import NotFound from "@/pages/NotFound";
 
 function AppRouter() {
   const location = useLocation();
@@ -99,6 +100,8 @@ function AppRouter() {
         <Route path="/admin/leads" element={<AdminLeads />} />
         <Route path="/admin/support" element={<AdminSupport />} />
       </Route>
+
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

@@ -97,6 +97,9 @@ async def cancel_subscription(user: dict = Depends(get_current_user)):
     sub = await db.subscriptions.find_one({"org_id": user.get("org_id")})
     if not sub or not sub.get("stripe_subscription_id"):
         raise HTTPException(status_code=404, detail="Kein aktives Abo")
+    member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
+    if member and member["role"] not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
     try:
         stripe.Subscription.modify(sub["stripe_subscription_id"], cancel_at_period_end=True)
     except Exception as e:

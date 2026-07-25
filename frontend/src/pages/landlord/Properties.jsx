@@ -7,9 +7,12 @@ import { Building2, Plus, MapPin, Users, Loader2, ExternalLink } from "lucide-re
 
 export default function Properties() {
   const [props, setProps] = useState(null);
+  const [error, setError] = useState(false);
 
-  useEffect(() => { api.get("/properties").then((r) => setProps(r.data)).catch(() => setProps([])); }, []);
+  const load = () => { setError(false); api.get("/properties").then((r) => setProps(r.data)).catch(() => setError(true)); };
+  useEffect(() => { load(); }, []);
 
+  if (error) return <p className="text-sm text-destructive py-20 text-center">Daten konnten nicht geladen werden. <button className="underline" onClick={load}>Erneut versuchen</button></p>;
   if (!props) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (

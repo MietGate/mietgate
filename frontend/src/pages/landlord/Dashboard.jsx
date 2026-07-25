@@ -24,9 +24,12 @@ const StatCard = ({ icon: Icon, label, value, to }) => {
 export default function LandlordDashboard() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
+  const [error, setError] = useState(false);
 
-  useEffect(() => { api.get("/dashboard").then((r) => setData(r.data)).catch(() => {}); }, []);
+  const load = () => { setError(false); api.get("/dashboard").then((r) => setData(r.data)).catch(() => setError(true)); };
+  useEffect(() => { load(); }, []);
 
+  if (error) return <p className="text-sm text-destructive py-20 text-center">Daten konnten nicht geladen werden. <button className="underline" onClick={load}>Erneut versuchen</button></p>;
   if (!data) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (

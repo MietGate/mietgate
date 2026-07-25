@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { formatApiError } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,15 +10,23 @@ import { Loader2, Search, Ban, CheckCircle2 } from "lucide-react";
 export default function AdminUsers() {
   const [users, setUsers] = useState(null);
   const [q, setQ] = useState("");
+  const [error, setError] = useState(false);
 
-  const load = (query = "") => api.get(`/admin/users${query ? `?q=${encodeURIComponent(query)}` : ""}`).then((r) => setUsers(r.data));
+  const load = (query = "") => {
+    setError(false);
+    api.get(`/admin/users${query ? `?q=${encodeURIComponent(query)}` : ""}`).then((r) => setUsers(r.data)).catch(() => setError(true));
+  };
   useEffect(() => { load(); }, []);
 
   const toggle = async (u) => {
-    await api.post(`/admin/users/${u.id}/${u.is_blocked ? "unblock" : "block"}`);
-    toast.success(u.is_blocked ? "Entsperrt" : "Gesperrt"); load(q);
+    if (!window.confirm(u.is_blocked ? `${u.name || u.email} entsperren?` : `${u.name || u.email} sperren? Der Nutzer kann sich danach nicht mehr einloggen.`)) return;
+    try {
+      await api.post(`/admin/users/${u.id}/${u.is_blocked ? "unblock" : "block"}`);
+      toast.success(u.is_blocked ? "Entsperrt" : "Gesperrt"); load(q);
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
+  if (error) return <p className="text-sm text-destructive py-20 text-center">Daten konnten nicht geladen werden. <button className="underline" onClick={() => load(q)}>Erneut versuchen</button></p>;
   if (!users) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (

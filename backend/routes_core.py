@@ -1,10 +1,12 @@
+import os
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from database import db, NO_ID
 from security import get_current_user, hash_password, verify_password
-from helpers import new_id, now_iso, active_property_count, get_plan_limit, plan_supports_team
+from helpers import new_id, now_iso, active_property_count, get_plan_limit, plan_supports_team, notify, email_user
+from email_service import send_email
 
 router = APIRouter(prefix="/api", tags=["core"])
 
@@ -53,6 +55,11 @@ async def contact(payload: ContactPayload):
         "id": new_id(), "name": payload.name, "email": payload.email,
         "message": payload.message, "status": "open", "created_at": now_iso(),
     })
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    if admin_email:
+        await send_email(admin_email, f"Neue Kontaktanfrage von {payload.name}", "Neue Kontaktanfrage",
+                         f"<p><strong>{payload.name}</strong> ({payload.email}) hat eine Nachricht gesendet:</p>"
+                         f"<p style='white-space:pre-wrap'>{payload.message}</p>")
     return {"ok": True}
 
 
@@ -176,11 +183,29 @@ async def invite_member(body: InviteMember, user: dict = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Kein Nutzer mit dieser E-Mail. Bitte zuerst registrieren lassen.")
     if await db.org_members.find_one({"org_id": user["org_id"], "user_id": invitee["id"]}):
         raise HTTPException(status_code=400, detail="Nutzer ist bereits Mitglied")
+    if invitee.get("org_id") and invitee["org_id"] != user["org_id"]:
+        existing_membership = await db.org_members.find_one(
+            {"org_id": invitee["org_id"], "user_id": invitee["id"]})
+        if existing_membership and existing_membership.get("role") == "owner":
+            raise HTTPException(status_code=400,
+                detail="Dieser Nutzer besitzt bereits eine eigene Organisation mit eigenen Daten "
+                       "und kann nicht automatisch verschoben werden. Bitte kontaktieren Sie den Support.")
     await db.org_members.insert_one({
         "id": new_id(), "org_id": user["org_id"], "user_id": invitee["id"],
         "role": body.role, "created_at": now_iso(),
     })
     await db.users.update_one({"id": invitee["id"]}, {"$set": {"org_id": user["org_id"], "role": "landlord"}})
+    org = await db.organizations.find_one({"id": user["org_id"]}, NO_ID)
+    org_name = (org or {}).get("name") or "einer Organisation"
+    inviter_name = user.get("name") or user.get("email")
+    await notify(invitee["id"], "team_invite", "Sie wurden zu einem Team hinzugefügt",
+                 f'{inviter_name} hat Sie zur Organisation "{org_name}" hinzugefügt.')
+    await email_user(invitee["id"], "Sie wurden zu einem MietGate-Team hinzugefügt", "Team-Einladung",
+                     f"<p>Hallo,</p><p>{inviter_name} hat Sie zur Organisation <strong>{org_name}</strong> "
+                     f"auf MietGate hinzugefügt. Loggen Sie sich wie gewohnt ein, um Zugriff auf die "
+                     f"gemeinsame Objektverwaltung zu erhalten.</p>"
+                     f"<p style='color:#94a3b8;font-size:12px'>Falls Sie das nicht erwartet haben, "
+                     f"kontaktieren Sie bitte unseren Support.</p>")
     return {"ok": True}
 
 
@@ -192,7 +217,10 @@ async def remove_member(member_id: str, user: dict = Depends(get_current_user)):
     target = await db.org_members.find_one({"id": member_id})
     if target and target["role"] == "owner":
         raise HTTPException(status_code=400, detail="Owner kann nicht entfernt werden")
-    await db.org_members.delete_one({"id": member_id})
+    if target:
+        await db.org_members.delete_one({"id": member_id})
+        await db.users.update_one(
+            {"id": target["user_id"], "org_id": target["org_id"]}, {"$set": {"org_id": None}})
     return {"ok": True}
 
 

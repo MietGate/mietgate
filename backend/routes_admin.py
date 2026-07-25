@@ -1,9 +1,10 @@
+import os
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from database import db, NO_ID
 from security import require_roles
-from helpers import new_id, now_iso
+from helpers import new_id, now_iso, notify, email_user, log_activity
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin = require_roles("admin")
@@ -68,7 +69,42 @@ async def admin_orgs(user: dict = Depends(admin)):
         o["property_count"] = await db.properties.count_documents({"org_id": o["id"]})
         sub = await db.subscriptions.find_one({"org_id": o["id"]}, NO_ID)
         o["plan"] = (sub or {}).get("plan_key")
+        o["subscription_status"] = (sub or {}).get("status")
     return orgs
+
+
+class ManualSubscription(BaseModel):
+    plan_key: str
+    status: str = "active"  # active | cancelled | inactive
+    white_label_addon: Optional[bool] = None
+    note: Optional[str] = None
+
+
+@router.post("/organizations/{org_id}/subscription")
+async def set_manual_subscription(org_id: str, body: ManualSubscription, user: dict = Depends(admin)):
+    org = await db.organizations.find_one({"id": org_id}, NO_ID)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation nicht gefunden")
+    if body.plan_key != "none":
+        plan = await db.plans.find_one({"key": body.plan_key}, NO_ID)
+        if not plan:
+            raise HTTPException(status_code=404, detail="Paket nicht gefunden")
+        await db.subscriptions.update_one(
+            {"org_id": org_id},
+            {"$set": {
+                "org_id": org_id, "plan_key": body.plan_key, "status": body.status,
+                "source": "manual", "manual_note": body.note, "manual_set_by": user["id"],
+                "cancel_at_period_end": body.status != "active",
+                "updated_at": now_iso(),
+            }}, upsert=True,
+        )
+    else:
+        await db.subscriptions.delete_one({"org_id": org_id})
+    if body.white_label_addon is not None:
+        await db.organizations.update_one({"id": org_id}, {"$set": {"white_label_addon": body.white_label_addon}})
+    await log_activity(org_id, user["id"], "manual_subscription_set", "subscription", body.plan_key,
+                       {"note": body.note} if body.note else None)
+    return await db.subscriptions.find_one({"org_id": org_id}, NO_ID) or {"org_id": org_id, "plan_key": "none"}
 
 
 # ---------- Plans ----------

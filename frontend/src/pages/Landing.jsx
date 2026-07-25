@@ -260,7 +260,7 @@ export default function Landing() {
             <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-brand-dark">Faire, transparente Preise</h2>
             <p className="text-muted-foreground mt-3 text-lg">Starten Sie kostenlos. Zahlen Sie erst, wenn Sie mehr brauchen.</p>
           </motion.div>
-          <PricingSection onSelect={(p) => navigate(p?.key ? `/registrieren?plan=${p.key}` : "/registrieren")} ctaLabel="Jetzt starten" />
+          <PricingSection onSelect={(p) => navigate(p?.key === "enterprise" ? "/kontakt" : p?.key ? `/registrieren?plan=${p.key}` : "/registrieren")} ctaLabel="Jetzt starten" />
         </div>
       </section>
 

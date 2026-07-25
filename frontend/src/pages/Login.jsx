@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2, User } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleRole, setGoogleRole] = useState("landlord");
 
   const submit = async (e) => {
     e.preventDefault();
@@ -32,7 +33,7 @@ export default function Login() {
   };
 
   const googleLogin = () => {
-    window.location.href = `${process.env.REACT_APP_BACKEND_URL}/api/auth/google/login?role=landlord`;
+    window.location.href = `${process.env.REACT_APP_BACKEND_URL}/api/auth/google/login?role=${googleRole}`;
   };
 
   return (
@@ -72,6 +73,17 @@ export default function Login() {
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
             <div className="relative flex justify-center text-xs"><span className="bg-background px-2 text-muted-foreground">oder</span></div>
           </div>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button type="button" onClick={() => setGoogleRole("landlord")} data-testid="google-role-landlord"
+              className={`flex items-center justify-center gap-1.5 p-2 rounded-lg border text-xs transition-colors ${googleRole === "landlord" ? "border-primary bg-accent" : "border-border hover:border-primary/40"}`}>
+              <Building2 className="h-3.5 w-3.5 text-primary" /> Vermieter
+            </button>
+            <button type="button" onClick={() => setGoogleRole("applicant")} data-testid="google-role-applicant"
+              className={`flex items-center justify-center gap-1.5 p-2 rounded-lg border text-xs transition-colors ${googleRole === "applicant" ? "border-primary bg-accent" : "border-border hover:border-primary/40"}`}>
+              <User className="h-3.5 w-3.5 text-primary" /> Bewerber
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mb-2 -mt-1">Nur relevant, falls Sie noch kein Konto haben.</p>
           <Button variant="outline" className="w-full" onClick={googleLogin} data-testid="login-google">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="h-4 w-4 mr-2" />
             Mit Google anmelden

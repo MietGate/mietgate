@@ -56,6 +56,29 @@ export default function PublicApplication() {
     axios.get(`${API}/public/property/${code}`).then((r) => setData(r.data)).catch(() => setError(true));
   }, [code]);
 
+  const draftKey = `mg_app_draft_${code}`;
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      const hasContent = draft.email || (draft.form && Object.keys(draft.form).length > 0) || draft.step > 0;
+      if (!hasContent) return;
+      if (draft.form) setForm(draft.form);
+      if (draft.email) setEmail(draft.email);
+      if (typeof draft.step === "number") setStep(draft.step);
+      if (draft.consent) setConsent(draft.consent);
+      toast.info("Ihre vorherigen Eingaben wurden wiederhergestellt.");
+    } catch { /* corrupted draft, ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
+  useEffect(() => {
+    if (done) return;
+    try { localStorage.setItem(draftKey, JSON.stringify({ form, email, step, consent })); } catch { /* storage unavailable */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, email, step, consent, code]);
+
   if (error) return <div className="min-h-screen flex items-center justify-center bg-background text-center p-6"><div><Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h1 className="font-display text-2xl font-bold">Link nicht verfügbar</h1><p className="text-muted-foreground mt-2">Dieser Bewerbungslink ist ungültig oder wurde deaktiviert.</p></div></div>;
   if (!data) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
@@ -122,6 +145,7 @@ export default function PublicApplication() {
         code, email: finalEmail, consent, form_data: { ...form, email: finalEmail }, origin_url: window.location.origin,
       });
       setDone(res);
+      try { localStorage.removeItem(draftKey); } catch { /* storage unavailable */ }
       toast.success("Bewerbung gesendet!");
       window.scrollTo(0, 0);
     } catch (err) {

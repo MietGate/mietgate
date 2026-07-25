@@ -31,6 +31,7 @@ class RegisterRequest(BaseModel):
     org_name: Optional[str] = None
     org_type: Optional[str] = "private"  # private | makler | hausverwaltung
     origin_url: Optional[str] = None
+    agreed_terms: bool = False
 
 
 class VerifyEmailRequest(BaseModel):
@@ -101,6 +102,8 @@ async def _send_verification_email(user_id, email, name, origin_url):
 
 @router.post("/register")
 async def register(req: RegisterRequest):
+    if not req.agreed_terms:
+        raise HTTPException(status_code=400, detail="Bitte akzeptieren Sie die AGB und Datenschutzerklärung.")
     email = req.email.lower().strip()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="E-Mail ist bereits registriert")
@@ -115,7 +118,8 @@ async def register(req: RegisterRequest):
         "name": f"{req.first_name} {req.last_name}", "first_name": req.first_name,
         "last_name": req.last_name, "phone": req.phone, "picture": None,
         "role": role, "org_id": org_id, "is_active": False, "is_blocked": False,
-        "premium": False, "auth_provider": "password", "created_at": now_iso(),
+        "premium": False, "auth_provider": "password", "agreed_terms_at": now_iso(),
+        "created_at": now_iso(),
     }
     await db.users.insert_one(doc)
     await log_activity(org_id, user_id, "register", "user", user_id)
@@ -196,12 +200,13 @@ async def logout(request: Request):
 
 
 @router.get("/google/login")
-async def google_login(role: str = "landlord"):
+async def google_login(role: str = "landlord", agreed_terms: bool = False):
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=500, detail="Google-Login ist nicht konfiguriert")
     state = secrets.token_urlsafe(24)
     await db.oauth_states.insert_one({
         "id": state, "role": "applicant" if role == "applicant" else "landlord",
+        "agreed_terms": agreed_terms,
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
     })
     params = {
@@ -225,6 +230,7 @@ async def google_callback(code: Optional[str] = None, state: Optional[str] = Non
         return RedirectResponse(f"{FRONTEND_URL}/login?error=google_auth_failed")
     await db.oauth_states.delete_one({"id": state})
     role = state_doc.get("role", "landlord")
+    agreed_terms = state_doc.get("agreed_terms", False)
 
     token_resp = requests.post("https://oauth2.googleapis.com/token", data={
         "code": code, "client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET,
@@ -243,6 +249,8 @@ async def google_callback(code: Optional[str] = None, state: Optional[str] = Non
     email = data["email"].lower().strip()
     user = await db.users.find_one({"email": email})
     if not user:
+        if not agreed_terms:
+            return RedirectResponse(f"{FRONTEND_URL}/registrieren?error=terms_required")
         user_id = new_id()
         first = data.get("given_name") or ""
         last = data.get("family_name") or ""
@@ -255,7 +263,8 @@ async def google_callback(code: Optional[str] = None, state: Optional[str] = Non
             "first_name": first, "last_name": last, "phone": None,
             "picture": data.get("picture"), "role": role, "org_id": org_id,
             "is_active": True, "is_blocked": False, "premium": False,
-            "auth_provider": "google", "created_at": now_iso(),
+            "auth_provider": "google", "agreed_terms_at": now_iso(),
+            "created_at": now_iso(),
         }
         await db.users.insert_one(user)
 

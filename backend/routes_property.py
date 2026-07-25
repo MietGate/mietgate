@@ -135,6 +135,9 @@ async def delete_property(pid: str, user: dict = Depends(get_current_user)):
     prop = await db.properties.find_one({"id": pid})
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
+    if member and member["role"] not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
     await db.properties.delete_one({"id": pid})
     await log_activity(prop["org_id"], user["id"], "delete", "property", pid)
     return {"ok": True}

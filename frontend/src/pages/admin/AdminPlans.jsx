@@ -4,19 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Save } from "lucide-react";
+
+const EMPTY_PLAN = {
+  key: "", name: "", price_monthly: 0, price_yearly: 0, max_properties: 1,
+  features: [], is_active: true, sort_order: 99, supports_team: false,
+  monthly_lookup: "", yearly_lookup: "",
+};
 
 export default function AdminPlans() {
   const [plans, setPlans] = useState(null);
   const [promos, setPromos] = useState([]);
   const [promoOpen, setPromoOpen] = useState(false);
+  const [newPlanOpen, setNewPlanOpen] = useState(false);
+  const [newPlan, setNewPlan] = useState(EMPTY_PLAN);
   const [promo, setPromo] = useState({ name: "", plan_key: "all", start: "", end: "", discount_percent: "", fixed_price: "" });
+  const [error, setError] = useState(false);
 
   const load = () => {
-    api.get("/admin/plans").then((r) => setPlans(r.data));
-    api.get("/admin/promotions").then((r) => setPromos(r.data));
+    setError(false);
+    api.get("/admin/plans").then((r) => setPlans(r.data)).catch(() => setError(true));
+    api.get("/admin/promotions").then((r) => setPromos(r.data)).catch(() => setError(true));
   };
   useEffect(() => { load(); }, []);
 
@@ -25,10 +36,25 @@ export default function AdminPlans() {
     try {
       await api.put(`/admin/plans/${p.key}`, {
         key: p.key, name: p.name, price_monthly: Number(p.price_monthly), price_yearly: Number(p.price_yearly),
-        max_properties: Number(p.max_properties), features: p.features || [], is_active: p.is_active,
+        max_properties: Number(p.max_properties),
+        features: typeof p.features === "string" ? p.features.split("\n").map((s) => s.trim()).filter(Boolean) : (p.features || []),
+        is_active: p.is_active, supports_team: p.supports_team,
         sort_order: p.sort_order, monthly_lookup: p.monthly_lookup, yearly_lookup: p.yearly_lookup,
       });
       toast.success("Paket gespeichert");
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+
+  const createPlan = async () => {
+    try {
+      await api.put(`/admin/plans/${newPlan.key}`, {
+        ...newPlan,
+        price_monthly: Number(newPlan.price_monthly), price_yearly: Number(newPlan.price_yearly),
+        max_properties: Number(newPlan.max_properties),
+        features: typeof newPlan.features === "string" ? newPlan.features.split("\n").map((s) => s.trim()).filter(Boolean) : [],
+      });
+      toast.success("Paket erstellt"); setNewPlanOpen(false); setNewPlan(EMPTY_PLAN); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
@@ -42,8 +68,13 @@ export default function AdminPlans() {
       toast.success("Aktion erstellt"); setPromoOpen(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
-  const delPromo = async (id) => { await api.delete(`/admin/promotions/${id}`); load(); };
+  const delPromo = async (id) => {
+    if (!window.confirm("Aktion wirklich löschen?")) return;
+    try { await api.delete(`/admin/promotions/${id}`); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
 
+  if (error) return <p className="text-sm text-destructive py-20 text-center">Daten konnten nicht geladen werden. <button className="underline" onClick={load}>Erneut versuchen</button></p>;
   if (!plans) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
@@ -51,7 +82,34 @@ export default function AdminPlans() {
       <div><h1 className="font-display text-3xl font-bold">Pakete & Aktionen</h1></div>
 
       <div className="space-y-4">
-        <h2 className="font-display font-bold text-lg">Pakete</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display font-bold text-lg">Pakete</h2>
+          <Dialog open={newPlanOpen} onOpenChange={setNewPlanOpen}>
+            <DialogTrigger asChild><Button variant="outline" data-testid="new-plan"><Plus className="h-4 w-4 mr-1" /> Neues Paket</Button></DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader><DialogTitle>Neues Paket</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div><Label>Key (eindeutig, z.B. "profi")</Label><Input value={newPlan.key} onChange={(e) => setNewPlan({ ...newPlan, key: e.target.value })} className="mt-1.5" /></div>
+                <div><Label>Name</Label><Input value={newPlan.name} onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })} className="mt-1.5" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Monatlich €</Label><Input type="number" value={newPlan.price_monthly} onChange={(e) => setNewPlan({ ...newPlan, price_monthly: e.target.value })} className="mt-1.5" /></div>
+                  <div><Label>Jährlich €</Label><Input type="number" value={newPlan.price_yearly} onChange={(e) => setNewPlan({ ...newPlan, price_yearly: e.target.value })} className="mt-1.5" /></div>
+                </div>
+                <div><Label>Max. Objekte</Label><Input type="number" value={newPlan.max_properties} onChange={(e) => setNewPlan({ ...newPlan, max_properties: e.target.value })} className="mt-1.5" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Stripe Lookup-Key monatlich</Label><Input value={newPlan.monthly_lookup} onChange={(e) => setNewPlan({ ...newPlan, monthly_lookup: e.target.value })} className="mt-1.5" /></div>
+                  <div><Label>Stripe Lookup-Key jährlich</Label><Input value={newPlan.yearly_lookup} onChange={(e) => setNewPlan({ ...newPlan, yearly_lookup: e.target.value })} className="mt-1.5" /></div>
+                </div>
+                <div><Label>Features (eine Zeile pro Punkt)</Label><Textarea rows={4} value={newPlan.features} onChange={(e) => setNewPlan({ ...newPlan, features: e.target.value })} className="mt-1.5" /></div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newPlan.supports_team} onChange={(e) => setNewPlan({ ...newPlan, supports_team: e.target.checked })} /> Team-Funktion</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newPlan.is_active} onChange={(e) => setNewPlan({ ...newPlan, is_active: e.target.checked })} /> Aktiv (öffentlich sichtbar)</label>
+                </div>
+              </div>
+              <DialogFooter><Button onClick={createPlan} disabled={!newPlan.key || !newPlan.name}>Erstellen</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
         {plans.map((p, i) => (
           <div key={p.key} className="rounded-xl border border-border bg-card p-5" data-testid={`admin-plan-${p.key}`}>
             <div className="flex flex-wrap items-end gap-3">
@@ -59,7 +117,14 @@ export default function AdminPlans() {
               <div className="w-28"><Label>Monatlich €</Label><Input type="number" value={p.price_monthly} onChange={(e) => setPlanField(i, "price_monthly", e.target.value)} className="mt-1.5" /></div>
               <div className="w-28"><Label>Jährlich €</Label><Input type="number" value={p.price_yearly} onChange={(e) => setPlanField(i, "price_yearly", e.target.value)} className="mt-1.5" /></div>
               <div className="w-24"><Label>Max. Objekte</Label><Input type="number" value={p.max_properties} onChange={(e) => setPlanField(i, "max_properties", e.target.value)} className="mt-1.5" /></div>
+              <label className="flex items-center gap-2 text-sm pb-2"><input type="checkbox" checked={!!p.supports_team} onChange={(e) => setPlanField(i, "supports_team", e.target.checked)} /> Team-Funktion</label>
+              <label className="flex items-center gap-2 text-sm pb-2"><input type="checkbox" checked={p.is_active !== false} onChange={(e) => setPlanField(i, "is_active", e.target.checked)} /> Aktiv</label>
               <Button onClick={() => savePlan(p)} data-testid={`save-plan-${p.key}`}><Save className="h-4 w-4 mr-1" /> Speichern</Button>
+            </div>
+            <div className="mt-3">
+              <Label>Features (eine Zeile pro Punkt, öffentlich sichtbar auf Preis-/Abo-Seite)</Label>
+              <Textarea rows={3} value={Array.isArray(p.features) ? p.features.join("\n") : (p.features || "")}
+                onChange={(e) => setPlanField(i, "features", e.target.value)} className="mt-1.5" />
             </div>
           </div>
         ))}

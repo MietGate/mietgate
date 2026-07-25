@@ -126,7 +126,11 @@ export function Viewings({ propertyId, property }) {
   }, [propertyId]);
   useEffect(() => { load(); }, [load]);
 
-  const del = async (id) => { await api.delete(`/viewings/${id}`); toast.success("Termin gelöscht"); load(); };
+  const del = async (id) => {
+    if (!window.confirm("Termin wirklich löschen? Eingeladene Bewerber erhalten dadurch sofort eine Absage-E-Mail zum Termin.")) return;
+    try { await api.delete(`/viewings/${id}`); toast.success("Termin gelöscht"); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
 
   const addToCalendar = (v) => {
     const location = property ? [property.street, property.house_number, property.zip, property.city].filter(Boolean).join(" ") : "";

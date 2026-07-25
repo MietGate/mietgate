@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api, { formatApiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,31 +14,42 @@ import { Link } from "react-router-dom";
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", employee: "Mitarbeiter", assistant: "Assistent" };
 
 export default function Team() {
+  const { user } = useAuth();
   const [members, setMembers] = useState(null);
   const [supported, setSupported] = useState(true);
+  const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("employee");
 
-  const load = () => api.get("/organization/members").then((r) => setMembers(r.data)).catch(() => setMembers([]));
-  useEffect(() => {
-    load();
+  const load = () => {
+    setError(false);
+    api.get("/organization/members").then((r) => setMembers(r.data)).catch(() => setError(true));
     api.get("/subscription").then((r) => setSupported(!!r.data.supports_team)).catch(() => setSupported(false));
-  }, []);
+  };
+  useEffect(() => { load(); }, []);
+
+  const myRole = members?.find((m) => m.user_id === user?.id)?.role;
+  const canManage = myRole === "owner" || myRole === "admin";
 
   const invite = async () => {
     try { await api.post("/organization/members", { email, role }); toast.success("Mitglied hinzugefügt"); setOpen(false); setEmail(""); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
-  const remove = async (id) => { await api.delete(`/organization/members/${id}`); toast.success("Entfernt"); load(); };
+  const remove = async (id) => {
+    if (!window.confirm("Dieses Mitglied wirklich entfernen? Der Zugriff wird sofort entzogen.")) return;
+    try { await api.delete(`/organization/members/${id}`); toast.success("Entfernt"); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
 
+  if (error) return <p className="text-sm text-destructive py-20 text-center">Daten konnten nicht geladen werden. <button className="underline" onClick={load}>Erneut versuchen</button></p>;
   if (!members) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-6 animate-fade-up max-w-3xl">
       <div className="flex items-center justify-between">
         <div><h1 className="font-display text-3xl font-bold">Team</h1><p className="text-muted-foreground mt-1">Mitarbeiter und Rollen verwalten.</p></div>
-        {supported && (
+        {supported && canManage && (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button data-testid="invite-member"><UserPlus className="h-4 w-4 mr-1" /> Mitglied einladen</Button></DialogTrigger>
           <DialogContent className="max-w-sm">
@@ -75,7 +87,7 @@ export default function Team() {
             </div>
             <div className="flex items-center gap-3">
               <Badge variant={m.role === "owner" ? "default" : "secondary"}>{ROLE_LABEL[m.role]}</Badge>
-              {m.role !== "owner" && <Button variant="ghost" size="icon" onClick={() => remove(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+              {m.role !== "owner" && canManage && <Button variant="ghost" size="icon" onClick={() => remove(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
             </div>
           </div>
         ))}
