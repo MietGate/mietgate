@@ -92,12 +92,12 @@ html { scroll-behavior: smooth; }
     background-size: 26px 26px;
     mask-image: radial-gradient(ellipse 90% 80% at 50% 0%, black 25%, transparent 78%);
     -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 0%, black 25%, transparent 78%);
-    animation: dots-drift 18s linear infinite;
+    animation: dots-drift 10s linear infinite;
 }
 
 @keyframes dots-drift {
     from { background-position: 0 0; }
-    to { background-position: 26px 26px; }
+    to { background-position: 52px 52px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
