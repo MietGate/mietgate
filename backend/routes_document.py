@@ -1,6 +1,7 @@
 import uuid
 from fastapi import (APIRouter, HTTPException, Depends, UploadFile, File, Form,
                      Query, Header, Response)
+from starlette.concurrency import run_in_threadpool
 from typing import Optional
 from database import db, NO_ID
 from security import get_current_user, resolve_user_by_token
@@ -101,7 +102,7 @@ async def download_document(doc_id: str, authorization: Optional[str] = Header(N
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
     if rec.get("org_id") and is_landlord:
         await log_activity(rec["org_id"], user["id"], "document_view", "document", doc_id)
-    data, content_type = get_object(rec["storage_path"])
+    data, content_type = await run_in_threadpool(get_object, rec["storage_path"])
     return Response(content=data, media_type=rec.get("content_type", content_type),
                     headers={"Content-Disposition": f'inline; filename="{rec.get("original_filename","file")}"'})
 

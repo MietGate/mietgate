@@ -1,13 +1,14 @@
 import random
 import string
 import uuid
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Response
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Response, Request
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from database import db, NO_ID
 from security import get_current_user
 from helpers import new_id, now_iso, log_activity, get_plan_limit, active_property_count, plan_supports_team
-from storage import put_object, get_object, guess_mime, APP_NAME
+from storage import put_object, get_object, get_object_ranged, guess_mime, APP_NAME
 from constants import FORM_FIELDS, DEFAULT_FORM_CONFIG, DOCUMENT_TYPES
 
 router = APIRouter(prefix="/api", tags=["properties"])
@@ -222,6 +223,34 @@ async def serve_property_image(pid: str, img_id: str):
     img = next((i for i in prop.get("images", []) if i["id"] == img_id), None)
     if not img:
         raise HTTPException(status_code=404, detail="Bild nicht gefunden")
-    data, ct = get_object(img["storage_path"])
+    data, ct = await run_in_threadpool(get_object, img["storage_path"])
     return Response(content=data, media_type=img.get("content_type", ct),
                     headers={"Cache-Control": "public, max-age=86400"})
+
+
+async def _serve_ranged(request: Request, path: str, default_content_type: str):
+    """Serve an R2 object honoring an incoming Range header, so large files (video)
+    aren't fully downloaded just for metadata/seek probes. Falls back to a full,
+    non-blocking response when no Range header is present."""
+    range_header = request.headers.get("range")
+    try:
+        result = await run_in_threadpool(get_object_ranged, path, range_header)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Nicht gefunden")
+    headers = {"Cache-Control": "public, max-age=604800", "Accept-Ranges": "bytes"}
+    if result["partial"]:
+        headers["Content-Range"] = result["content_range"]
+        headers["Content-Length"] = str(len(result["data"]))
+        return Response(content=result["data"], status_code=206,
+                        media_type=result["content_type"] or default_content_type, headers=headers)
+    return Response(content=result["data"], media_type=result["content_type"] or default_content_type, headers=headers)
+
+
+@router.get("/public/marketing/erklaervideo.mp4")
+async def serve_explainer_video(request: Request):
+    return await _serve_ranged(request, "mietgate/marketing/erklaervideo.mp4", "video/mp4")
+
+
+@router.get("/public/marketing/erklaervideo-poster.jpg")
+async def serve_explainer_video_poster(request: Request):
+    return await _serve_ranged(request, "mietgate/marketing/erklaervideo-poster.jpg", "image/jpeg")

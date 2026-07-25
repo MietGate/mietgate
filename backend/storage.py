@@ -53,6 +53,39 @@ def get_object(path: str):
     return resp["Body"].read(), resp.get("ContentType") or guess_mime(path)
 
 
+def get_object_ranged(path: str, range_header: str = None):
+    """Like get_object, but if range_header (e.g. 'bytes=0-1023') is given, only that
+    byte range is requested from R2. Needed for large files like video, so the browser's
+    metadata/seek probes don't force a full download of the whole object every time."""
+    client = init_storage()
+    kwargs = {"Bucket": R2_BUCKET_NAME, "Key": path}
+    if range_header:
+        kwargs["Range"] = range_header
+    try:
+        resp = client.get_object(**kwargs)
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("NoSuchKey", "404"):
+            raise FileNotFoundError(path) from e
+        raise
+    content_range = resp.get("ContentRange")
+    total_size = _parse_total(content_range) if content_range else resp.get("ContentLength")
+    return {
+        "data": resp["Body"].read(),
+        "content_type": resp.get("ContentType") or guess_mime(path),
+        "content_range": content_range,
+        "total_size": total_size,
+        "partial": bool(content_range),
+    }
+
+
+def _parse_total(content_range):
+    if not content_range or "/" not in content_range:
+        return None
+    total = content_range.rsplit("/", 1)[-1]
+    return int(total) if total.isdigit() else None
+
+
 def guess_mime(filename: str) -> str:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
     return MIME_TYPES.get(ext, "application/octet-stream")
