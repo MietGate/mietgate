@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
-import { Menu, X, Send, Loader2, Instagram, Facebook } from "lucide-react";
+import { Menu, X, Send, Loader2 } from "lucide-react";
+import { SocialLinks } from "@/components/SocialLinks";
 import api from "@/lib/api";
 import { toast } from "sonner";
 
@@ -60,7 +61,8 @@ export function MarketingNav() {
           <Link to="/preise" className="text-muted-foreground hover:text-foreground transition-colors">Preise</Link>
           <Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
         </nav>
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-4">
+          <SocialLinks className="text-foreground" />
           {user ? (
             <Button asChild size="sm"><Link to={dest} data-testid="nav-dashboard">Zum Dashboard</Link></Button>
           ) : (
@@ -87,6 +89,9 @@ export function MarketingNav() {
               <Button asChild className="w-full"><Link to="/registrieren" data-testid="nav-mobile-register">Kostenlos starten</Link></Button>
             </div>
           )}
+          <div className="pt-3 border-t border-border flex justify-center">
+            <SocialLinks />
+          </div>
         </div>
       )}
     </header>
@@ -108,13 +113,8 @@ export function MarketingFooter() {
           <div className="md:col-span-1">
             <Logo textClass="text-white" className="h-8 bg-white rounded-md p-0.5" />
             <p className="mt-4 text-sm text-white/50 max-w-xs">Digitales Vermietungsmanagement für den deutschen Immobilienmarkt.</p>
-            <div className="flex gap-3 mt-4">
-              <a href="https://instagram.com/mietgate" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-white transition-colors" title="Instagram">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="https://facebook.com/mietgate" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-white transition-colors" title="Facebook">
-                <Facebook className="h-5 w-5" />
-              </a>
+            <div className="mt-4">
+              <SocialLinks />
             </div>
           </div>
           <div>
