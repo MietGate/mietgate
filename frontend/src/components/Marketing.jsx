@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
-import { Menu, X, Send, Loader2 } from "lucide-react";
+import { Menu, X, Send, Loader2, Instagram, Facebook } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 
@@ -108,6 +108,14 @@ export function MarketingFooter() {
           <div className="md:col-span-1">
             <Logo textClass="text-white" className="h-8 bg-white rounded-md p-0.5" />
             <p className="mt-4 text-sm text-white/50 max-w-xs">Digitales Vermietungsmanagement für den deutschen Immobilienmarkt.</p>
+            <div className="flex gap-3 mt-4">
+              <a href="https://instagram.com/mietgate" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-white transition-colors" title="Instagram">
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a href="https://facebook.com/mietgate" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-white transition-colors" title="Facebook">
+                <Facebook className="h-5 w-5" />
+              </a>
+            </div>
           </div>
           <div>
             <h4 className="text-white font-semibold mb-3 text-sm">Produkt</h4>
