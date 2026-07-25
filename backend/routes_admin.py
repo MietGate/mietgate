@@ -5,6 +5,7 @@ from typing import Optional, List
 from database import db, NO_ID
 from security import require_roles
 from helpers import new_id, now_iso, notify, email_user, log_activity
+from email_service import send_email
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin = require_roles("admin")
@@ -18,9 +19,14 @@ async def admin_stats(user: dict = Depends(admin)):
     active_props = await db.properties.count_documents({"status": "active"})
     total_apps = await db.applications.count_documents({})
     active_subs = await db.subscriptions.count_documents({"status": "active"})
+    trialing_subs = await db.subscriptions.count_documents({"status": "trialing"})
+    past_due_subs = await db.subscriptions.count_documents({"status": "past_due"})
     cancelled = await db.subscriptions.count_documents({"cancel_at_period_end": True})
     open_tickets = await db.support_tickets.count_documents({"status": "open"})
-    active_sub_docs = await db.subscriptions.find({"status": "active"}, NO_ID).to_list(10000)
+    # MRR counts active + past_due (still billed, just currently failing) — trialing is excluded
+    # since no payment has been captured yet.
+    active_sub_docs = await db.subscriptions.find(
+        {"status": {"$in": ["active", "past_due"]}}, NO_ID).to_list(10000)
     plans = {p["key"]: p async for p in db.plans.find({}, NO_ID)}
     mrr = 0.0
     for sub in active_sub_docs:
@@ -31,7 +37,8 @@ async def admin_stats(user: dict = Depends(admin)):
     return {
         "total_users": total_users, "landlords": landlords, "applicants": applicants,
         "active_properties": active_props, "total_applications": total_apps,
-        "active_subscriptions": active_subs, "cancelled_subscriptions": cancelled,
+        "active_subscriptions": active_subs, "trialing_subscriptions": trialing_subs,
+        "past_due_subscriptions": past_due_subs, "cancelled_subscriptions": cancelled,
         "open_tickets": open_tickets, "monthly_revenue": round(mrr, 2),
     }
 
@@ -180,10 +187,43 @@ async def admin_tickets(user: dict = Depends(admin)):
     return await db.support_tickets.find({}, NO_ID).sort("created_at", -1).to_list(500)
 
 
+TICKET_STATUSES = ("open", "in_bearbeitung", "erledigt")
+
+
+class TicketStatusUpdate(BaseModel):
+    status: str
+
+
 @router.patch("/support-tickets/{tid}")
-async def update_ticket(tid: str, status: str, user: dict = Depends(admin)):
-    await db.support_tickets.update_one({"id": tid}, {"$set": {"status": status}})
+async def update_ticket(tid: str, body: TicketStatusUpdate, user: dict = Depends(admin)):
+    if body.status not in TICKET_STATUSES:
+        raise HTTPException(status_code=400, detail="Ungültiger Status")
+    await db.support_tickets.update_one({"id": tid}, {"$set": {"status": body.status}})
     return {"ok": True}
+
+
+class TicketReply(BaseModel):
+    message: str
+
+
+@router.post("/support-tickets/{tid}/reply")
+async def reply_ticket(tid: str, body: TicketReply, user: dict = Depends(admin)):
+    ticket = await db.support_tickets.find_one({"id": tid})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket nicht gefunden")
+    reply = {"id": new_id(), "message": body.message, "sent_by": user.get("name") or user.get("email"),
+             "created_at": now_iso()}
+    await db.support_tickets.update_one(
+        {"id": tid},
+        {"$push": {"replies": reply}, "$set": {"status": "in_bearbeitung"}})
+    if ticket.get("email"):
+        await send_email(ticket["email"], "Antwort auf Ihre Anfrage bei MietGate",
+                                        "Antwort vom MietGate-Support",
+                                        f"<p>Hallo {ticket.get('name','')},</p>"
+                                        f"<p style='white-space:pre-wrap'>{body.message}</p>"
+                                        f"<p style='color:#94a3b8;font-size:12px'>Antworten Sie einfach auf diese E-Mail, "
+                                        f"falls Sie weitere Fragen haben.</p>")
+    return reply
 
 
 @router.get("/activities")

@@ -9,12 +9,12 @@ export default function Pricing() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const onSelect = async (plan, interval) => {
+  const onSelect = async (plan, interval, withdrawalConsent) => {
     if (plan.key === "enterprise") { navigate("/kontakt"); return; }
     if (!user) { navigate(`/registrieren?plan=${plan.key}`); return; }
     if (user.role !== "landlord") { toast.error("Nur Vermieter können ein Paket buchen."); return; }
     try {
-      const { data } = await api.post("/payments/checkout", { plan_key: plan.key, interval, origin_url: window.location.origin });
+      const { data } = await api.post("/payments/checkout", { plan_key: plan.key, interval, origin_url: window.location.origin, withdrawal_consent: !!withdrawalConsent });
       window.location.href = data.checkout_url;
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);

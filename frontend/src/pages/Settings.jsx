@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { validateFile } from "@/lib/validateFile";
 import { useAuth } from "@/context/AuthContext";
@@ -13,8 +13,10 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 export default function Settings() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, logout } = useAuth();
+  const navigate = useNavigate();
   const isLandlord = user?.role === "landlord";
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [profile, setProfile] = useState({ first_name: user?.first_name || "", last_name: user?.last_name || "", phone: user?.phone || "" });
   const [pw, setPw] = useState({ current_password: "", new_password: "" });
   const [confirmPw, setConfirmPw] = useState("");
@@ -36,7 +38,7 @@ export default function Settings() {
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); } finally { setSaving(false); }
   };
   const changePw = async () => {
-    if (pw.new_password.length < 6) { toast.error("Das neue Passwort muss mindestens 6 Zeichen lang sein."); return; }
+    if (pw.new_password.length < 8) { toast.error("Das neue Passwort muss mindestens 8 Zeichen lang sein."); return; }
     if (pw.new_password !== confirmPw) { toast.error("Die Passwörter stimmen nicht überein."); return; }
     try {
       await api.post("/me/password", isGoogleUser ? { new_password: pw.new_password } : pw);
@@ -48,6 +50,17 @@ export default function Settings() {
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
   const setWL = (patch) => setOrg({ ...org, white_label: { ...(org.white_label || {}), ...patch } });
+  const deleteAccount = async () => {
+    if (!window.confirm("Konto und alle Bewerbungsdaten wirklich unwiderruflich löschen? Dies kann nicht rückgängig gemacht werden.")) return;
+    if (!window.confirm("Letzte Bestätigung: Alle Ihre Bewerbungen, Dokumente und Nachrichten werden endgültig gelöscht. Fortfahren?")) return;
+    setDeletingAccount(true);
+    try {
+      await api.delete("/me/account");
+      toast.success("Konto gelöscht");
+      await logout();
+      navigate("/");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); setDeletingAccount(false); }
+  };
   const logoRef = useRef();
   const [logoPreview, setLogoPreview] = useState(null);
   useEffect(() => {
@@ -100,10 +113,22 @@ export default function Settings() {
             ) : (
               <div><Label>Aktuelles Passwort</Label><Input type="password" value={pw.current_password} onChange={(e) => setPw({ ...pw, current_password: e.target.value })} className="mt-1.5" /></div>
             )}
-            <div><Label>Neues Passwort</Label><Input type="password" minLength={6} value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} className="mt-1.5" data-testid="new-password" /><p className="text-xs text-muted-foreground mt-1">Mindestens 6 Zeichen.</p></div>
-            <div><Label>Neues Passwort bestätigen</Label><Input type="password" minLength={6} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="mt-1.5" data-testid="confirm-password" /></div>
+            <div><Label>Neues Passwort</Label><Input type="password" minLength={8} value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} className="mt-1.5" data-testid="new-password" /><p className="text-xs text-muted-foreground mt-1">Mindestens 8 Zeichen.</p></div>
+            <div><Label>Neues Passwort bestätigen</Label><Input type="password" minLength={8} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="mt-1.5" data-testid="confirm-password" /></div>
             <Button onClick={changePw} disabled={!pw.new_password || !confirmPw}>Passwort ändern</Button>
           </div>
+
+          {!isLandlord && (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 space-y-3 mt-4">
+              <div>
+                <p className="font-medium">Konto löschen</p>
+                <p className="text-sm text-muted-foreground mt-1">Löscht Ihr Konto sowie alle Bewerbungen, Dokumente und Nachrichten unwiderruflich (Art. 17 DSGVO — Recht auf Löschung).</p>
+              </div>
+              <Button variant="destructive" onClick={deleteAccount} disabled={deletingAccount} data-testid="delete-account-btn">
+                {deletingAccount ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null} Konto endgültig löschen
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         {isLandlord && org && (

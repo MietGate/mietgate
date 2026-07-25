@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from database import db, NO_ID
 from security import get_current_user
-from helpers import new_id, now_iso, notify
+from helpers import new_id, now_iso, notify, notify_org_team
 
 router = APIRouter(prefix="/api", tags=["messages"])
 
@@ -48,8 +48,14 @@ async def send_message(payload: MessagePayload, user: dict = Depends(get_current
     }
     await db.messages.insert_one(msg)
     link = "/bewerber" if is_landlord else f"/objekte/{app['property_id']}"
-    await notify(recipient_id, "message", "Neue Nachricht",
-                 f"{user.get('name')}: {payload.body[:60]}", link)
+    if is_landlord:
+        await notify(recipient_id, "message", "Neue Nachricht",
+                     f"{user.get('name')}: {payload.body[:60]}", link)
+    else:
+        # An applicant's message should reach every team member managing this property,
+        # not just whoever originally created it.
+        await notify_org_team(app["org_id"], "message", "Neue Nachricht",
+                              f"{user.get('name')}: {payload.body[:60]}", link)
     msg.pop("_id", None)
     return msg
 

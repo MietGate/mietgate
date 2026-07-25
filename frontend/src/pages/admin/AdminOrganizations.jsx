@@ -29,7 +29,7 @@ export default function AdminOrganizations() {
 
   const openEdit = (o) => {
     setEditing(o);
-    setForm({ plan_key: o.plan || "none", status: o.subscription_status || "active", white_label_addon: !!o.white_label?.enabled, note: "" });
+    setForm({ plan_key: o.plan || "none", status: o.subscription_status || "active", white_label_addon: !!o.white_label_addon, note: "" });
   };
 
   const save = async () => {
@@ -56,7 +56,7 @@ export default function AdminOrganizations() {
                 <TableCell>{o.member_count}</TableCell>
                 <TableCell>{o.property_count}</TableCell>
                 <TableCell className="capitalize">{o.plan || "—"}{o.subscription_status && o.subscription_status !== "active" ? ` (${o.subscription_status})` : ""}</TableCell>
-                <TableCell>{o.white_label?.enabled ? <Badge>Aktiv</Badge> : "—"}</TableCell>
+                <TableCell>{o.white_label_addon ? <Badge>Gebucht</Badge> : "—"}</TableCell>
                 <TableCell><Button variant="ghost" size="icon" onClick={() => openEdit(o)}><Pencil className="h-4 w-4" /></Button></TableCell>
               </TableRow>
             ))}

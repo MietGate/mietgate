@@ -80,7 +80,7 @@ function ActivityTab({ leadId }) {
   );
 }
 
-function TasksTab({ leadId }) {
+function TasksTab({ leadId, onChanged }) {
   const [items, setItems] = useState(null);
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
@@ -93,12 +93,12 @@ function TasksTab({ leadId }) {
     setSaving(true);
     try {
       await api.post(`/admin/leads/${leadId}/tasks`, { title, due_at: dueAt ? new Date(dueAt).toISOString() : null });
-      setTitle(""); setDueAt(""); load();
+      setTitle(""); setDueAt(""); load(); onChanged?.();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setSaving(false); }
   };
-  const toggle = async (t) => { await api.patch(`/admin/lead-tasks/${t.id}`, { done: !t.done }); load(); };
-  const remove = async (id) => { await api.delete(`/admin/lead-tasks/${id}`); load(); };
+  const toggle = async (t) => { await api.patch(`/admin/lead-tasks/${t.id}`, { done: !t.done }); load(); onChanged?.(); };
+  const remove = async (id) => { await api.delete(`/admin/lead-tasks/${id}`); load(); onChanged?.(); };
 
   return (
     <div className="space-y-4">
@@ -127,7 +127,7 @@ function TasksTab({ leadId }) {
   );
 }
 
-function LeadDetail({ lead, stages, open, onClose, onSaved, onDeleted }) {
+function LeadDetail({ lead, stages, open, onClose, onSaved, onDeleted, onTasksChanged }) {
   const [form, setForm] = useState(lead || EMPTY);
   const [saving, setSaving] = useState(false);
   useEffect(() => { if (lead) setForm({ ...lead, deal_value: lead.deal_value ?? "" }); }, [lead]);
@@ -190,7 +190,7 @@ function LeadDetail({ lead, stages, open, onClose, onSaved, onDeleted }) {
           </TabsContent>
 
           <TabsContent value="activity" className="mt-4"><ActivityTab leadId={lead.id} /></TabsContent>
-          <TabsContent value="tasks" className="mt-4"><TasksTab leadId={lead.id} /></TabsContent>
+          <TabsContent value="tasks" className="mt-4"><TasksTab leadId={lead.id} onChanged={onTasksChanged} /></TabsContent>
         </Tabs>
       </SheetContent>
     </Sheet>
@@ -413,7 +413,7 @@ export default function AdminLeads() {
         </div>
       </DragDropContext>
 
-      <LeadDetail lead={activeLead} stages={stages} open={!!activeId} onClose={() => setActiveId(null)} onSaved={load} onDeleted={load} />
+      <LeadDetail lead={activeLead} stages={stages} open={!!activeId} onClose={() => setActiveId(null)} onSaved={load} onDeleted={load} onTasksChanged={loadDue} />
     </div>
   );
 }

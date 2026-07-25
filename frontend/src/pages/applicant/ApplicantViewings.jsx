@@ -25,7 +25,7 @@ function ViewingCard({ v, onChanged }) {
     const ok = downloadIcs({ title: v.title, start: when, location, description: `Besichtigung: ${v.property_title || ""}` });
     if (ok) toast.success("Kalenderdatei heruntergeladen"); else toast.error("Kein gültiges Datum vorhanden");
   };
-  const badge = v.my_status === "confirmed" ? { v: "default", t: "Bestätigt" } : v.my_status === "declined" ? { v: "destructive", t: "Abgesagt" } : v.my_status === "reschedule_requested" ? { v: "secondary", t: "Umbuchung angefragt" } : { v: "secondary", t: "Eingeladen" };
+  const badge = v.cancelled ? { v: "destructive", t: "Vom Vermieter abgesagt" } : v.my_status === "confirmed" ? { v: "default", t: "Bestätigt" } : v.my_status === "declined" ? { v: "destructive", t: "Abgesagt" } : v.my_status === "reschedule_requested" ? { v: "secondary", t: "Umbuchung angefragt" } : { v: "secondary", t: "Eingeladen" };
 
   return (
     <div className="rounded-xl border border-border bg-card p-5" data-testid={`myviewing-${v.id}`}>
@@ -49,7 +49,7 @@ function ViewingCard({ v, onChanged }) {
         </div>
       )}
 
-      {v.type === "slots" && v.my_status !== "declined" && (
+      {v.type === "slots" && !v.cancelled && v.my_status !== "declined" && (
         <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border">
           <Select value={slot} onValueChange={setSlot}>
             <SelectTrigger className="max-w-xs" data-testid={`slot-select-${v.id}`}>
@@ -68,7 +68,7 @@ function ViewingCard({ v, onChanged }) {
         </div>
       )}
 
-      {v.type !== "slots" && v.my_status !== "confirmed" && v.my_status !== "declined" && (
+      {v.type !== "slots" && !v.cancelled && v.my_status !== "confirmed" && v.my_status !== "declined" && (
         <div className="flex gap-2 mt-4 pt-4 border-t border-border">
           <Button size="sm" onClick={() => respond("confirm")} data-testid={`confirm-${v.id}`}>Bestätigen</Button>
           <Button size="sm" variant="outline" onClick={() => respond("reschedule")}>Umbuchung anfragen</Button>

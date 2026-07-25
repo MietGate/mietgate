@@ -9,20 +9,29 @@ import { Loader2, CreditCard } from "lucide-react";
 
 export default function Billing() {
   const [sub, setSub] = useState(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const load = () => api.get("/subscription").then((r) => setSub(r.data));
   useEffect(() => { load(); }, []);
 
-  const select = async (plan, interval) => {
+  const select = async (plan, interval, withdrawalConsent) => {
     if (plan.key === "enterprise") { toast.info("Bitte kontaktieren Sie uns unter support@mietgate.de"); return; }
     try {
-      const { data } = await api.post("/payments/checkout", { plan_key: plan.key, interval, origin_url: window.location.origin });
+      const { data } = await api.post("/payments/checkout", { plan_key: plan.key, interval, origin_url: window.location.origin, withdrawal_consent: !!withdrawalConsent });
       window.location.href = data.checkout_url;
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
   const cancel = async () => {
+    if (!window.confirm("Abo wirklich kündigen? Es bleibt bis zum Ende der aktuellen Periode aktiv, verlängert sich danach aber nicht mehr.")) return;
     try { await api.post("/subscription/cancel"); toast.success("Abo zum Periodenende gekündigt"); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+  const openBillingPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { data } = await api.post("/subscription/billing-portal", { origin_url: window.location.origin });
+      window.location.href = data.portal_url;
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); setPortalLoading(false); }
   };
 
   if (!sub) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -43,7 +52,12 @@ export default function Billing() {
                 <Badge className="bg-success text-success-foreground">{sub.subscription.status === "trialing" ? "Testphase" : "Aktiv"}</Badge>
               </div>
               {sub.subscription.cancel_at_period_end && <p className="text-sm text-amber-600 mt-2">Gekündigt zum Periodenende.</p>}
-              {!sub.subscription.cancel_at_period_end && <Button variant="outline" size="sm" className="mt-4" onClick={cancel} data-testid="cancel-sub">Kündigen</Button>}
+              <div className="flex flex-wrap gap-2 mt-4">
+                <Button variant="outline" size="sm" onClick={openBillingPortal} disabled={portalLoading} data-testid="billing-portal-btn">
+                  {portalLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CreditCard className="h-4 w-4 mr-1" />} Zahlungsmethode & Rechnungen
+                </Button>
+                {!sub.subscription.cancel_at_period_end && <Button variant="outline" size="sm" onClick={cancel} data-testid="cancel-sub">Kündigen</Button>}
+              </div>
             </>
           ) : (
             <p className="text-muted-foreground">Kein aktives Abo. Wählen Sie unten ein Paket.</p>

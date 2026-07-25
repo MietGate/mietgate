@@ -50,7 +50,14 @@ def _public_property(prop, org):
 @router.get("/public/property/{code}")
 async def public_property(code: str):
     prop = await db.properties.find_one({"application_code": code})
-    if not prop or not prop.get("link_active", True):
+    if not prop:
+        raise HTTPException(status_code=404, detail="Bewerbungslink ungültig oder deaktiviert")
+    if not prop.get("link_active", True):
+        if prop.get("link_deactivated_by_payment"):
+            raise HTTPException(status_code=423,
+                detail="Dieser Bewerbungslink ist vorübergehend pausiert, da der Vermieter eine "
+                       "Zahlung aktualisieren muss. Bitte versuchen Sie es später erneut oder wenden "
+                       "Sie sich direkt an den Vermieter.")
         raise HTTPException(status_code=404, detail="Bewerbungslink ungültig oder deaktiviert")
     org = await db.organizations.find_one({"id": prop["org_id"]}, NO_ID)
     return {"property": _public_property(prop, org), "fields": FORM_FIELDS}
@@ -88,9 +95,26 @@ async def submit_application(req: ApplyRequest):
     if not req.consent:
         raise HTTPException(status_code=400, detail="Bitte stimmen Sie der Datenverarbeitung zu")
     prop = await db.properties.find_one({"application_code": req.code})
-    if not prop or not prop.get("link_active", True):
+    if not prop:
         raise HTTPException(status_code=404, detail="Bewerbungslink ungültig")
+    if not prop.get("link_active", True):
+        if prop.get("link_deactivated_by_payment"):
+            raise HTTPException(status_code=423,
+                detail="Dieser Bewerbungslink ist vorübergehend pausiert, da der Vermieter eine "
+                       "Zahlung aktualisieren muss. Bitte versuchen Sie es später erneut.")
+        raise HTTPException(status_code=404, detail="Bewerbungslink ungültig")
+    cfg = prop.get("form_config") or {}
+    missing = [f["key"] for f in FORM_FIELDS
+              if cfg.get(f["key"]) == "required" and f["key"] != "email"
+              and not str(req.form_data.get(f["key"], "")).strip()]
+    if missing:
+        raise HTTPException(status_code=400,
+            detail=f"Bitte füllen Sie alle Pflichtfelder aus (fehlend: {', '.join(missing)})")
+
     email = req.email.lower().strip()
+    existing_app = await db.applications.find_one({"property_id": prop["id"], "applicant_email": email}, NO_ID)
+    if existing_app:
+        return {"application_id": existing_app["id"], "already_applied": True}
     # find or create applicant account
     user = await db.users.find_one({"email": email})
     activation_link = None

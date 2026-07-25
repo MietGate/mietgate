@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check, Lock, CreditCard, Zap
+  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check, Lock, CreditCard, Zap, Trash2
 } from "lucide-react";
 
 export default function PropertyDetail() {
@@ -22,9 +22,14 @@ export default function PropertyDetail() {
   const [activating, setActivating] = useState(false);
   const [planPickerOpen, setPlanPickerOpen] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [choosingPlan, setChoosingPlan] = useState(false);
 
   const load = () => api.get(`/properties/${id}`).then((r) => setProp(r.data)).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (!prop) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
@@ -43,16 +48,29 @@ export default function PropertyDetail() {
     finally { setActivating(false); }
   };
 
-  const choosePlan = async (plan, interval) => {
+  const choosePlan = async (plan, interval, withdrawalConsent) => {
     if (plan.key === "enterprise" || plan.key === "whitelabel") {
       toast.info("Bitte kontaktieren Sie uns unter support@mietgate.de"); return;
     }
+    if (choosingPlan) return;
+    setChoosingPlan(true);
     try {
       const { data } = await api.post(`/properties/${id}/link/activate`, {
-        plan_key: plan.key, interval, origin_url: window.location.origin,
+        plan_key: plan.key, interval, origin_url: window.location.origin, withdrawal_consent: !!withdrawalConsent,
       });
-      if (data.checkout_url) window.location.href = data.checkout_url;
+      if (data.checkout_url) { window.location.href = data.checkout_url; return; }
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    setChoosingPlan(false);
+  };
+
+  const deleteProperty = async () => {
+    if (!window.confirm(`"${prop.title}" wirklich unwiderruflich löschen? Alle Bewerbungen, Dokumente, Termine und Bilder zu diesem Objekt werden ebenfalls gelöscht. Dies kann nicht rückgängig gemacht werden.`)) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/properties/${id}`);
+      toast.success("Objekt gelöscht");
+      navigate("/objekte");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); setDeleting(false); }
   };
 
   const openBillingPortal = async () => {
@@ -81,7 +99,12 @@ export default function PropertyDetail() {
             <p className="text-sm text-muted-foreground flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {[prop.street, prop.house_number, prop.zip, prop.city].filter(Boolean).join(" ") || "Keine Adresse"}</p>
           </div>
         </div>
-        <Button variant="outline" asChild data-testid="edit-property"><Link to={`/objekte/${id}/bearbeiten`}><Pencil className="h-4 w-4 mr-1" /> Bearbeiten</Link></Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild data-testid="edit-property"><Link to={`/objekte/${id}/bearbeiten`}><Pencil className="h-4 w-4 mr-1" /> Bearbeiten</Link></Button>
+          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={deleteProperty} disabled={deleting} data-testid="delete-property-btn">
+            {deleting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />} Löschen
+          </Button>
+        </div>
       </div>
 
       {paymentLocked && (
@@ -213,7 +236,7 @@ export default function PropertyDetail() {
             <DialogTitle>Paket wählen — 3 Tage kostenlos testen</DialogTitle>
             <p className="text-sm text-muted-foreground">Ihre Zahlungsmethode wird hinterlegt, aber erst nach 3 Tagen belastet. Jederzeit vorher kündbar.</p>
           </DialogHeader>
-          <PricingSection onSelect={choosePlan} ctaLabel="Trial starten" />
+          <PricingSection onSelect={choosePlan} ctaLabel="Trial starten" disabled={choosingPlan} />
         </DialogContent>
       </Dialog>
     </div>

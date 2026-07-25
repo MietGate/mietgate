@@ -4,16 +4,43 @@ import requests
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from database import db, NO_ID
-from security import (hash_password, verify_password, create_access_token, get_current_user)
+from security import (hash_password, verify_password, create_access_token, get_current_user, revoke_token)
 from helpers import new_id, now_iso, log_activity
 from email_service import send_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 MAX_ATTEMPTS = 5
 LOCKOUT_MIN = 15
+# Global per-email login lockout (in addition to the per-IP:email one below), so an attacker
+# rotating IPs can't brute-force a single account indefinitely.
+EMAIL_MAX_ATTEMPTS = 20
+EMAIL_LOCKOUT_MIN = 30
+
+
+async def _hit_rate_limit(key: str, max_attempts: int, window_minutes: int) -> bool:
+    """Simple fixed-window rate limiter backed by a TTL-indexed collection. Returns True if
+    the caller has exceeded max_attempts within the window and should be blocked."""
+    now = datetime.now(timezone.utc)
+    rec = await db.rate_limits.find_one({"key": key})
+    window_start = rec.get("window_start") if rec else None
+    if isinstance(window_start, str):
+        window_start = datetime.fromisoformat(window_start)
+    if window_start and window_start.tzinfo is None:
+        window_start = window_start.replace(tzinfo=timezone.utc)
+    if not rec or not window_start or now - window_start > timedelta(minutes=window_minutes):
+        await db.rate_limits.update_one(
+            {"key": key},
+            {"$set": {"key": key, "count": 1, "window_start": now,
+                      "expires_at": now + timedelta(minutes=window_minutes)}},
+            upsert=True)
+        return False
+    if rec.get("count", 0) >= max_attempts:
+        return True
+    await db.rate_limits.update_one({"key": key}, {"$inc": {"count": 1}})
+    return False
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
@@ -23,7 +50,7 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8)
     first_name: str
     last_name: str
     role: str = "landlord"  # landlord | applicant
@@ -55,7 +82,7 @@ class ForgotRequest(BaseModel):
 
 class ResetRequest(BaseModel):
     token: str
-    password: str
+    password: str = Field(min_length=8)
 
 
 def _public_user(u: dict):
@@ -101,7 +128,7 @@ async def _send_verification_email(user_id, email, name, origin_url):
 
 
 @router.post("/register")
-async def register(req: RegisterRequest):
+async def register(req: RegisterRequest, request: Request):
     if not req.agreed_terms:
         raise HTTPException(status_code=400, detail="Bitte akzeptieren Sie die AGB und Datenschutzerklärung.")
     email = req.email.lower().strip()
@@ -110,18 +137,31 @@ async def register(req: RegisterRequest):
     user_id = new_id()
     role = "applicant" if req.role == "applicant" else "landlord"
     org_id = None
+    pending_invite = None
     if role == "landlord":
-        org_name = req.org_name or f"{req.first_name} {req.last_name}"
-        org_id = await _create_org_for_user(user_id, org_name, req.org_type, org_name)
+        pending_invite = await db.org_invites.find_one({"email": email, "used": False})
+        if pending_invite:
+            org_id = pending_invite["org_id"]
+        else:
+            org_name = req.org_name or f"{req.first_name} {req.last_name}"
+            org_id = await _create_org_for_user(user_id, org_name, req.org_type, org_name)
     doc = {
         "id": user_id, "email": email, "password_hash": hash_password(req.password),
         "name": f"{req.first_name} {req.last_name}", "first_name": req.first_name,
         "last_name": req.last_name, "phone": req.phone, "picture": None,
         "role": role, "org_id": org_id, "is_active": False, "is_blocked": False,
         "premium": False, "auth_provider": "password", "agreed_terms_at": now_iso(),
+        "agreed_terms_ip": request.client.host if request.client else None,
+        "agreed_terms_source": "register_form",
         "created_at": now_iso(),
     }
     await db.users.insert_one(doc)
+    if pending_invite:
+        await db.org_members.insert_one({
+            "id": new_id(), "org_id": org_id, "user_id": user_id,
+            "role": pending_invite["role"], "created_at": now_iso(),
+        })
+        await db.org_invites.update_one({"id": pending_invite["id"]}, {"$set": {"used": True}})
     await log_activity(org_id, user_id, "register", "user", user_id)
     await _send_verification_email(user_id, email, doc["name"], req.origin_url)
     return {"ok": True, "requires_verification": True, "email": email}
@@ -149,7 +189,10 @@ async def verify_email(req: VerifyEmailRequest):
 
 @router.post("/resend-verification")
 async def resend_verification(req: ResendVerificationRequest):
-    user = await db.users.find_one({"email": req.email.lower().strip()})
+    email = req.email.lower().strip()
+    if await _hit_rate_limit(f"resend-verification:{email}", max_attempts=3, window_minutes=60):
+        raise HTTPException(status_code=429, detail="Zu viele Anfragen. Bitte später erneut versuchen.")
+    user = await db.users.find_one({"email": email})
     if user and user.get("auth_provider") == "password" and not user.get("is_active", True):
         await _send_verification_email(user["id"], user["email"], user.get("name"), req.origin_url)
     return {"ok": True, "message": "Falls ein unbestätigtes Konto existiert, wurde die Bestätigungs-E-Mail erneut versendet."}
@@ -160,15 +203,23 @@ async def login(req: LoginRequest, request: Request):
     email = req.email.lower().strip()
     ip = request.client.host if request.client else "unknown"
     identifier = f"{ip}:{email}"
-    attempt = await db.login_attempts.find_one({"identifier": identifier})
-    if attempt and attempt.get("count", 0) >= MAX_ATTEMPTS:
+    email_identifier = f"email:{email}"
+
+    def _locked(attempt, max_attempts):
+        if not attempt or attempt.get("count", 0) < max_attempts:
+            return False
         locked_until = attempt.get("locked_until")
-        if locked_until:
-            lu = datetime.fromisoformat(locked_until) if isinstance(locked_until, str) else locked_until
-            if lu.tzinfo is None:
-                lu = lu.replace(tzinfo=timezone.utc)
-            if lu > datetime.now(timezone.utc):
-                raise HTTPException(status_code=429, detail="Zu viele Versuche. Bitte später erneut versuchen.")
+        if not locked_until:
+            return False
+        lu = datetime.fromisoformat(locked_until) if isinstance(locked_until, str) else locked_until
+        if lu.tzinfo is None:
+            lu = lu.replace(tzinfo=timezone.utc)
+        return lu > datetime.now(timezone.utc)
+
+    attempt = await db.login_attempts.find_one({"identifier": identifier})
+    email_attempt = await db.login_attempts.find_one({"identifier": email_identifier})
+    if _locked(attempt, MAX_ATTEMPTS) or _locked(email_attempt, EMAIL_MAX_ATTEMPTS):
+        raise HTTPException(status_code=429, detail="Zu viele Versuche. Bitte später erneut versuchen.")
     user = await db.users.find_one({"email": email})
     if not user or not verify_password(req.password, user.get("password_hash", "")):
         new_count = (attempt.get("count", 0) if attempt else 0) + 1
@@ -176,12 +227,19 @@ async def login(req: LoginRequest, request: Request):
         if new_count >= MAX_ATTEMPTS:
             upd["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MIN)).isoformat()
         await db.login_attempts.update_one({"identifier": identifier}, {"$set": upd}, upsert=True)
+
+        new_email_count = (email_attempt.get("count", 0) if email_attempt else 0) + 1
+        email_upd = {"count": new_email_count, "expires_at": datetime.now(timezone.utc) + timedelta(hours=24)}
+        if new_email_count >= EMAIL_MAX_ATTEMPTS:
+            email_upd["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=EMAIL_LOCKOUT_MIN)).isoformat()
+        await db.login_attempts.update_one({"identifier": email_identifier}, {"$set": email_upd}, upsert=True)
         raise HTTPException(status_code=401, detail="E-Mail oder Passwort ungültig")
     if user.get("is_blocked"):
         raise HTTPException(status_code=403, detail="Konto gesperrt")
     if user.get("auth_provider") == "password" and not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse. Prüfen Sie Ihren Posteingang.")
     await db.login_attempts.delete_one({"identifier": identifier})
+    await db.login_attempts.delete_one({"identifier": email_identifier})
     await log_activity(user.get("org_id"), user["id"], "login", "user", user["id"])
     token = create_access_token(user["id"], email)
     return {"token": token, "user": _public_user(user)}
@@ -196,17 +254,19 @@ async def me(user: dict = Depends(get_current_user)):
 async def logout(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     await db.user_sessions.delete_one({"session_token": token})
+    await revoke_token(token)
     return {"ok": True}
 
 
 @router.get("/google/login")
-async def google_login(role: str = "landlord", agreed_terms: bool = False):
+async def google_login(request: Request, role: str = "landlord", agreed_terms: bool = False):
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=500, detail="Google-Login ist nicht konfiguriert")
     state = secrets.token_urlsafe(24)
     await db.oauth_states.insert_one({
         "id": state, "role": "applicant" if role == "applicant" else "landlord",
         "agreed_terms": agreed_terms,
+        "agreed_terms_ip": request.client.host if request.client else None,
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
     })
     params = {
@@ -231,6 +291,7 @@ async def google_callback(code: Optional[str] = None, state: Optional[str] = Non
     await db.oauth_states.delete_one({"id": state})
     role = state_doc.get("role", "landlord")
     agreed_terms = state_doc.get("agreed_terms", False)
+    agreed_terms_ip = state_doc.get("agreed_terms_ip")
 
     token_resp = requests.post("https://oauth2.googleapis.com/token", data={
         "code": code, "client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET,
@@ -264,6 +325,7 @@ async def google_callback(code: Optional[str] = None, state: Optional[str] = Non
             "picture": data.get("picture"), "role": role, "org_id": org_id,
             "is_active": True, "is_blocked": False, "premium": False,
             "auth_provider": "google", "agreed_terms_at": now_iso(),
+            "agreed_terms_ip": agreed_terms_ip, "agreed_terms_source": "google_oauth",
             "created_at": now_iso(),
         }
         await db.users.insert_one(user)
@@ -275,7 +337,10 @@ async def google_callback(code: Optional[str] = None, state: Optional[str] = Non
 
 @router.post("/forgot-password")
 async def forgot_password(req: ForgotRequest):
-    user = await db.users.find_one({"email": req.email.lower().strip()})
+    email_key = req.email.lower().strip()
+    if await _hit_rate_limit(f"forgot-password:{email_key}", max_attempts=3, window_minutes=60):
+        raise HTTPException(status_code=429, detail="Zu viele Anfragen. Bitte später erneut versuchen.")
+    user = await db.users.find_one({"email": email_key})
     if user:
         token = secrets.token_urlsafe(32)
         await db.password_reset_tokens.insert_one({

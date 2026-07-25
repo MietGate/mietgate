@@ -1,4 +1,5 @@
 import os
+import uuid
 import jwt
 import bcrypt
 from datetime import datetime, timezone, timedelta
@@ -27,10 +28,30 @@ def create_access_token(user_id: str, email: str) -> str:
     payload = {
         "sub": user_id,
         "email": email,
+        "jti": uuid.uuid4().hex,
         "exp": datetime.now(timezone.utc) + timedelta(days=7),
         "type": "access",
     }
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
+
+
+async def revoke_token(token: str) -> None:
+    """Blocklist a JWT by its jti until its own expiry, so logout actually ends the session
+    instead of leaving a stateless JWT valid for up to 7 more days."""
+    try:
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM],
+                             options={"verify_exp": False})
+    except jwt.PyJWTError:
+        return
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    if not jti or not exp:
+        return
+    expires_at = datetime.fromtimestamp(exp, tz=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
+        return
+    await db.revoked_tokens.update_one(
+        {"jti": jti}, {"$set": {"jti": jti, "expires_at": expires_at}}, upsert=True)
 
 
 def _extract_token(request: Request):
@@ -48,6 +69,8 @@ async def get_current_user(request: Request) -> dict:
     # Try JWT first
     try:
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+        if payload.get("jti") and await db.revoked_tokens.find_one({"jti": payload["jti"]}):
+            raise HTTPException(status_code=401, detail="Sitzung wurde beendet. Bitte erneut anmelden.")
         user = await db.users.find_one({"id": payload["sub"]}, NO_ID)
     except jwt.PyJWTError:
         user = None

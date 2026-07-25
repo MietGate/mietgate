@@ -42,7 +42,7 @@ export default function PublicApplication() {
   const { code } = useParams();
   const [data, setData] = useState(null);
   const [partners, setPartners] = useState(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState(null); // null | "invalid" | "payment_locked"
   const [form, setForm] = useState({});
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
@@ -51,35 +51,56 @@ export default function PublicApplication() {
   const [step, setStep] = useState(0);
   const [docType, setDocType] = useState("SCHUFA");
   const [uploads, setUploads] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const fileRef = useRef();
 
   useEffect(() => {
-    axios.get(`${API}/public/property/${code}`).then((r) => setData(r.data)).catch(() => setError(true));
+    axios.get(`${API}/public/property/${code}`).then((r) => setData(r.data))
+      .catch((e) => setError(e?.response?.status === 423 ? "payment_locked" : "invalid"));
   }, [code]);
 
   const draftKey = `mg_app_draft_${code}`;
+  const DRAFT_TTL_DAYS = 14;
+  const [hasDraft, setHasDraft] = useState(false);
+  const clearDraft = () => { try { localStorage.removeItem(draftKey); } catch { /* storage unavailable */ } setHasDraft(false); };
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(draftKey);
       if (!raw) return;
       const draft = JSON.parse(raw);
+      const savedAt = draft.savedAt ? new Date(draft.savedAt) : null;
+      if (savedAt && Date.now() - savedAt.getTime() > DRAFT_TTL_DAYS * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(draftKey);
+        return;
+      }
       const hasContent = draft.email || (draft.form && Object.keys(draft.form).length > 0) || draft.step > 0;
       if (!hasContent) return;
       if (draft.form) setForm(draft.form);
       if (draft.email) setEmail(draft.email);
       if (typeof draft.step === "number") setStep(draft.step);
       if (draft.consent) setConsent(draft.consent);
-      toast.info("Ihre vorherigen Eingaben wurden wiederhergestellt.");
+      setHasDraft(true);
+      toast.info("Ihre vorherigen Eingaben wurden wiederhergestellt (lokal in diesem Browser gespeichert).");
     } catch { /* corrupted draft, ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
   useEffect(() => {
     if (done) return;
-    try { localStorage.setItem(draftKey, JSON.stringify({ form, email, step, consent })); } catch { /* storage unavailable */ }
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ form, email, step, consent, savedAt: new Date().toISOString() }));
+      if (email || Object.keys(form).length > 0) setHasDraft(true);
+    } catch { /* storage unavailable */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, email, step, consent, code]);
 
+  useEffect(() => {
+    if (done) clearDraft();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
+
+  if (error === "payment_locked") return <div className="min-h-screen flex items-center justify-center bg-background text-center p-6"><div><Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h1 className="font-display text-2xl font-bold">Bewerbung vorübergehend pausiert</h1><p className="text-muted-foreground mt-2 max-w-md">Dieser Bewerbungslink ist aktuell pausiert, da der Vermieter eine Zahlung aktualisieren muss. Ihre bisherigen Eingaben bleiben in diesem Browser gespeichert — bitte versuchen Sie es später erneut.</p></div></div>;
   if (error) return <div className="min-h-screen flex items-center justify-center bg-background text-center p-6"><div><Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h1 className="font-display text-2xl font-bold">Link nicht verfügbar</h1><p className="text-muted-foreground mt-2">Dieser Bewerbungslink ist ungültig oder wurde deaktiviert.</p></div></div>;
   if (!data) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
@@ -161,12 +182,13 @@ export default function PublicApplication() {
     if (err) { toast.error(err); if (fileRef.current) fileRef.current.value = ""; return; }
     const fd = new FormData();
     fd.append("code", code); fd.append("application_id", done.application_id); fd.append("doc_type", docType); fd.append("file", file);
+    setUploading(true);
     try {
       await axios.post(`${API}/public/documents/upload`, fd);
       setUploads([...uploads, { type: docType, name: file.name }]);
       toast.success("Dokument hochgeladen");
-    } catch (err) { toast.error(err.response?.data?.detail || "Upload fehlgeschlagen"); }
-    finally { if (fileRef.current) fileRef.current.value = ""; }
+    } catch (err) { toast.error(err.response?.data?.detail || "Upload fehlgeschlagen — bitte erneut versuchen"); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   };
 
   const b = p.branding || {};
@@ -202,12 +224,23 @@ export default function PublicApplication() {
                       <SelectContent>{DOC_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <input ref={fileRef} type="file" onChange={uploadDoc} className="hidden" accept=".pdf,.jpg,.jpeg,.png" data-testid="public-file-input" />
-                  <Button onClick={() => fileRef.current?.click()} data-testid="public-upload-btn"><Upload className="h-4 w-4 mr-1" /> Hochladen</Button>
+                  <input ref={fileRef} type="file" onChange={uploadDoc} className="hidden" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} data-testid="public-file-input" />
+                  <Button onClick={() => fileRef.current?.click()} disabled={uploading} data-testid="public-upload-btn">
+                    {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />} {uploading ? "Wird hochgeladen…" : "Hochladen"}
+                  </Button>
                 </div>
                 {uploads.map((u, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm mt-2 text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-success" /> {u.type} – {u.name}</div>
                 ))}
+              </div>
+            )}
+
+            {p.document_timing !== "before" && (
+              <div className="mt-8 text-left border-t border-border pt-6">
+                <h2 className="font-display font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Dokumente später nachreichen</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Sie können Dokumente jederzeit nachreichen: Aktivieren Sie zunächst Ihr Konto über den Link in der E-Mail, die wir Ihnen gerade geschickt haben. Loggen Sie sich anschließend ein und gehen Sie zu <b>„Meine Dokumente"</b>, um Unterlagen hochzuladen und mit dieser Bewerbung zu verknüpfen.
+                </p>
               </div>
             )}
 
@@ -333,6 +366,12 @@ export default function PublicApplication() {
                   </Button>
                 )}
               </div>
+              {hasDraft && (
+                <p className="text-center text-xs text-muted-foreground mt-4">
+                  Ihre Eingaben werden automatisch lokal in diesem Browser zwischengespeichert (max. {DRAFT_TTL_DAYS} Tage, kein gemeinsam genutztes Gerät empfohlen).{" "}
+                  <button type="button" onClick={clearDraft} className="underline hover:text-foreground">Gespeicherte Eingaben jetzt löschen</button>
+                </p>
+              )}
               {b.show_powered_by !== false && <p className="text-center text-xs text-muted-foreground mt-5">Powered by <span className="font-semibold">MietGate</span></p>}
             </form>
           </>

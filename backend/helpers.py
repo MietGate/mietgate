@@ -39,6 +39,20 @@ async def notify(user_id, ntype, title, body, link=None):
     })
 
 
+async def notify_org_team(org_id, ntype, title, body, link=None, email_subject=None, email_title=None, email_body_html=None):
+    """Notify every active team member (owner/admin/employee — assistants are read-only)
+    instead of just the org's original created_by user, so nothing gets missed when
+    multiple people manage the same properties."""
+    if not org_id:
+        return
+    members = await db.org_members.find(
+        {"org_id": org_id, "role": {"$in": ["owner", "admin", "employee"]}}, NO_ID).to_list(100)
+    for m in members:
+        await notify(m["user_id"], ntype, title, body, link)
+        if email_subject:
+            await email_user(m["user_id"], email_subject, email_title or title, email_body_html or body)
+
+
 async def get_user_org(user):
     """Returns the organization dict a user belongs to (owner or member)."""
     if user.get("org_id"):

@@ -131,7 +131,7 @@ export default function Register() {
             <div>
               <Label>Passwort</Label>
               <div className="relative mt-1.5">
-                <Input type={showPw ? "text" : "password"} required minLength={6} value={form.password} onChange={set("password")} className="pr-10" data-testid="reg-password" />
+                <Input type={showPw ? "text" : "password"} required minLength={8} value={form.password} onChange={set("password")} className="pr-10" data-testid="reg-password" />
                 <button type="button" onClick={() => setShowPw((v) => !v)} tabIndex={-1}
                   className="absolute right-0 top-0 h-full px-3 flex items-center text-muted-foreground hover:text-foreground" aria-label={showPw ? "Passwort verbergen" : "Passwort anzeigen"}>
                   {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

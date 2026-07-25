@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, UserPlus, Trash2, Loader2, Lock } from "lucide-react";
+import { Users, UserPlus, Trash2, Loader2, Lock, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", employee: "Mitarbeiter", assistant: "Assistent" };
@@ -16,6 +16,7 @@ const ROLE_LABEL = { owner: "Owner", admin: "Admin", employee: "Mitarbeiter", as
 export default function Team() {
   const { user } = useAuth();
   const [members, setMembers] = useState(null);
+  const [invites, setInvites] = useState([]);
   const [supported, setSupported] = useState(true);
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
@@ -25,6 +26,7 @@ export default function Team() {
   const load = () => {
     setError(false);
     api.get("/organization/members").then((r) => setMembers(r.data)).catch(() => setError(true));
+    api.get("/organization/invites").then((r) => setInvites(r.data)).catch(() => {});
     api.get("/subscription").then((r) => setSupported(!!r.data.supports_team)).catch(() => setSupported(false));
   };
   useEffect(() => { load(); }, []);
@@ -33,12 +35,24 @@ export default function Team() {
   const canManage = myRole === "owner" || myRole === "admin";
 
   const invite = async () => {
-    try { await api.post("/organization/members", { email, role }); toast.success("Mitglied hinzugefügt"); setOpen(false); setEmail(""); load(); }
+    try {
+      const { data } = await api.post("/organization/members", { email, role, origin_url: window.location.origin });
+      toast.success(data.pending ? "Einladung per E-Mail versendet" : "Mitglied hinzugefügt");
+      setOpen(false); setEmail(""); load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+  const cancelInvite = async (id) => {
+    try { await api.delete(`/organization/invites/${id}`); toast.success("Einladung storniert"); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
-  const remove = async (id) => {
-    if (!window.confirm("Dieses Mitglied wirklich entfernen? Der Zugriff wird sofort entzogen.")) return;
+  const remove = async (id, isSelf) => {
+    const msg = isSelf ? "Sich selbst wirklich aus dem Team entfernen? Sie verlieren sofort den Zugriff auf diese Organisation." : "Dieses Mitglied wirklich entfernen? Der Zugriff wird sofort entzogen.";
+    if (!window.confirm(msg)) return;
     try { await api.delete(`/organization/members/${id}`); toast.success("Entfernt"); load(); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+  const changeRole = async (id, newRole) => {
+    try { await api.patch(`/organization/members/${id}`, { role: newRole }); toast.success("Rolle geändert"); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
@@ -55,7 +69,7 @@ export default function Team() {
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle>Mitglied einladen</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div><Label>E-Mail des Nutzers</Label><Input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" placeholder="kollege@firma.de" data-testid="member-email" /><p className="text-xs text-muted-foreground mt-1">Der Nutzer muss bereits ein MietGate-Konto haben.</p></div>
+              <div><Label>E-Mail des Nutzers</Label><Input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" placeholder="kollege@firma.de" data-testid="member-email" /><p className="text-xs text-muted-foreground mt-1">Hat die Person noch kein MietGate-Konto, senden wir automatisch eine Einladung per E-Mail zur Registrierung.</p></div>
               <div><Label>Rolle</Label>
                 <Select value={role} onValueChange={setRole}><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="employee">Mitarbeiter</SelectItem><SelectItem value="assistant">Assistent</SelectItem></SelectContent>
@@ -86,12 +100,36 @@ export default function Team() {
               <div><p className="font-medium">{m.name}</p><p className="text-sm text-muted-foreground">{m.email}</p></div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant={m.role === "owner" ? "default" : "secondary"}>{ROLE_LABEL[m.role]}</Badge>
-              {m.role !== "owner" && canManage && <Button variant="ghost" size="icon" onClick={() => remove(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+              {m.role !== "owner" && canManage ? (
+                <Select value={m.role} onValueChange={(v) => changeRole(m.id, v)}>
+                  <SelectTrigger className="w-36 h-8" data-testid={`role-select-${m.id}`}><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="employee">Mitarbeiter</SelectItem><SelectItem value="assistant">Assistent</SelectItem></SelectContent>
+                </Select>
+              ) : (
+                <Badge variant={m.role === "owner" ? "default" : "secondary"}>{ROLE_LABEL[m.role]}</Badge>
+              )}
+              {m.role !== "owner" && canManage && <Button variant="ghost" size="icon" onClick={() => remove(m.id, m.user_id === user?.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
             </div>
           </div>
         ))}
       </div>
+
+      {invites.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-muted-foreground">Ausstehende Einladungen</h2>
+          <div className="rounded-xl border border-dashed border-border bg-card divide-y divide-border">
+            {invites.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between p-4" data-testid={`invite-${inv.id}`}>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-accent text-primary flex items-center justify-center"><Mail className="h-4 w-4" /></div>
+                  <div><p className="font-medium">{inv.email}</p><p className="text-sm text-muted-foreground">Wartet auf Registrierung — Rolle: {ROLE_LABEL[inv.role] || inv.role}</p></div>
+                </div>
+                {canManage && <Button variant="ghost" size="icon" onClick={() => cancelInvite(inv.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

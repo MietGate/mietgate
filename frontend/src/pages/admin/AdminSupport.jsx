@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import api, { formatApiError } from "@/lib/api";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, Send } from "lucide-react";
 
 const TICKET_STATUSES = ["open", "in_bearbeitung", "erledigt"];
 const TICKET_LABEL = { open: "Offen", in_bearbeitung: "In Bearbeitung", erledigt: "Erledigt" };
@@ -14,6 +16,8 @@ export default function AdminSupport() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [replyDrafts, setReplyDrafts] = useState({});
+  const [sending, setSending] = useState({});
 
   const load = () => {
     setError(false);
@@ -25,9 +29,22 @@ export default function AdminSupport() {
 
   const setStatus = async (tid, status) => {
     try {
-      await api.patch(`/admin/support-tickets/${tid}`, null, { params: { status } });
+      await api.patch(`/admin/support-tickets/${tid}`, { status });
       setTickets(tickets.map((t) => (t.id === tid ? { ...t, status } : t)));
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+
+  const sendReply = async (tid) => {
+    const message = (replyDrafts[tid] || "").trim();
+    if (!message) return;
+    setSending({ ...sending, [tid]: true });
+    try {
+      const { data } = await api.post(`/admin/support-tickets/${tid}/reply`, { message });
+      setTickets(tickets.map((t) => (t.id === tid ? { ...t, replies: [...(t.replies || []), data], status: "in_bearbeitung" } : t)));
+      setReplyDrafts({ ...replyDrafts, [tid]: "" });
+      toast.success("Antwort gesendet");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSending({ ...sending, [tid]: false }); }
   };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -50,6 +67,23 @@ export default function AdminSupport() {
                 </Select>
               </div>
               <p className="text-sm text-muted-foreground mt-1">{t.message}</p>
+              {t.replies?.length > 0 && (
+                <div className="mt-3 space-y-2 border-t border-border pt-3">
+                  {t.replies.map((r) => (
+                    <div key={r.id} className="text-sm bg-secondary/40 rounded-md p-2">
+                      <p className="whitespace-pre-wrap">{r.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{r.sent_by} · {new Date(r.created_at).toLocaleString("de-DE")}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-end gap-2 mt-3">
+                <Textarea rows={2} value={replyDrafts[t.id] || ""} onChange={(e) => setReplyDrafts({ ...replyDrafts, [t.id]: e.target.value })}
+                  placeholder="Antwort verfassen…" className="flex-1" data-testid={`reply-text-${t.id}`} />
+                <Button size="sm" onClick={() => sendReply(t.id)} disabled={sending[t.id] || !(replyDrafts[t.id] || "").trim()} data-testid={`reply-send-${t.id}`}>
+                  {sending[t.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           ))}
         </TabsContent>

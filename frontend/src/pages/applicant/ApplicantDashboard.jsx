@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Inbox, FileText, PartyPopper, ExternalLink, Zap, Wifi, Truck, Sparkles, ShieldCheck, Crown, Check } from "lucide-react";
 
@@ -22,11 +24,13 @@ const PREMIUM_PERKS = [
 function PremiumCard() {
   const { user, refresh } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
 
   const buyPremium = async () => {
+    if (!withdrawalConsent) return;
     setLoading(true);
     try {
-      const { data } = await api.post("/premium/checkout", { origin_url: window.location.origin });
+      const { data } = await api.post("/premium/checkout", { origin_url: window.location.origin, withdrawal_consent: withdrawalConsent });
       window.location.href = data.checkout_url;
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
@@ -58,7 +62,7 @@ function PremiumCard() {
             <p className="text-muted-foreground text-sm mt-0.5">Erhöhen Sie Ihre Chancen auf die Wunschwohnung – für nur <span className="font-semibold text-foreground">4,99 €/Monat</span>.</p>
           </div>
         </div>
-        <Button onClick={buyPremium} disabled={loading} data-testid="buy-premium-btn" className="bg-amber-500 hover:bg-amber-600 text-white">
+        <Button onClick={buyPremium} disabled={loading || !withdrawalConsent} data-testid="buy-premium-btn" className="bg-amber-500 hover:bg-amber-600 text-white">
           {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Crown className="h-4 w-4 mr-2" />} Premium holen
         </Button>
       </div>
@@ -69,7 +73,14 @@ function PremiumCard() {
           </div>
         ))}
       </div>
-      <p className="text-[11px] text-muted-foreground mt-4">Monatlich kündbar. Wird sicher über Stripe abgewickelt.</p>
+      <label className="flex items-start gap-2 mt-4 text-xs text-muted-foreground cursor-pointer" data-testid="premium-withdrawal-consent-label">
+        <Checkbox checked={withdrawalConsent} onCheckedChange={setWithdrawalConsent} className="mt-0.5" data-testid="premium-withdrawal-consent-checkbox" />
+        <span>
+          Ich stimme zu, dass die Leistung sofort beginnt, und nehme zur Kenntnis, dass ich dadurch mein{" "}
+          <Link to="/widerruf" target="_blank" rel="noreferrer" className="text-primary hover:underline">Widerrufsrecht</Link> mit vollständiger Vertragserfüllung verliere.
+        </span>
+      </label>
+      <p className="text-[11px] text-muted-foreground mt-3">Monatlich kündbar. Wird sicher über Stripe abgewickelt.</p>
     </div>
   );
 }

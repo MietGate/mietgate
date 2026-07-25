@@ -83,7 +83,10 @@ export default function AdminPlans() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-display font-bold text-lg">Pakete</h2>
+          <div>
+            <h2 className="font-display font-bold text-lg">Pakete</h2>
+            <p className="text-xs text-amber-600 mt-1 max-w-md">⚠ Preise hier ändern nur die Anzeige. Der tatsächliche Stripe-Preis (Lookup-Key) ändert sich dadurch NICHT — für eine echte Preisänderung müssen Sie einen neuen Stripe-Preis anlegen und den Lookup-Key hier eintragen.</p>
+          </div>
           <Dialog open={newPlanOpen} onOpenChange={setNewPlanOpen}>
             <DialogTrigger asChild><Button variant="outline" data-testid="new-plan"><Plus className="h-4 w-4 mr-1" /> Neues Paket</Button></DialogTrigger>
             <DialogContent className="max-w-md">

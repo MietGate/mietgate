@@ -166,7 +166,7 @@ async def _mark_paid(session_id, subscription, payment_intent):
                 "status": sub_status, "interval": tx.get("interval"),
                 "stripe_subscription_id": subscription,
                 "stripe_customer_id": customer_id,
-                "cancel_at_period_end": False,
+                "cancel_at_period_end": False, "payment_failure_count": 0,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }}, upsert=True,
         )
@@ -260,17 +260,30 @@ async def handle_invoice_payment_failed(invoice_obj):
     sub = await db.subscriptions.find_one({"stripe_subscription_id": sub_id}, NO_ID)
     if not sub:
         return
+    failure_count = sub.get("payment_failure_count", 0) + 1
     await db.subscriptions.update_one(
         {"stripe_subscription_id": sub_id},
-        {"$set": {"status": "past_due", "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {"status": "past_due", "payment_failure_count": failure_count,
+                  "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
-    await _lock_org_links(sub.get("org_id"))
     owner_id = await _org_owner_user_id(sub.get("org_id"))
+    if failure_count < 2:
+        # Give Stripe's own automatic retry a chance before locking anything —
+        # a single transient card decline shouldn't cut off live applications/viewings.
+        if owner_id:
+            await notify(owner_id, "payment_failed_warning", "Zahlung fehlgeschlagen",
+                         "Ihre Zahlung ist fehlgeschlagen. Wir versuchen es automatisch erneut — bitte prüfen Sie Ihre Zahlungsmethode, um eine Sperre zu vermeiden.", "/abo")
+            await _email_user(owner_id, "Zahlung fehlgeschlagen — wir versuchen es erneut", "Ihre Zahlung ist fehlgeschlagen",
+                              "<p>Wir konnten die Zahlung für Ihr MietGate-Abo nicht abbuchen. Stripe versucht die Abbuchung "
+                              "automatisch erneut. Ihr Bewerbungslink ist aktuell noch nicht gesperrt — bitte aktualisieren Sie "
+                              "vorsorglich Ihre Zahlungsmethode, um eine Sperre bei einem erneuten Fehlschlag zu vermeiden.</p>")
+        return
+    await _lock_org_links(sub.get("org_id"))
     if owner_id:
         await notify(owner_id, "payment_failed", "Zahlung fehlgeschlagen",
                      "Ihre Zahlung ist fehlgeschlagen — Ihr Bewerbungslink wurde deaktiviert. Bitte aktualisieren Sie Ihre Zahlungsmethode, um weiter Bewerbungen zu erhalten.", "/abo")
         await _email_user(owner_id, "Zahlung fehlgeschlagen", "Ihre Zahlung ist fehlgeschlagen",
-                          "<p>Wir konnten die Zahlung für Ihr MietGate-Abo nicht abbuchen. Ihr Bewerbungslink wurde "
+                          "<p>Wir konnten die Zahlung für Ihr MietGate-Abo auch im zweiten Versuch nicht abbuchen. Ihr Bewerbungslink wurde "
                           "deshalb deaktiviert und Ihre Bewerber-Ansicht gesperrt, Ihre Daten bleiben aber erhalten. "
                           "Bitte aktualisieren Sie Ihre Zahlungsmethode, damit Ihr Zugriff sofort wiederhergestellt wird.</p>")
 
@@ -285,7 +298,8 @@ async def handle_invoice_payment_succeeded(invoice_obj):
         return
     await db.subscriptions.update_one(
         {"stripe_subscription_id": sub_id},
-        {"$set": {"status": "active", "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {"status": "active", "payment_failure_count": 0,
+                  "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
     await _unlock_org_links(sub.get("org_id"))
     owner_id = await _org_owner_user_id(sub.get("org_id"))

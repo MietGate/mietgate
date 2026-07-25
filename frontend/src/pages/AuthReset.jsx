@@ -48,7 +48,7 @@ export default function AuthReset() {
           <h1 className="font-display text-2xl font-bold">{isActivate ? "Konto aktivieren" : "Neues Passwort"}</h1>
           <p className="text-muted-foreground mt-1 mb-6 text-sm">{isActivate ? "Vergeben Sie ein Passwort, um Ihr Bewerberkonto zu aktivieren." : "Wählen Sie ein neues Passwort."}</p>
           <form onSubmit={submit} className="space-y-4">
-            <div><Label>Passwort</Label><Input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5" data-testid="reset-password" /></div>
+            <div><Label>Passwort</Label><Input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5" data-testid="reset-password" /></div>
             <div><Label>Passwort bestätigen</Label><Input type="password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} className="mt-1.5" data-testid="reset-confirm" /></div>
             <Button type="submit" className="w-full" disabled={loading} data-testid="reset-submit">
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} {isActivate ? "Aktivieren" : "Passwort speichern"}

@@ -1,9 +1,11 @@
 import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
+from starlette.concurrency import run_in_threadpool
 from database import db, NO_ID
 from helpers import notify, log_activity
 from email_service import send_email
+from storage import delete_object
 
 logger = logging.getLogger("mietgate.maintenance")
 
@@ -71,6 +73,13 @@ async def run_gdpr_cleanup():
         elif status not in ("zusage",) and created < inactive_cut:
             remove = True
         if remove:
+            docs = await db.documents.find({"application_id": app["id"]}, NO_ID).to_list(500)
+            for d in docs:
+                if d.get("storage_path"):
+                    try:
+                        await run_in_threadpool(delete_object, d["storage_path"])
+                    except Exception as e:
+                        logger.error(f"Failed to delete storage object {d['storage_path']}: {e}")
             await db.documents.delete_many({"application_id": app["id"]})
             await db.messages.delete_many({"application_id": app["id"]})
             await db.applications.delete_one({"id": app["id"]})

@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Check } from "lucide-react";
 
-export function PricingSection({ onSelect, ctaLabel = "Auswählen" }) {
+export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = false, requireWithdrawalConsent = true }) {
   const [plans, setPlans] = useState([]);
   const [yearly, setYearly] = useState(false);
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
+  const consentOk = !requireWithdrawalConsent || withdrawalConsent;
+
+  const select = (plan, interval) => {
+    if (plan.key !== "enterprise" && !consentOk) return;
+    onSelect?.(plan, interval, withdrawalConsent);
+  };
 
   useEffect(() => { api.get("/plans").then((r) => setPlans(r.data)).catch(() => {}); }, []);
   const main = plans.filter((p) => !p.is_addon);
@@ -30,6 +39,15 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen" }) {
         <Switch checked={yearly} onCheckedChange={setYearly} data-testid="pricing-toggle" />
         <span className={`text-sm ${yearly ? "font-semibold text-foreground" : "text-muted-foreground"}`}>Jährlich <Badge variant="secondary" className="ml-1 text-success">−20%</Badge></span>
       </div>
+      {requireWithdrawalConsent && (
+        <label className="flex items-start gap-2.5 max-w-xl mx-auto mb-8 text-sm text-muted-foreground cursor-pointer" data-testid="withdrawal-consent-label">
+          <Checkbox checked={withdrawalConsent} onCheckedChange={setWithdrawalConsent} className="mt-0.5" data-testid="withdrawal-consent-checkbox" />
+          <span>
+            Ich stimme ausdrücklich zu, dass MietGate mit der Ausführung der kostenpflichtigen Leistung vor Ablauf der Widerrufsfrist beginnt, und nehme zur Kenntnis, dass ich dadurch mein{" "}
+            <Link to="/widerruf" target="_blank" rel="noreferrer" className="text-primary hover:underline">Widerrufsrecht</Link> mit vollständiger Vertragserfüllung verliere.
+          </span>
+        </label>
+      )}
       <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {main.map((p, i) => (
           <motion.div key={p.key} data-testid={`plan-${p.key}`}
@@ -64,8 +82,8 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen" }) {
                 )
               ))}
             </ul>
-            <Button className="mt-7 w-full" variant={p.highlight ? "default" : "outline"}
-              onClick={() => onSelect?.(p, yearly ? "yearly" : "monthly")} data-testid={`select-${p.key}`}>
+            <Button className="mt-7 w-full" variant={p.highlight ? "default" : "outline"} disabled={disabled || !consentOk}
+              onClick={() => select(p, yearly ? "yearly" : "monthly")} data-testid={`select-${p.key}`}>
               {ctaLabel}
             </Button>
           </motion.div>
@@ -78,7 +96,7 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen" }) {
               <h4 className="font-display font-bold flex items-center gap-2">{addon.name}</h4>
               <p className="text-sm text-muted-foreground mt-1">Eigenes Branding, Logo & Farben · <span className="font-mono">{priceOf(addon).toFixed(2)}€/{yearly ? "Jahr" : "Monat"}</span></p>
             </div>
-            <Button variant="outline" onClick={() => onSelect?.(addon, yearly ? "yearly" : "monthly")} data-testid="select-whitelabel">Hinzubuchen</Button>
+            <Button variant="outline" disabled={!consentOk} onClick={() => select(addon, yearly ? "yearly" : "monthly")} data-testid="select-whitelabel">Hinzubuchen</Button>
           </div>
         )}
         <div className="rounded-2xl border border-border p-6 bg-brand-dark text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">

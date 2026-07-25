@@ -1,14 +1,15 @@
 import random
 import string
 import uuid
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Response, Request
 from starlette.concurrency import run_in_threadpool
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict, Any
 from database import db, NO_ID
 from security import get_current_user
 from helpers import new_id, now_iso, log_activity, get_plan_limit, active_property_count, plan_supports_team
-from storage import put_object, get_object, get_object_ranged, guess_mime, APP_NAME
+from storage import put_object, get_object, get_object_ranged, delete_object, guess_mime, APP_NAME
 from constants import FORM_FIELDS, DEFAULT_FORM_CONFIG, DOCUMENT_TYPES
 import stripe_service
 
@@ -47,11 +48,33 @@ class PropertyPayload(BaseModel):
     form_config: Optional[Dict[str, str]] = None
     status: str = "active"
 
+    @field_validator("area", "rooms", "cold_rent", "extra_costs", "warm_rent", "deposit")
+    @classmethod
+    def _non_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Wert darf nicht negativ sein")
+        return v
+
+    @field_validator("bathrooms")
+    @classmethod
+    def _non_negative_int(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Wert darf nicht negativ sein")
+        return v
+
 
 async def _require_org(user):
     if not user.get("org_id"):
         raise HTTPException(status_code=403, detail="Kein Vermieterkonto / keine Organisation")
     return user["org_id"]
+
+
+async def _require_manage_role(org_id, user, roles=("owner", "admin", "employee")):
+    """Assistants have read-only access; only owner/admin/employee may modify property data,
+    trigger payments, or delete media."""
+    member = await db.org_members.find_one({"org_id": org_id, "user_id": user["id"]})
+    if not member or member["role"] not in roles:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
 
 
 @router.get("/form-fields")
@@ -112,6 +135,7 @@ async def update_property(pid: str, payload: PropertyPayload, user: dict = Depen
     prop = await db.properties.find_one({"id": pid})
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    await _require_manage_role(prop["org_id"], user)
     upd = payload.model_dump(exclude_none=False)
     if payload.form_config is None:
         upd.pop("form_config", None)
@@ -125,9 +149,27 @@ async def delete_property(pid: str, user: dict = Depends(get_current_user)):
     prop = await db.properties.find_one({"id": pid})
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
-    member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
-    if member and member["role"] not in ("owner", "admin"):
-        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    await _require_manage_role(prop["org_id"], user, roles=("owner", "admin"))
+
+    for img in prop.get("images", []):
+        if img.get("storage_path"):
+            try:
+                await run_in_threadpool(delete_object, img["storage_path"])
+            except Exception:
+                pass
+
+    docs = await db.documents.find({"property_id": pid}, NO_ID).to_list(1000)
+    for d in docs:
+        if d.get("storage_path"):
+            try:
+                await run_in_threadpool(delete_object, d["storage_path"])
+            except Exception:
+                pass
+    await db.documents.delete_many({"property_id": pid})
+    await db.messages.delete_many({"property_id": pid})
+    await db.viewings.delete_many({"property_id": pid})
+    await db.applications.delete_many({"property_id": pid})
+
     await db.properties.delete_one({"id": pid})
     await log_activity(prop["org_id"], user["id"], "delete", "property", pid)
     return {"ok": True}
@@ -152,6 +194,7 @@ async def toggle_link(pid: str, user: dict = Depends(get_current_user)):
     prop = await db.properties.find_one({"id": pid})
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    await _require_manage_role(prop["org_id"], user)
     if not prop.get("link_active"):
         raise HTTPException(status_code=400,
                             detail="Link ist bereits deaktiviert. Nutzen Sie 'Aktivieren', um ihn freizuschalten.")
@@ -163,13 +206,15 @@ class ActivateLinkRequest(BaseModel):
     plan_key: Optional[str] = None
     interval: str = "monthly"
     origin_url: Optional[str] = None
+    withdrawal_consent: bool = False
 
 
 @router.post("/properties/{pid}/link/activate")
-async def activate_link(pid: str, body: ActivateLinkRequest, user: dict = Depends(get_current_user)):
+async def activate_link(pid: str, body: ActivateLinkRequest, request: Request, user: dict = Depends(get_current_user)):
     prop = await db.properties.find_one({"id": pid})
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    await _require_manage_role(prop["org_id"], user, roles=("owner", "admin"))
     if prop.get("link_active"):
         prop.pop("_id", None)
         return {"activated": True, "property": prop}
@@ -191,10 +236,24 @@ async def activate_link(pid: str, body: ActivateLinkRequest, user: dict = Depend
     # No active/trialing subscription yet: first activation always starts a 3-day trial checkout.
     if not body.plan_key or not body.origin_url:
         return {"needs_payment": True}
+    if not body.withdrawal_consent:
+        raise HTTPException(status_code=400,
+            detail="Bitte bestätigen Sie, dass die Leistung sofort beginnt und Sie Ihr Widerrufsrecht damit verlieren.")
     plan = await db.plans.find_one({"key": body.plan_key}, NO_ID)
     if not plan:
         raise HTTPException(status_code=404, detail="Paket nicht gefunden")
     lookup_key = plan["yearly_lookup"] if body.interval == "yearly" else plan["monthly_lookup"]
+
+    # Guard against double-click / repeated requests creating multiple parallel checkout
+    # sessions: atomically claim a short-lived lock on the property before calling Stripe.
+    now = datetime.now(timezone.utc)
+    locked = await db.properties.find_one_and_update(
+        {"id": pid, "$or": [{"checkout_lock_until": None}, {"checkout_lock_until": {"$exists": False}},
+                            {"checkout_lock_until": {"$lt": now.isoformat()}}]},
+        {"$set": {"checkout_lock_until": (now + timedelta(seconds=15)).isoformat()}},
+    )
+    if not locked:
+        raise HTTPException(status_code=429, detail="Checkout wird bereits verarbeitet. Bitte einen Moment warten.")
     try:
         session, price = stripe_service.create_checkout_session(
             lookup_key, body.origin_url, user["id"], org_id,
@@ -208,6 +267,8 @@ async def activate_link(pid: str, body: ActivateLinkRequest, user: dict = Depend
         "currency": price.currency, "status": "initiated", "payment_status": "pending",
         "purpose": "link_activation", "property_id": pid,
         "created_at": now_iso(), "updated_at": now_iso(),
+        "withdrawal_consent_at": now_iso(),
+        "withdrawal_consent_ip": request.client.host if request.client else None,
     })
     return {"checkout_url": session.url, "session_id": session.id}
 
@@ -223,6 +284,7 @@ async def _owned_property(pid, user):
 @router.post("/properties/{pid}/images")
 async def add_property_image(pid: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     prop = await _owned_property(pid, user)
+    await _require_manage_role(prop["org_id"], user)
     data = await file.read()
     if len(data) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Bild zu groß (max. 10 MB)")
@@ -244,7 +306,14 @@ async def add_property_image(pid: str, file: UploadFile = File(...), user: dict 
 @router.delete("/properties/{pid}/images/{img_id}")
 async def delete_property_image(pid: str, img_id: str, user: dict = Depends(get_current_user)):
     prop = await _owned_property(pid, user)
+    await _require_manage_role(prop["org_id"], user)
+    removed = next((i for i in prop.get("images", []) if i["id"] == img_id), None)
     images = [i for i in prop.get("images", []) if i["id"] != img_id]
+    if removed and removed.get("storage_path"):
+        try:
+            await run_in_threadpool(delete_object, removed["storage_path"])
+        except Exception:
+            pass
     upd = {"images": images}
     if prop.get("title_image_id") == img_id:
         upd["title_image_id"] = images[0]["id"] if images else None

@@ -34,6 +34,9 @@ async def _store_document(file: UploadFile, doc_type, applicant_user_id, applica
     return rec
 
 
+MAX_DOCS_PER_APPLICATION = 30
+
+
 @router.post("/public/documents/upload")
 async def public_upload(code: str = Form(...), application_id: str = Form(...),
                         doc_type: str = Form("Sonstiges"), file: UploadFile = File(...)):
@@ -43,6 +46,10 @@ async def public_upload(code: str = Form(...), application_id: str = Form(...),
     prop = await db.properties.find_one({"id": app["property_id"]})
     if not prop or prop.get("application_code") != code:
         raise HTTPException(status_code=403, detail="Nicht autorisiert")
+    existing = await db.documents.count_documents(
+        {"application_id": application_id, "is_deleted": False})
+    if existing >= MAX_DOCS_PER_APPLICATION:
+        raise HTTPException(status_code=400, detail="Maximale Anzahl Dokumente für diese Bewerbung erreicht")
     return await _store_document(file, doc_type, app["applicant_user_id"],
                                  application_id, app["org_id"], app["property_id"])
 
@@ -56,6 +63,8 @@ async def upload_document(doc_type: str = Form("Sonstiges"),
     if application_id:
         app = await db.applications.find_one({"id": application_id})
         if app:
+            if app["applicant_user_id"] != user["id"]:
+                raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Bewerbung")
             org_id, property_id = app["org_id"], app["property_id"]
     rec = await _store_document(file, doc_type, user["id"], application_id, org_id, property_id)
     if org_id:

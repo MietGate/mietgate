@@ -15,19 +15,27 @@ class CheckoutRequest(BaseModel):
     plan_key: str
     interval: str = "monthly"  # monthly | yearly
     origin_url: str
+    withdrawal_consent: bool = False
 
 
 @router.post("/payments/checkout")
-async def create_checkout(req: CheckoutRequest, user: dict = Depends(get_current_user)):
+async def create_checkout(req: CheckoutRequest, request: Request, user: dict = Depends(get_current_user)):
     if not user.get("org_id"):
         raise HTTPException(status_code=403, detail="Keine Organisation")
+    if not req.withdrawal_consent:
+        raise HTTPException(status_code=400,
+            detail="Bitte bestätigen Sie, dass die Leistung sofort beginnt und Sie Ihr Widerrufsrecht damit verlieren.")
+    existing_sub = await db.subscriptions.find_one({"org_id": user["org_id"]}, NO_ID)
+    if existing_sub and existing_sub.get("status") in ("active", "trialing"):
+        raise HTTPException(status_code=400,
+                            detail="Sie haben bereits ein aktives Abo. Bitte verwalten Sie es über das Abo-Portal.")
     plan = await db.plans.find_one({"key": req.plan_key}, NO_ID)
     if not plan:
         raise HTTPException(status_code=404, detail="Paket nicht gefunden")
     lookup_key = plan["yearly_lookup"] if req.interval == "yearly" else plan["monthly_lookup"]
     try:
         session, price = stripe_service.create_checkout_session(
-            lookup_key, req.origin_url, user["id"], user["org_id"])
+            lookup_key, req.origin_url, user["id"], user["org_id"], trial_days=3)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Checkout fehlgeschlagen: {e}")
     await db.payment_transactions.insert_one({
@@ -36,18 +44,24 @@ async def create_checkout(req: CheckoutRequest, user: dict = Depends(get_current
         "lookup_key": lookup_key, "amount": (price.unit_amount or 0) / 100,
         "currency": price.currency, "status": "initiated", "payment_status": "pending",
         "purpose": "subscription", "created_at": now_iso(), "updated_at": now_iso(),
+        "withdrawal_consent_at": now_iso(),
+        "withdrawal_consent_ip": request.client.host if request.client else None,
     })
     return {"checkout_url": session.url, "session_id": session.id}
 
 
 class PremiumCheckout(BaseModel):
     origin_url: str
+    withdrawal_consent: bool = False
 
 
 @router.post("/premium/checkout")
-async def premium_checkout(req: PremiumCheckout, user: dict = Depends(get_current_user)):
+async def premium_checkout(req: PremiumCheckout, request: Request, user: dict = Depends(get_current_user)):
     if user.get("premium"):
         raise HTTPException(status_code=400, detail="Premium ist bereits aktiv")
+    if not req.withdrawal_consent:
+        raise HTTPException(status_code=400,
+            detail="Bitte bestätigen Sie, dass die Leistung sofort beginnt und Sie Ihr Widerrufsrecht damit verlieren.")
     try:
         session, price = stripe_service.create_checkout_session(
             "applicant_premium_monthly", req.origin_url, user["id"], None, purpose="premium")
@@ -59,6 +73,8 @@ async def premium_checkout(req: PremiumCheckout, user: dict = Depends(get_curren
         "amount": (price.unit_amount or 0) / 100, "currency": price.currency,
         "status": "initiated", "payment_status": "pending", "purpose": "premium",
         "created_at": now_iso(), "updated_at": now_iso(),
+        "withdrawal_consent_at": now_iso(),
+        "withdrawal_consent_ip": request.client.host if request.client else None,
     })
     return {"checkout_url": session.url, "session_id": session.id}
 
@@ -80,6 +96,18 @@ async def stripe_webhook(request: Request):
         event = stripe.Webhook.construct_event(payload, sig, stripe_service.STRIPE_WEBHOOK_SECRET)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid signature")
+
+    # Stripe retries webhook delivery; checkout.session.completed is already idempotent via
+    # _mark_paid's conditional update, but the other handlers below send emails/notifications
+    # on every call, so dedupe by event.id to avoid spamming customers on a retry storm.
+    already_processed = await db.processed_webhook_events.find_one({"event_id": event["id"]})
+    if already_processed:
+        return {"status": "ok"}
+    await db.processed_webhook_events.update_one(
+        {"event_id": event["id"]},
+        {"$set": {"event_id": event["id"], "type": event["type"], "created_at": now_iso()}},
+        upsert=True)
+
     obj, t = event["data"]["object"], event["type"]
     if t in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
         await stripe_service._mark_paid(obj["id"], obj.get("subscription"), obj.get("payment_intent"))
@@ -122,7 +150,7 @@ async def cancel_subscription(user: dict = Depends(get_current_user)):
     if not sub or not sub.get("stripe_subscription_id"):
         raise HTTPException(status_code=404, detail="Kein aktives Abo")
     member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
-    if member and member["role"] not in ("owner", "admin"):
+    if not member or member["role"] not in ("owner", "admin"):
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
     try:
         stripe.Subscription.modify(sub["stripe_subscription_id"], cancel_at_period_end=True)
