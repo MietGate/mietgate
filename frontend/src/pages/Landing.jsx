@@ -142,23 +142,23 @@ function ExplainerVideoPlayer() {
       </video>
       {!playing && (
         <button type="button" onClick={() => videoRef.current?.play()} aria-label="Video abspielen"
-          className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-gradient-to-t from-black/70 via-black/15 to-black/10 hover:from-black/75 transition-colors cursor-pointer">
-          <span className="absolute top-5 left-5 inline-flex items-center gap-1.5 text-xs font-semibold bg-white/95 text-brand-dark px-3 py-1.5 rounded-full shadow-lg">
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 sm:gap-5 bg-gradient-to-t from-black/70 via-black/15 to-black/10 hover:from-black/75 transition-colors cursor-pointer">
+          <span className="absolute top-3 left-3 sm:top-5 sm:left-5 inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold bg-white/95 text-brand-dark px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-lg">
             <Play className="h-3 w-3 fill-current" /> 2 Min. Video
           </span>
 
-          <span className="relative h-24 w-24 sm:h-28 sm:w-28 flex items-center justify-center">
+          <span className="relative h-14 w-14 sm:h-28 sm:w-28 flex items-center justify-center">
             <span className="absolute inset-0 rounded-full bg-primary/70 animate-ping-ring" />
             <span className="absolute inset-0 rounded-full bg-primary/70 animate-ping-ring" style={{ animationDelay: "0.7s" }} />
             <span className="absolute inset-0 rounded-full bg-primary/70 animate-ping-ring" style={{ animationDelay: "1.4s" }} />
             <span className="relative h-full w-full rounded-full bg-white flex items-center justify-center shadow-2xl transition-transform duration-300 group-hover:scale-110">
-              <Play className="h-10 w-10 sm:h-12 sm:w-12 text-primary fill-primary ml-1.5" />
+              <Play className="h-6 w-6 sm:h-12 sm:w-12 text-primary fill-primary ml-1" />
             </span>
           </span>
 
-          <span className="text-center px-6">
-            <span className="block text-white font-display font-semibold text-lg sm:text-xl drop-shadow-lg">Warum Vermieter jetzt wechseln</span>
-            <span className="block text-white/70 text-sm mt-1">In 2 Minuten sehen Sie, was Ihnen bisher Stunden gekostet hat.</span>
+          <span className="text-center px-4 sm:px-6">
+            <span className="block text-white font-display font-semibold text-sm sm:text-xl drop-shadow-lg">Warum Vermieter jetzt wechseln</span>
+            <span className="hidden sm:block text-white/70 text-sm mt-1">In 2 Minuten sehen Sie, was Ihnen bisher Stunden gekostet hat.</span>
           </span>
         </button>
       )}
