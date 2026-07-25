@@ -86,6 +86,15 @@ def _parse_total(content_range):
     return int(total) if total.isdigit() else None
 
 
+def delete_object(path: str) -> None:
+    client = init_storage()
+    try:
+        client.delete_object(Bucket=R2_BUCKET_NAME, Key=path)
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") not in ("NoSuchKey", "404"):
+            raise
+
+
 def guess_mime(filename: str) -> str:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
     return MIME_TYPES.get(ext, "application/octet-stream")

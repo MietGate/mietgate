@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import api, { API, formatApiError } from "@/lib/api";
+import api, { formatApiError } from "@/lib/api";
+import { validateFile } from "@/lib/validateFile";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,12 +49,24 @@ export default function Settings() {
   };
   const setWL = (patch) => setOrg({ ...org, white_label: { ...(org.white_label || {}), ...patch } });
   const logoRef = useRef();
+  const [logoPreview, setLogoPreview] = useState(null);
+  useEffect(() => {
+    const logoId = org?.white_label?.logo;
+    if (!logoId) { setLogoPreview(null); return; }
+    let url;
+    api.get(`/documents/${logoId}/download`, { responseType: "blob" }).then((r) => {
+      url = URL.createObjectURL(r.data); setLogoPreview(url);
+    }).catch(() => setLogoPreview(null));
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [org?.white_label?.logo]);
   const uploadLogo = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const err = validateFile(file, { maxMB: 15, extensions: ["png", "jpg", "jpeg", "webp"] });
+    if (err) { toast.error(err); if (logoRef.current) logoRef.current.value = ""; return; }
     const fd = new FormData(); fd.append("file", file);
     try { const { data } = await api.post("/uploads/image", fd); setWL({ logo: data.id }); toast.success("Logo hochgeladen (Speichern nicht vergessen)"); }
-    catch { toast.error("Upload fehlgeschlagen"); }
+    catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { if (logoRef.current) logoRef.current.value = ""; }
   };
 
@@ -127,7 +140,7 @@ export default function Settings() {
                   <div>
                     <Label>Logo</Label>
                     <div className="flex items-center gap-3 mt-1.5">
-                      {org.white_label?.logo && <img src={`${API}/documents/${org.white_label.logo}/download?auth=${localStorage.getItem("mg_token")}`} alt="Logo" className="h-10 rounded border border-border bg-white p-1" />}
+                      {logoPreview && <img src={logoPreview} alt="Logo" className="h-10 rounded border border-border bg-white p-1" />}
                       <input ref={logoRef} type="file" accept=".png,.jpg,.jpeg,.webp" onChange={uploadLogo} className="hidden" data-testid="wl-logo-input" />
                       <Button type="button" variant="outline" size="sm" onClick={() => logoRef.current?.click()} data-testid="wl-logo-upload">Logo hochladen</Button>
                     </div>

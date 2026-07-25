@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import api, { API } from "@/lib/api";
+import api, { openDocument } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +31,6 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   const [viewings, setViewings] = useState([]);
   const [selViewing, setSelViewing] = useState("");
   const msgEndRef = useRef(null);
-  const token = localStorage.getItem("mg_token");
 
   const load = useCallback(async () => {
     if (!appId) return;
@@ -134,11 +133,11 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
                 <div className="mt-2 space-y-2">
                   {(!app.documents || app.documents.length === 0) && <p className="text-sm text-muted-foreground">Keine Dokumente hochgeladen.</p>}
                   {app.documents?.map((d) => (
-                    <a key={d.id} href={`${API}/documents/${d.id}/download?auth=${token}`} target="_blank" rel="noreferrer"
-                      className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary transition-colors" data-testid={`doc-${d.id}`}>
+                    <button key={d.id} onClick={() => openDocument(d.id, d.original_filename).catch(() => toast.error("Download fehlgeschlagen"))}
+                      className="w-full flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary transition-colors" data-testid={`doc-${d.id}`}>
                       <span className="flex items-center gap-2 truncate"><FileText className="h-4 w-4 text-primary" /> <span className="truncate">{d.doc_type}</span></span>
                       <Download className="h-4 w-4 text-muted-foreground" />
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>

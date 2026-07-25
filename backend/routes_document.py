@@ -1,11 +1,11 @@
 import uuid
 from fastapi import (APIRouter, HTTPException, Depends, UploadFile, File, Form,
-                     Query, Header, Response)
+                     Header, Response)
 from starlette.concurrency import run_in_threadpool
 from typing import Optional
 from database import db, NO_ID
 from security import get_current_user, resolve_user_by_token
-from storage import put_object, get_object, guess_mime, APP_NAME
+from storage import put_object, get_object, delete_object, guess_mime, APP_NAME
 from helpers import new_id, now_iso, log_activity, notify
 from constants import DOCUMENT_TYPES
 
@@ -82,13 +82,8 @@ async def list_documents(application_id: Optional[str] = None, user: dict = Depe
 
 
 @router.get("/documents/{doc_id}/download")
-async def download_document(doc_id: str, authorization: Optional[str] = Header(None),
-                            auth: Optional[str] = Query(None)):
-    token = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-    elif auth:
-        token = auth
+async def download_document(doc_id: str, authorization: Optional[str] = Header(None)):
+    token = authorization[7:] if authorization and authorization.startswith("Bearer ") else None
     user = await resolve_user_by_token(token)
     if not user:
         raise HTTPException(status_code=401, detail="Nicht authentifiziert")
@@ -112,7 +107,27 @@ async def delete_document(doc_id: str, user: dict = Depends(get_current_user)):
     rec = await db.documents.find_one({"id": doc_id})
     if not rec or rec.get("applicant_user_id") != user["id"]:
         raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
-    await db.documents.update_one({"id": doc_id}, {"$set": {"is_deleted": True}})
+    await run_in_threadpool(delete_object, rec["storage_path"])
+    await db.documents.update_one({"id": doc_id}, {"$set": {"is_deleted": True, "storage_path": None}})
+    return {"ok": True}
+
+
+@router.post("/documents/{doc_id}/attach")
+async def attach_document(doc_id: str, application_id: str = Form(...),
+                          user: dict = Depends(get_current_user)):
+    rec = await db.documents.find_one({"id": doc_id})
+    if not rec or rec.get("applicant_user_id") != user["id"]:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+    app = await db.applications.find_one({"id": application_id})
+    if not app or app.get("applicant_user_id") != user["id"]:
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    await db.documents.update_one({"id": doc_id}, {"$set": {
+        "application_id": application_id, "org_id": app["org_id"], "property_id": app["property_id"],
+    }})
+    prop = await db.properties.find_one({"id": app["property_id"]}, NO_ID)
+    if prop:
+        await notify(prop.get("created_by"), "new_document", "Neues Dokument",
+                     f"Ein Bewerber hat ein Dokument verknüpft ({rec.get('doc_type', 'Sonstiges')}).", f"/objekte/{app['property_id']}")
     return {"ok": True}
 
 
@@ -135,6 +150,8 @@ async def request_documents(application_id: str = Form(...), message: str = Form
 @router.post("/uploads/image")
 async def upload_image(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     data = await file.read()
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Datei zu groß (max. 15 MB)")
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "png"
     path = f"{APP_NAME}/images/{user['id']}/{uuid.uuid4()}.{ext}"
     content_type = file.content_type or guess_mime(file.filename)

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
+import { validateFile } from "@/lib/validateFile";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
 
@@ -156,13 +157,15 @@ export default function PublicApplication() {
   const uploadDoc = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !done) return;
+    const err = validateFile(file, { maxMB: 15, extensions: ["pdf", "jpg", "jpeg", "png"] });
+    if (err) { toast.error(err); if (fileRef.current) fileRef.current.value = ""; return; }
     const fd = new FormData();
     fd.append("code", code); fd.append("application_id", done.application_id); fd.append("doc_type", docType); fd.append("file", file);
     try {
       await axios.post(`${API}/public/documents/upload`, fd);
       setUploads([...uploads, { type: docType, name: file.name }]);
       toast.success("Dokument hochgeladen");
-    } catch { toast.error("Upload fehlgeschlagen"); }
+    } catch (err) { toast.error(err.response?.data?.detail || "Upload fehlgeschlagen"); }
     finally { if (fileRef.current) fileRef.current.value = ""; }
   };
 
