@@ -87,8 +87,8 @@ Nummerierung dient der Ansprache ("mach Nummer X") — keine feste Chronologie.
 ### 21. ✅ teilweise erledigt (2026-07-25) — Impressum: Adresse + Steuernummer aktualisiert
 `frontend/src/pages/LegalPages.jsx` — Hamburg-Adresse + Steuernummer 43/027/06145 hinzugefügt, Gesellschaftsform vereinfacht auf "BORK Solutions". Verbleibender organisatorischer Schritt: Handelsregistereintragung vor/unmittelbar nach Launch abschließen, dann HR-Nummer nachtragen (derzeit i. Gr.).
 
-### 22. ✅ erledigt (2026-07-25) — Widerrufsrecht bei digitalen Leistungen rechtlich angreifbar
-Die Widerrufsbelehrung (`LegalPages.jsx:236`) behauptet, die "aktive Buchung" stelle die nach § 356 Abs. 5 BGB nötige ausdrückliche Zustimmung zum vorzeitigen Vertragsbeginn + Kenntnisnahme vom Widerrufsverlust dar — aber im Checkout-Flow selbst (Pricing/PricingSection, Stripe-Checkout) gibt es **keine separate Checkbox/aktiven Bestätigungsakt** unmittelbar vor dem Kauf. Ohne aktiven Bestätigungsakt erlischt das Widerrufsrecht nach BGH-Linie womöglich nicht — Kunden könnten auch nach Nutzung noch widerrufen. **Juristisch prüfen lassen**, ggf. Checkbox vor Checkout ergänzen.
+### 22. ✅ erledigt (2026-07-25) — Widerrufsrecht: Checkbox im Checkout-Flow implementiert
+`PricingSection.jsx:42-50` — separate Checkbox vor dem Kauf mit expliziter Zustimmung zum Widerrufsverlust (`withdrawal_consent` wird an Backend gesendet). Erfüllt § 356 Abs. 5 BGB. Rechtliche Prüfung noch empfohlen, aber Code-Seite ist vollständig.
 
 ### 23. ✅ erledigt (2026-07-25) — DSGVO-Löschung: physische Dateien im Object Storage nicht sicher gelöscht (mehrere Fundstellen)
 - `backend/routes_property.py` — `delete_property` und `delete_property_image` löschen nur DB-Einträge, rufen nirgends `storage.delete_object` für R2 auf. Verwaiste Bewerberdokumente/Objektfotos bleiben dauerhaft gespeichert.
@@ -211,11 +211,14 @@ Nirgends geroutet (nur `Landing.jsx` wird verwendet). Vor Launch entfernen oder 
 
 ---
 
-## Empfohlene Reihenfolge
+## Status vor Go-Live
 
-1. **Zuerst A + B (Sicherheit + Payment)** — betreffen Geld und Zugriffsrechte, am schwersten nachträglich zu reparieren.
-2. **Dann C (Recht/DSGVO)** — Punkt 21 und 22 sollten möglichst parallel mit einem Anwalt/Steuerberater geklärt werden, da das keine reinen Code-Fixes sind.
-3. **Dann D + E + F** je nachdem, welcher Nutzerkreis zuerst live geht (Bewerber-Flow ist die Konversionsseite — hohe Priorität).
-4. **G und H** bei Gelegenheit, kein Launch-Hindernis.
+**Alle 🔴 Blocker und 🟡 Wichtig-Punkte sind Code-seitig erledigt!**
 
-Sag mir einfach die Nummer(n), und wir legen los.
+Verbleibende offene Punkte:
+- **Punkt 13** (🔴 Config-Checkliste): Reine Deployment/Env-Aufgabe — vor Prod-Deployment durchgehen
+- **Punkt 21** (🟡 Organisatorisch): HR-Eintragung + Nachtrag der HR-Nummer (mit Steuerberater/Rechtsanwalt)
+
+**Alle D/E/F-Punkte** (Bewerber/Vermieter/Admin-Flow, UX) sind ebenfalls Code-technisch abgehakt.
+
+Die restlichen 🟢 Nice-to-haves (Spam-Schutz, Audit-Logs, tote Dateien etc.) können Post-Launch erfolgen.
