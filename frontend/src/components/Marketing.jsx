@@ -3,7 +3,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X, Send, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -39,9 +39,18 @@ function NewsletterForm() {
 export function MarketingNav() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const dest = user ? (user.role === "applicant" ? "/bewerber" : user.role === "admin" ? "/admin" : "/dashboard") : "/login";
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border/60">
+    <header className={`sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b transition-shadow duration-300 ${scrolled ? "border-border/60 shadow-sm" : "border-transparent"}`}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/"><Logo /></Link>
         <nav className="hidden md:flex items-center gap-7 text-sm font-medium">

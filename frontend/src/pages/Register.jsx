@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Building2, User, MailCheck } from "lucide-react";
+import { Loader2, Building2, User, MailCheck, Check, ShieldCheck, Eye, EyeOff } from "lucide-react";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -20,7 +20,15 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [sentTo, setSentTo] = useState(null);
   const [agreed, setAgreed] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [shake, setShake] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const nudgeAgree = () => {
+    toast.error("Bitte akzeptieren Sie die AGB und Datenschutzerklärung.");
+    setShake(true);
+    setTimeout(() => setShake(false), 400);
+  };
 
   useEffect(() => {
     if (params.get("error") === "terms_required") {
@@ -30,7 +38,7 @@ export default function Register() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!agreed) { toast.error("Bitte akzeptieren Sie die AGB und Datenschutzerklärung."); return; }
+    if (!agreed) { nudgeAgree(); return; }
     setLoading(true);
     try {
       const { data } = await api.post("/auth/register", { ...form, role, origin_url: window.location.origin, agreed_terms: agreed });
@@ -50,22 +58,37 @@ export default function Register() {
   };
 
   const googleLogin = () => {
-    if (!agreed) { toast.error("Bitte akzeptieren Sie die AGB und Datenschutzerklärung."); return; }
+    if (!agreed) { nudgeAgree(); return; }
     window.location.href = `${process.env.REACT_APP_BACKEND_URL}/api/auth/google/login?role=${role}&agreed_terms=true`;
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col justify-between bg-brand-dark text-white p-12">
-        <Link to="/"><Logo textClass="text-white" className="h-9 bg-white rounded-md p-1" /></Link>
-        <div>
+    <div className="h-screen grid lg:grid-cols-2">
+      <div className="hidden lg:flex flex-col justify-between bg-brand-dark text-white p-12 relative overflow-hidden">
+        <div className="absolute top-[-140px] left-1/2 -translate-x-1/2 h-[380px] w-[560px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(closest-side, hsl(var(--brand-teal) / 0.25), transparent 70%)", filter: "blur(36px)" }} aria-hidden="true" />
+        <Link to="/" className="relative"><Logo textClass="text-white" className="h-9 bg-white rounded-md p-1" /></Link>
+        <div className="relative">
           <h2 className="font-display text-4xl font-extrabold leading-tight">In 2 Minuten startklar.</h2>
           <p className="mt-4 text-white/70 max-w-md">Erstellen Sie Ihr erstes Objekt, teilen Sie den Bewerbungslink und erhalten Sie strukturierte Bewerbungen.</p>
+          <ul className="mt-8 space-y-3">
+            {[
+              "Kostenlos starten – keine Kreditkarte nötig",
+              "Zahlung erst bei Veröffentlichung Ihres Links",
+              "DSGVO-konform · Hosting in der EU",
+              "Jederzeit kündbar",
+            ].map((t, i) => (
+              <li key={i} className="flex items-center gap-2.5 text-sm text-white/85">
+                <span className="h-5 w-5 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0"><Check className="h-3 w-3" /></span>
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
-        <p className="text-white/40 text-sm">© 2026 MietGate.de</p>
+        <p className="relative text-white/40 text-sm flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> © 2026 MietGate.de</p>
       </div>
-      <div className="flex items-center justify-center p-6 lg:p-12 bg-background overflow-y-auto">
-        <div className="w-full max-w-sm py-8">
+      <div className="h-screen flex items-start justify-center p-6 lg:p-12 bg-background overflow-y-auto">
+        <div className="w-full max-w-sm py-2">
           <div className="lg:hidden mb-8"><Logo /></div>
           {sentTo ? (
             <div data-testid="verify-sent">
@@ -80,15 +103,15 @@ export default function Register() {
             </div>
           ) : (
           <>
-          <h1 className="font-display text-3xl font-bold">Konto erstellen</h1>
-          <p className="text-muted-foreground mt-1 mb-6 text-sm">Kostenlos starten. Zahlungsmethode erst bei Veröffentlichung des Bewerbungslinks nötig.</p>
+          <h1 className="font-display text-2xl font-bold">Konto erstellen</h1>
+          <p className="text-muted-foreground mt-1 mb-4 text-sm">Kostenlos starten. Zahlungsmethode erst bei Veröffentlichung des Bewerbungslinks nötig.</p>
           {planIntent && planIntent !== "starter" && (
-            <div className="mb-6 rounded-lg border border-primary/30 bg-accent/50 px-4 py-3 text-sm" data-testid="plan-intent-banner">
+            <div className="mb-4 rounded-lg border border-primary/30 bg-accent/50 px-4 py-3 text-sm" data-testid="plan-intent-banner">
               Gewähltes Paket: <span className="font-semibold capitalize">{planIntent}</span> · Nach der Registrierung schließen Sie die Buchung ab.
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2 mb-6">
+          <div className="grid grid-cols-2 gap-2 mb-4">
             <button type="button" onClick={() => setRole("landlord")} data-testid="role-landlord"
               className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-sm transition-colors ${role === "landlord" ? "border-primary bg-accent" : "border-border hover:border-primary/40"}`}>
               <Building2 className="h-5 w-5 text-primary" /> Vermieter
@@ -105,7 +128,16 @@ export default function Register() {
               <div><Label>Nachname</Label><Input required value={form.last_name} onChange={set("last_name")} className="mt-1.5" data-testid="reg-lastname" /></div>
             </div>
             <div><Label>E-Mail</Label><Input type="email" required value={form.email} onChange={set("email")} className="mt-1.5" data-testid="reg-email" /></div>
-            <div><Label>Passwort</Label><Input type="password" required minLength={6} value={form.password} onChange={set("password")} className="mt-1.5" data-testid="reg-password" /></div>
+            <div>
+              <Label>Passwort</Label>
+              <div className="relative mt-1.5">
+                <Input type={showPw ? "text" : "password"} required minLength={6} value={form.password} onChange={set("password")} className="pr-10" data-testid="reg-password" />
+                <button type="button" onClick={() => setShowPw((v) => !v)} tabIndex={-1}
+                  className="absolute right-0 top-0 h-full px-3 flex items-center text-muted-foreground hover:text-foreground" aria-label={showPw ? "Passwort verbergen" : "Passwort anzeigen"}>
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
             {role === "landlord" && (
               <>
                 <div><Label>Organisation / Firma (optional)</Label>
@@ -123,7 +155,8 @@ export default function Register() {
                 </div>
               </>
             )}
-            <label className="flex items-start gap-2 text-xs text-muted-foreground pt-1">
+
+            <label className={`flex items-start gap-2 text-xs text-muted-foreground pt-1 ${shake ? "animate-shake" : ""}`}>
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
                 className="mt-0.5" data-testid="reg-agree" />
               <span>
@@ -131,20 +164,20 @@ export default function Register() {
                 <Link to="/datenschutz" target="_blank" className="text-primary hover:underline">Datenschutzerklärung</Link>.
               </span>
             </label>
-            <Button type="submit" className="w-full" disabled={loading || !agreed} data-testid="reg-submit">
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Konto erstellen
+
+            <Button type="submit" className="w-full" disabled={loading} data-testid="reg-submit">
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Kostenlos registrieren
             </Button>
           </form>
-          <div className="relative my-5">
+          <div className="relative my-4">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
             <div className="relative flex justify-center text-xs"><span className="bg-background px-2 text-muted-foreground">oder</span></div>
           </div>
-          <Button variant="outline" className="w-full" onClick={googleLogin} disabled={!agreed} data-testid="reg-google">
+          <Button variant="outline" className="w-full" onClick={googleLogin} data-testid="reg-google">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="h-4 w-4 mr-2" />
             Mit Google registrieren
           </Button>
-          {!agreed && <p className="text-center text-xs text-muted-foreground mt-2">Bitte akzeptieren Sie zuerst die AGB und Datenschutzerklärung.</p>}
-          <p className="text-center text-sm text-muted-foreground mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-5">
             Bereits registriert? <Link to="/login" className="text-primary font-medium hover:underline">Anmelden</Link>
           </p>
           </>
