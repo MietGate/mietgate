@@ -1,4 +1,5 @@
 import "@/App.css";
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -37,6 +38,15 @@ import AdminPartners from "@/pages/admin/AdminPartners";
 import AdminLeads from "@/pages/admin/AdminLeads";
 import AdminSupport from "@/pages/admin/AdminSupport";
 import NotFound from "@/pages/NotFound";
+
+function ScrollToTop() {
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    if (hash) return;
+    window.scrollTo(0, 0);
+  }, [pathname, hash]);
+  return null;
+}
 
 function AppRouter() {
   const location = useLocation();
@@ -110,6 +120,7 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
+        <ScrollToTop />
         <AppRouter />
         <CookieConsent />
       </BrowserRouter>
