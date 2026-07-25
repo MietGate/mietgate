@@ -36,57 +36,11 @@ const newWay = [
   "Matching-Score & Pipeline für klare Entscheidungen",
 ];
 
-/* Mini software tiles: tiny UI vignettes in app styling, icon-sized */
-function TileForm() {
-  return (
-    <div className="h-14 w-14 rounded-xl border border-border bg-card shadow-sm p-2 flex flex-col justify-between">
-      <div className="h-1.5 rounded-full bg-secondary w-full" />
-      <div className="h-1.5 rounded-full bg-secondary w-3/4" />
-      <div className="h-2 rounded-sm bg-primary/20 border border-primary/40 w-2/3" />
-      <div className="h-1.5 rounded-full bg-secondary w-full" />
-    </div>
-  );
-}
-function TilePipeline() {
-  return (
-    <div className="h-14 w-14 rounded-xl border border-border bg-card shadow-sm p-1.5 grid grid-cols-3 gap-1">
-      {[2, 1, 1].map((n, i) => (
-        <div key={i} className="rounded-[3px] bg-secondary/70 p-0.5 flex flex-col gap-0.5">
-          {Array.from({ length: n }).map((_, k) => (
-            <div key={k} className={`h-2 rounded-[2px] ${i === 2 ? "bg-primary/70" : "bg-card border border-border"}`} />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-function TileCalendar() {
-  return (
-    <div className="h-14 w-14 rounded-xl border border-border bg-card shadow-sm p-2 flex flex-col gap-1">
-      <div className="h-1.5 rounded-full bg-secondary w-1/2" />
-      <div className="grid grid-cols-3 gap-1 flex-1">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className={`rounded-[3px] ${i === 4 ? "bg-primary" : "bg-secondary/80"}`} />
-        ))}
-      </div>
-    </div>
-  );
-}
-function TileDocs() {
-  return (
-    <div className="h-14 w-14 rounded-xl border border-border bg-card shadow-sm p-2 flex flex-col justify-center gap-1.5 relative">
-      <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-[2px] bg-primary/50 shrink-0" /><span className="h-1.5 rounded-full bg-secondary flex-1" /></div>
-      <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-[2px] bg-primary/50 shrink-0" /><span className="h-1.5 rounded-full bg-secondary flex-1" /></div>
-      <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-success text-white flex items-center justify-center ring-2 ring-card"><Lock className="h-2.5 w-2.5" /></span>
-    </div>
-  );
-}
-
 const benefits = [
-  { tile: TileForm, title: "Strukturierte Bewerbungen", desc: "Vollständig und vergleichbar – ohne E-Mail-Chaos." },
-  { tile: TilePipeline, title: "Übersichtliche Pipeline", desc: "Jeder Bewerber im Blick, von Eingang bis Zusage." },
-  { tile: TileCalendar, title: "Besichtigungen organisiert", desc: "Termine planen, einladen, bestätigen lassen." },
-  { tile: TileDocs, title: "Sichere Dokumente", desc: "Verschlüsselt, DSGVO-konform, nur für Sie." },
+  { img: "/img/screenshot-form.png", title: "Strukturierte Bewerbungen", desc: "Vollständig und vergleichbar – ohne E-Mail-Chaos." },
+  { img: "/img/screenshot-pipeline.png", title: "Übersichtliche Pipeline", desc: "Jeder Bewerber im Blick, von Eingang bis Zusage." },
+  { img: "/img/screenshot-calendar.png", title: "Besichtigungen organisiert", desc: "Termine planen, einladen, bestätigen lassen." },
+  { img: "/img/screenshot-docs.png", title: "Sichere Dokumente", desc: "Verschlüsselt, DSGVO-konform, nur für Sie." },
 ];
 
 const steps = [
@@ -276,10 +230,16 @@ export default function Landing() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
             {benefits.map((b, i) => (
               <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }}
-                className="rounded-xl border border-border bg-card p-6 hover:-translate-y-1 hover:shadow-md hover:border-primary/40 transition-all group">
-                <div className="inline-block transition-transform group-hover:scale-110"><b.tile /></div>
-                <h3 className="font-display font-semibold text-lg mt-4 text-brand-dark">{b.title}</h3>
-                <p className="text-muted-foreground text-sm mt-2">{b.desc}</p>
+                className="rounded-xl border border-border bg-card overflow-hidden hover:-translate-y-1 hover:shadow-md hover:border-primary/40 transition-all group">
+                <div className="aspect-[4/3] overflow-hidden bg-secondary/40 border-b border-border">
+                  <img src={b.img} alt={b.title} loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    style={{ objectPosition: "left top" }} />
+                </div>
+                <div className="p-6">
+                  <h3 className="font-display font-semibold text-lg text-brand-dark">{b.title}</h3>
+                  <p className="text-muted-foreground text-sm mt-2">{b.desc}</p>
+                </div>
               </motion.div>
             ))}
           </div>
