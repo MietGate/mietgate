@@ -22,7 +22,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (window.location.hash?.includes("session_id=")) { setLoading(false); return; }
+    if (window.location.hash?.includes("token=")) { setLoading(false); return; }
     loadUser();
   }, [loadUser]);
 

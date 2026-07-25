@@ -39,7 +39,7 @@ import AdminSupport from "@/pages/admin/AdminSupport";
 
 function AppRouter() {
   const location = useLocation();
-  if (location.hash?.includes("session_id=")) return <AuthCallback />;
+  if (location.hash?.includes("token=")) return <AuthCallback />;
 
   return (
     <Routes>
@@ -84,8 +84,8 @@ function AppRouter() {
         <Route path="/bewerber/termine" element={<ApplicantViewings />} />
       </Route>
 
-      {/* Shared settings (landlord + applicant) */}
-      <Route element={<ProtectedRoute roles={["landlord", "applicant"]}><DashboardShell /></ProtectedRoute>}>
+      {/* Shared settings (landlord + applicant + admin) */}
+      <Route element={<ProtectedRoute roles={["landlord", "applicant", "admin"]}><DashboardShell /></ProtectedRoute>}>
         <Route path="/einstellungen" element={<Settings />} />
       </Route>
 

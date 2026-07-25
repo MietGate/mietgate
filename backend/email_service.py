@@ -4,9 +4,9 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-EMAIL_BASE_URL = "https://integrations.emergentagent.com"
-EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY")
-EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "MietGate")
+RESEND_API_URL = "https://api.resend.com/emails"
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+EMAIL_FROM = os.environ.get("EMAIL_FROM", "MietGate <onboarding@resend.dev>")
 
 
 def _wrap(title: str, body_html: str) -> str:
@@ -31,20 +31,20 @@ def _wrap(title: str, body_html: str) -> str:
 
 
 async def send_email(to_email: str, subject: str, title: str, body_html: str):
-    if not EMAIL_KEY:
-        logger.warning("EMERGENT_EMAIL_KEY not set, skipping email")
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not set, skipping email")
         return
     payload = {
+        "from": EMAIL_FROM,
         "to": [to_email],
         "subject": subject,
         "html": _wrap(title, body_html),
-        "from_name": EMAIL_FROM_NAME,
     }
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
-                f"{EMAIL_BASE_URL}/api/v1/email/send",
-                headers={"X-Email-Key": EMAIL_KEY},
+                RESEND_API_URL,
+                headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
                 json=payload,
             )
         resp.raise_for_status()

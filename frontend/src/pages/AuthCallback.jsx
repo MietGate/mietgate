@@ -13,17 +13,18 @@ export function AuthCallback() {
     if (processed.current) return;
     processed.current = true;
     const hash = window.location.hash;
-    const match = hash.match(/session_id=([^&]+)/);
-    const sessionId = match ? decodeURIComponent(match[1]) : null;
-    const role = localStorage.getItem("mg_oauth_role") || "landlord";
+    const match = hash.match(/token=([^&]+)/);
+    const token = match ? decodeURIComponent(match[1]) : null;
     (async () => {
+      if (!token) { navigate("/login", { replace: true }); return; }
       try {
-        const { data } = await api.post("/auth/google/session", { session_id: sessionId, role });
-        login(data.token, data.user);
-        localStorage.removeItem("mg_oauth_role");
+        localStorage.setItem("mg_token", token);
+        const { data: user } = await api.get("/auth/me");
+        login(token, user);
         window.history.replaceState(null, "", "/");
-        navigate(data.user.role === "applicant" ? "/bewerber" : data.user.role === "admin" ? "/admin" : "/dashboard", { replace: true });
+        navigate(user.role === "applicant" ? "/bewerber" : user.role === "admin" ? "/admin" : "/dashboard", { replace: true });
       } catch {
+        localStorage.removeItem("mg_token");
         navigate("/login", { replace: true });
       }
     })();

@@ -36,6 +36,7 @@ const adminNav = [
   { to: "/admin/partner", label: "Partner-Links", icon: Link2 },
   { to: "/admin/leads", label: "Leads & CRM", icon: Contact },
   { to: "/admin/support", label: "Support & Logs", icon: ShieldCheck },
+  { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 
 function NotificationBell() {
@@ -107,7 +108,7 @@ export function DashboardShell() {
       <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-[248px] bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="h-16 flex items-center px-5 border-b border-white/10">
           <Link to="/" className="flex items-center gap-2">
-            <img src="https://customer-assets-jai6qajn.emergentagent.net/job_property-manager-373/artifacts/o3ek6ie3_mietgate_logo_symbol%20%281%29.png" alt="MietGate" className="h-8 bg-white rounded-md p-0.5" />
+            <img src="/mietgate-logo.png" alt="MietGate" className="h-8 bg-white rounded-md p-0.5" />
             <span className="font-display font-extrabold text-lg">MietGate</span>
           </Link>
         </div>

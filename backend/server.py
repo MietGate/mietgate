@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 load_dotenv(Path(__file__).parent / ".env")
 
+import os
 import logging
 import asyncio
 from fastapi import FastAPI
@@ -38,9 +39,11 @@ for module in (routes_auth, routes_core, routes_property, routes_application,
                routes_document, routes_viewing, routes_message, routes_payment, routes_admin):
     app.include_router(module.router)
 
+cors_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=".*",
+    **({"allow_origins": cors_origins} if cors_origins else {"allow_origin_regex": ".*"}),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

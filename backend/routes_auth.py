@@ -3,6 +3,7 @@ import secrets
 import requests
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from database import db, NO_ID
@@ -13,6 +14,11 @@ from email_service import send_email
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 MAX_ATTEMPTS = 5
 LOCKOUT_MIN = 15
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/auth/google/callback")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 
 
 class RegisterRequest(BaseModel):
@@ -189,46 +195,73 @@ async def logout(request: Request):
     return {"ok": True}
 
 
-@router.post("/google/session")
-async def google_session(request: Request):
-    body = await request.json()
-    session_id = body.get("session_id")
-    role = body.get("role", "landlord")
-    if not session_id:
-        raise HTTPException(status_code=400, detail="session_id fehlt")
-    resp = requests.get(
-        "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-        headers={"X-Session-ID": session_id}, timeout=30,
-    )
-    if resp.status_code != 200:
-        raise HTTPException(status_code=401, detail="Google-Sitzung ungültig")
-    data = resp.json()
+@router.get("/google/login")
+async def google_login(role: str = "landlord"):
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="Google-Login ist nicht konfiguriert")
+    state = secrets.token_urlsafe(24)
+    await db.oauth_states.insert_one({
+        "id": state, "role": "applicant" if role == "applicant" else "landlord",
+        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
+    })
+    params = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "prompt": "select_account",
+    }
+    query = "&".join(f"{k}={requests.utils.quote(v)}" for k, v in params.items())
+    return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{query}")
+
+
+@router.get("/google/callback")
+async def google_callback(code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
+    if error or not code or not state:
+        return RedirectResponse(f"{FRONTEND_URL}/login?error=google_auth_failed")
+    state_doc = await db.oauth_states.find_one({"id": state})
+    if not state_doc:
+        return RedirectResponse(f"{FRONTEND_URL}/login?error=google_auth_failed")
+    await db.oauth_states.delete_one({"id": state})
+    role = state_doc.get("role", "landlord")
+
+    token_resp = requests.post("https://oauth2.googleapis.com/token", data={
+        "code": code, "client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": GOOGLE_REDIRECT_URI, "grant_type": "authorization_code",
+    }, timeout=30)
+    if token_resp.status_code != 200:
+        return RedirectResponse(f"{FRONTEND_URL}/login?error=google_auth_failed")
+    access_token = token_resp.json().get("access_token")
+
+    info_resp = requests.get("https://www.googleapis.com/oauth2/v3/userinfo",
+                             headers={"Authorization": f"Bearer {access_token}"}, timeout=30)
+    if info_resp.status_code != 200:
+        return RedirectResponse(f"{FRONTEND_URL}/login?error=google_auth_failed")
+    data = info_resp.json()
+
     email = data["email"].lower().strip()
     user = await db.users.find_one({"email": email})
     if not user:
         user_id = new_id()
-        parts = (data.get("name") or "").split(" ", 1)
-        first = parts[0] if parts else ""
-        last = parts[1] if len(parts) > 1 else ""
-        r = "applicant" if role == "applicant" else "landlord"
+        first = data.get("given_name") or ""
+        last = data.get("family_name") or ""
+        name = data.get("name") or f"{first} {last}".strip() or email
         org_id = None
-        if r == "landlord":
-            org_id = await _create_org_for_user(user_id, data.get("name") or email, "private", data.get("name"))
+        if role == "landlord":
+            org_id = await _create_org_for_user(user_id, name, "private", name)
         user = {
-            "id": user_id, "email": email, "name": data.get("name"),
+            "id": user_id, "email": email, "name": name,
             "first_name": first, "last_name": last, "phone": None,
-            "picture": data.get("picture"), "role": r, "org_id": org_id,
+            "picture": data.get("picture"), "role": role, "org_id": org_id,
             "is_active": True, "is_blocked": False, "premium": False,
             "auth_provider": "google", "created_at": now_iso(),
         }
         await db.users.insert_one(user)
-    session_token = data.get("session_token") or secrets.token_urlsafe(32)
-    await db.user_sessions.insert_one({
-        "id": new_id(), "user_id": user["id"], "session_token": session_token,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
-        "created_at": now_iso(),
-    })
-    return {"token": session_token, "user": _public_user(user)}
+
+    await log_activity(user.get("org_id"), user["id"], "login", "user", user["id"])
+    jwt_token = create_access_token(user["id"], user["email"])
+    return RedirectResponse(f"{FRONTEND_URL}/#token={jwt_token}")
 
 
 @router.post("/forgot-password")

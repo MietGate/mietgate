@@ -6,32 +6,32 @@ from database import db
 from email_service import send_email
 
 logger = logging.getLogger(__name__)
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY") or "sk_test_emergent"
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
 # EUR, cents. Germany -> SMP eligible (tax_mode "full")
 CATALOG = [
-    {"emergent_product_id": "mietgate_starter", "name": "MietGate Starter", "tax_code": "txcd_10103001",
+    {"mietgate_product_id": "mietgate_starter", "name": "MietGate Starter", "tax_code": "txcd_10103001",
      "prices": [
          {"lookup_key": "starter_monthly", "amount": 1499, "currency": "eur", "interval": "month"},
          {"lookup_key": "starter_yearly", "amount": 14390, "currency": "eur", "interval": "year"},
      ]},
-    {"emergent_product_id": "mietgate_plus", "name": "MietGate Plus", "tax_code": "txcd_10103001",
+    {"mietgate_product_id": "mietgate_plus", "name": "MietGate Plus", "tax_code": "txcd_10103001",
      "prices": [
          {"lookup_key": "plus_monthly", "amount": 2999, "currency": "eur", "interval": "month"},
          {"lookup_key": "plus_yearly", "amount": 26990, "currency": "eur", "interval": "year"},
      ]},
-    {"emergent_product_id": "mietgate_makler", "name": "MietGate Makler", "tax_code": "txcd_10103001",
+    {"mietgate_product_id": "mietgate_makler", "name": "MietGate Makler", "tax_code": "txcd_10103001",
      "prices": [
          {"lookup_key": "makler_monthly", "amount": 9900, "currency": "eur", "interval": "month"},
          {"lookup_key": "makler_yearly", "amount": 89100, "currency": "eur", "interval": "year"},
      ]},
-    {"emergent_product_id": "mietgate_whitelabel", "name": "MietGate White-Label", "tax_code": "txcd_10103001",
+    {"mietgate_product_id": "mietgate_whitelabel", "name": "MietGate White-Label", "tax_code": "txcd_10103001",
      "prices": [
          {"lookup_key": "whitelabel_monthly", "amount": 7900, "currency": "eur", "interval": "month"},
          {"lookup_key": "whitelabel_yearly", "amount": 75800, "currency": "eur", "interval": "year"},
      ]},
-    {"emergent_product_id": "mietgate_premium", "name": "MietGate Bewerber-Premium", "tax_code": "txcd_10103001",
+    {"mietgate_product_id": "mietgate_premium", "name": "MietGate Bewerber-Premium", "tax_code": "txcd_10103001",
      "prices": [
          {"lookup_key": "applicant_premium_monthly", "amount": 499, "currency": "eur", "interval": "month"},
      ]},
@@ -40,11 +40,11 @@ CATALOG = [
 
 def get_or_create_product(entry):
     for p in stripe.Product.list(active=True).auto_paging_iter():
-        if p.to_dict().get("metadata", {}).get("emergent_product_id") == entry["emergent_product_id"]:
+        if p.to_dict().get("metadata", {}).get("mietgate_product_id") == entry["mietgate_product_id"]:
             return p
     return stripe.Product.create(
         name=entry["name"], tax_code=entry.get("tax_code"),
-        metadata={"managed_by": "emergent", "emergent_product_id": entry["emergent_product_id"]},
+        metadata={"managed_by": "mietgate", "mietgate_product_id": entry["mietgate_product_id"]},
     )
 
 

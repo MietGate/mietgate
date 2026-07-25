@@ -111,8 +111,7 @@ export function Datenschutz() {
       <Sec title="6. Empfänger und Auftragsverarbeiter">
         <p>Zur Erbringung unserer Leistungen setzen wir sorgfältig ausgewählte Dienstleister ein, mit denen – soweit erforderlich – Auftragsverarbeitungsverträge nach Art. 28 DSGVO bestehen:</p>
         <List items={[
-          "Hosting & Infrastruktur: Betrieb der Anwendung sowie Server- und Datenbankinfrastruktur (MongoDB) innerhalb der Europäischen Union.",
-          "Objektspeicher / Dokumenten-Speicher (S3-kompatibel): sichere, verschlüsselte Ablage hochgeladener Dokumente innerhalb der Europäischen Union.",
+          "Hosting & Infrastruktur: Betrieb der Anwendung sowie Server-, Datenbank- (MongoDB) und Dokumentenspeicher-Infrastruktur innerhalb der Europäischen Union.",
           "Stripe (Stripe Payments Europe, Ltd., Irland): Abwicklung von Zahlungen und Abonnements.",
           "Resend: Versand transaktionaler E-Mails wie Konto-Aktivierung, Benachrichtigungen und Passwort-Zurücksetzung.",
           "Google (Google Ireland Ltd.): optionale Anmeldung per Google-Login (OAuth), sofern Sie diese Funktion nutzen.",
