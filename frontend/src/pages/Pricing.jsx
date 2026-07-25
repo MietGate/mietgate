@@ -4,8 +4,14 @@ import { PricingSection } from "@/components/PricingSection";
 import { useAuth } from "@/context/AuthContext";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
+import { useSEO } from "@/lib/seo";
 
 export default function Pricing() {
+  useSEO({
+    title: "Preise",
+    description: "Faire, transparente Preise für Vermieter, Makler und Hausverwaltungen. Kostenlos starten, zahlen erst bei Veröffentlichung Ihres Bewerbungslinks.",
+    path: "/preise",
+  });
   const { user } = useAuth();
   const navigate = useNavigate();
 

@@ -1,11 +1,9 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
+import { useSEO } from "@/lib/seo";
 
-function LegalShell({ title, subtitle, children }) {
-  useEffect(() => {
-    document.title = `${title} · MietGate`;
-  }, [title]);
+function LegalShell({ title, subtitle, path, children }) {
+  useSEO({ title, description: subtitle, path });
   return (
     <div className="bg-background min-h-screen">
       <MarketingNav />
@@ -28,7 +26,7 @@ const List = ({ items }) => (
 
 export function Impressum() {
   return (
-    <LegalShell title="Impressum" subtitle="Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz)">
+    <LegalShell title="Impressum" path="/impressum" subtitle="Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz)">
       <Sec title="Anbieter">
         <p>MietGate ist ein Projekt von<br />
         <strong>BORK Solutions</strong><br />
@@ -65,7 +63,7 @@ export function Impressum() {
 
 export function Datenschutz() {
   return (
-    <LegalShell title="Datenschutzerklärung" subtitle="Informationen zur Verarbeitung personenbezogener Daten gemäß DSGVO">
+    <LegalShell title="Datenschutzerklärung" path="/datenschutz" subtitle="Informationen zur Verarbeitung personenbezogener Daten gemäß DSGVO">
       <Sec title="1. Verantwortlicher">
         <p>Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:</p>
         <p>BORK Solutions<br />Pestalozzistraße 25, 22305 Hamburg, Deutschland<br />Inhaber: Henry Bork<br />E-Mail: support@mietgate.de</p>
@@ -153,7 +151,7 @@ export function Datenschutz() {
 
 export function AGB() {
   return (
-    <LegalShell title="Allgemeine Geschäftsbedingungen (AGB)" subtitle="Bedingungen für die Nutzung der MietGate-Plattform">
+    <LegalShell title="Allgemeine Geschäftsbedingungen (AGB)" path="/agb" subtitle="Bedingungen für die Nutzung der MietGate-Plattform">
       <Sec title="§ 1 Geltungsbereich und Anbieter">
         <p>Diese AGB gelten für die Nutzung der Plattform „MietGate" (nachfolgend „Plattform"), betrieben von BORK Solutions (nachfolgend „MietGate", „wir"). Sie gelten gegenüber Vermietern, Maklern, Hausverwaltungen (nachfolgend „Vermieter") sowie gegenüber Mietinteressenten und Bewerbern (nachfolgend „Mieter"). Abweichende Bedingungen der Nutzer finden keine Anwendung.</p>
       </Sec>
@@ -226,7 +224,7 @@ export function AGB() {
 
 export function Widerruf() {
   return (
-    <LegalShell title="Widerrufsbelehrung" subtitle="Für Verbraucher bei kostenpflichtigen digitalen Diensten und Abonnements">
+    <LegalShell title="Widerrufsbelehrung" path="/widerruf" subtitle="Für Verbraucher bei kostenpflichtigen digitalen Diensten und Abonnements">
       <Sec title="Widerrufsrecht">
         <p>Sie haben das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des Vertragsschlusses.</p>
         <p>Um Ihr Widerrufsrecht auszuüben, müssen Sie uns (BORK Solutions, Pestalozzistraße 25, 22305 Hamburg, E-Mail: support@mietgate.de) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder eine E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren. Sie können dafür das beigefügte Muster-Widerrufsformular verwenden, das jedoch nicht vorgeschrieben ist.</p>
@@ -264,7 +262,7 @@ export function Widerruf() {
 
 export function Cookies() {
   return (
-    <LegalShell title="Cookie-Richtlinie" subtitle="Informationen zu Cookies und Ihrer Einwilligung">
+    <LegalShell title="Cookie-Richtlinie" path="/cookies" subtitle="Informationen zu Cookies und Ihrer Einwilligung">
       <Sec title="Was sind Cookies?">
         <p>Cookies sind kleine Textdateien, die auf Ihrem Gerät gespeichert werden. Wir verwenden Cookies und vergleichbare Technologien, um die Plattform bereitzustellen, sie sicher zu machen und – mit Ihrer Einwilligung – zu verbessern.</p>
       </Sec>
@@ -286,7 +284,7 @@ export function Cookies() {
 
 export function Plattformregeln() {
   return (
-    <LegalShell title="Community- und Plattformregeln" subtitle="Für ein sicheres, faires und respektvolles Miteinander auf MietGate">
+    <LegalShell title="Community- und Plattformregeln" path="/plattformregeln" subtitle="Für ein sicheres, faires und respektvolles Miteinander auf MietGate">
       <Sec title="Grundsatz">
         <p>MietGate soll ein vertrauenswürdiger Ort für Vermieter und Mieter sein. Die folgenden Regeln ergänzen unsere <Link className="text-primary hover:underline" to="/agb">AGB</Link> und sind für alle Nutzer verbindlich.</p>
       </Sec>

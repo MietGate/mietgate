@@ -6,6 +6,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import {
   ArrowRight, UserCheck, Link2, Send, ShieldCheck, FileCheck, Zap, Check, Crown
 } from "lucide-react";
+import { useSEO } from "@/lib/seo";
 
 const fade = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.5 } };
 
@@ -32,6 +33,11 @@ const perks = [
 ];
 
 export default function ForTenants() {
+  useSEO({
+    title: "Für Mieter",
+    description: "Ein Bewerber-Profil, das Sie bei jeder Wohnungsbewerbung wiederverwenden können. Dokumente einmal hochladen, mit Vermietern sicher teilen.",
+    path: "/fuer-mieter",
+  });
   return (
     <div className="bg-background">
       <MarketingNav />

@@ -7,8 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { Loader2, Mail, MessageSquare, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { useSEO } from "@/lib/seo";
 
 export default function Contact() {
+  useSEO({
+    title: "Kontakt",
+    description: "Fragen zu MietGate? Kontaktieren Sie uns – wir antworten in der Regel innerhalb eines Werktags.",
+    path: "/kontakt",
+  });
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);

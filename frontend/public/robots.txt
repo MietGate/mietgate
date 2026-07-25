@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /objekte
+Disallow: /team
+Disallow: /abo
+Disallow: /einstellungen
+Disallow: /bewerber
+Disallow: /admin
+Disallow: /b/
+Disallow: /payment/
+Disallow: /passwort-vergessen
+Disallow: /passwort-zuruecksetzen
+Disallow: /aktivieren
+Disallow: /email-bestaetigen
+
+Sitemap: https://mietgate.de/sitemap.xml

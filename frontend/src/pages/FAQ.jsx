@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { useSEO } from "@/lib/seo";
 
 const groups = [
   {
@@ -51,6 +52,11 @@ const groups = [
 const fade = { initial: { opacity: 0, y: 16 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.45 } };
 
 export default function FAQ() {
+  useSEO({
+    title: "Häufige Fragen",
+    description: "Antworten auf die häufigsten Fragen zu MietGate: Funktionsweise, Preise, DSGVO-Konformität und mehr.",
+    path: "/faq",
+  });
   return (
     <div className="bg-background min-h-screen">
       <MarketingNav />

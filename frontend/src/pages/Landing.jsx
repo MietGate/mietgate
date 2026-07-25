@@ -9,6 +9,7 @@ import {
   ArrowRight, Check, X, ShieldCheck, Building2, Users, Briefcase, Play, Lock,
   HousePlus, Share2, Inbox, UserCheck,
 } from "lucide-react";
+import { useSEO } from "@/lib/seo";
 
 const fade = { initial: { opacity: 0, y: 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.6 } };
 const fadeLeft = { initial: { opacity: 0, x: -16 }, whileInView: { opacity: 1, x: 0 }, viewport: { once: true }, transition: { duration: 0.45 } };
@@ -167,6 +168,11 @@ function ExplainerVideoPlayer() {
 }
 
 export default function Landing() {
+  useSEO({
+    title: "Digitales Vermietungsmanagement für Vermieter, Makler & Hausverwaltungen",
+    description: "Ein Bewerbungslink für Ihr Inserat. Strukturierte Bewerbungen, verschlüsselte Dokumente und organisierte Besichtigungen – statt E-Mail-Chaos. Kostenlos starten, DSGVO-konform.",
+    path: "/",
+  });
   const navigate = useNavigate();
   return (
     <div className="bg-background">

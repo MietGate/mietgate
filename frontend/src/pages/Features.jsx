@@ -6,6 +6,7 @@ import {
   Link2, ClipboardList, ShieldCheck, LayoutGrid, CalendarCheck, MessageSquare,
   BarChart3, Users, Palette, ArrowRight, Check
 } from "lucide-react";
+import { useSEO } from "@/lib/seo";
 
 const fade = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.5 } };
 
@@ -108,6 +109,11 @@ const steps = [
 ];
 
 export default function Features() {
+  useSEO({
+    title: "Funktionen",
+    description: "Bewerbungslink, strukturierte Bewerbungen, sichere Dokumente, Pipeline, Besichtigungsplanung und mehr – alle Funktionen von MietGate im Detail.",
+    path: "/funktionen",
+  });
   return (
     <div className="bg-background">
       <MarketingNav />

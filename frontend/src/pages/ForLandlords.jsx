@@ -7,6 +7,7 @@ import {
   ArrowRight, Inbox, BarChart3, Clock, ShieldCheck,
   Building2, Briefcase, Users, Check, Link2, LayoutGrid, CalendarCheck
 } from "lucide-react";
+import { useSEO } from "@/lib/seo";
 
 const fade = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.5 } };
 
@@ -50,6 +51,11 @@ const steps = [
 ];
 
 export default function ForLandlords() {
+  useSEO({
+    title: "Für Vermieter",
+    description: "MietGate für private Vermieter, Makler und Hausverwaltungen: strukturierte Bewerbungen, sichere Dokumente und organisierte Besichtigungen statt E-Mail-Chaos.",
+    path: "/fuer-vermieter",
+  });
   return (
     <div className="bg-background">
       <MarketingNav />
