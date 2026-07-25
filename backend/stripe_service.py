@@ -2,8 +2,9 @@ import os
 import logging
 import stripe
 from datetime import datetime, timezone
-from database import db
+from database import db, NO_ID
 from email_service import send_email
+from helpers import notify
 
 logger = logging.getLogger(__name__)
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
@@ -162,3 +163,94 @@ async def _email_user(user_id, subject, title, body_html):
     u = await db.users.find_one({"id": user_id}, {"email": 1, "_id": 0})
     if u and u.get("email"):
         await send_email(u["email"], subject, title, body_html)
+
+
+async def _org_owner_user_id(org_id):
+    if not org_id:
+        return None
+    m = await db.org_members.find_one({"org_id": org_id, "role": "owner"}, NO_ID)
+    return m["user_id"] if m else None
+
+
+async def sync_subscription_status(subscription_obj):
+    """Keep our subscriptions.status/current_period_end in sync with Stripe's own state."""
+    sub_id = subscription_obj["id"]
+    sub = await db.subscriptions.find_one({"stripe_subscription_id": sub_id}, NO_ID)
+    if not sub:
+        return
+    await db.subscriptions.update_one(
+        {"stripe_subscription_id": sub_id},
+        {"$set": {
+            "status": subscription_obj["status"],
+            "cancel_at_period_end": bool(subscription_obj.get("cancel_at_period_end")),
+            "current_period_end": subscription_obj.get("current_period_end"),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+
+
+async def handle_subscription_deleted(subscription_obj):
+    sub_id = subscription_obj["id"]
+    sub = await db.subscriptions.find_one({"stripe_subscription_id": sub_id}, NO_ID)
+    if not sub:
+        return
+    await db.subscriptions.update_one(
+        {"stripe_subscription_id": sub_id},
+        {"$set": {"status": "canceled", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    owner_id = await _org_owner_user_id(sub.get("org_id"))
+    if owner_id:
+        await notify(owner_id, "subscription_canceled", "Abo beendet",
+                     "Ihr MietGate-Abo wurde beendet.", "/abo")
+
+
+async def handle_invoice_payment_failed(invoice_obj):
+    sub_id = invoice_obj.get("subscription")
+    if not sub_id:
+        return
+    sub = await db.subscriptions.find_one({"stripe_subscription_id": sub_id}, NO_ID)
+    if not sub:
+        return
+    await db.subscriptions.update_one(
+        {"stripe_subscription_id": sub_id},
+        {"$set": {"status": "past_due", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    owner_id = await _org_owner_user_id(sub.get("org_id"))
+    if owner_id:
+        await notify(owner_id, "payment_failed", "Zahlung fehlgeschlagen",
+                     "Ihre Zahlung ist fehlgeschlagen — bitte aktualisieren Sie Ihre Zahlungsmethode, um weiter Bewerbungen zu erhalten.", "/abo")
+        await _email_user(owner_id, "Zahlung fehlgeschlagen", "Ihre Zahlung ist fehlgeschlagen",
+                          "<p>Wir konnten die Zahlung für Ihr MietGate-Abo nicht abbuchen. "
+                          "Bitte aktualisieren Sie Ihre Zahlungsmethode, damit Ihr Bewerbungslink aktiv bleibt.</p>")
+
+
+async def handle_invoice_payment_succeeded(invoice_obj):
+    """Clear a past_due state once a retried/renewed payment goes through."""
+    sub_id = invoice_obj.get("subscription")
+    if not sub_id:
+        return
+    sub = await db.subscriptions.find_one({"stripe_subscription_id": sub_id}, NO_ID)
+    if not sub or sub.get("status") != "past_due":
+        return
+    await db.subscriptions.update_one(
+        {"stripe_subscription_id": sub_id},
+        {"$set": {"status": "active", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    owner_id = await _org_owner_user_id(sub.get("org_id"))
+    if owner_id:
+        await notify(owner_id, "payment_recovered", "Zahlung erfolgreich",
+                     "Ihre Zahlungsmethode wurde erfolgreich belastet — Ihr Zugriff ist wieder vollständig freigeschaltet.", "/abo")
+
+
+async def handle_trial_will_end(subscription_obj):
+    sub_id = subscription_obj["id"]
+    sub = await db.subscriptions.find_one({"stripe_subscription_id": sub_id}, NO_ID)
+    if not sub:
+        return
+    owner_id = await _org_owner_user_id(sub.get("org_id"))
+    if owner_id:
+        await notify(owner_id, "trial_will_end", "Testzeitraum endet bald",
+                     "Ihr kostenloser Testzeitraum endet in Kürze. Danach wird Ihre hinterlegte Zahlungsmethode belastet.", "/abo")
+        await _email_user(owner_id, "Ihr Testzeitraum endet bald", "Testzeitraum endet in Kürze",
+                          "<p>Ihr kostenloser Testzeitraum bei MietGate endet in Kürze. "
+                          "Danach wird die von Ihnen hinterlegte Zahlungsmethode automatisch belastet.</p>")

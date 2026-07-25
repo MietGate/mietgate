@@ -81,14 +81,22 @@ async def stripe_webhook(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid signature")
     obj, t = event["data"]["object"], event["type"]
-    if t == "checkout.session.completed":
-        await stripe_service._mark_paid(obj["id"], obj.get("subscription"), obj.get("payment_intent"))
-    elif t == "checkout.session.async_payment_succeeded":
+    if t in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
         await stripe_service._mark_paid(obj["id"], obj.get("subscription"), obj.get("payment_intent"))
     elif t in ("checkout.session.async_payment_failed", "checkout.session.expired"):
         await db.payment_transactions.update_one(
             {"session_id": obj["id"]},
             {"$set": {"status": "failed", "payment_status": "failed", "updated_at": now_iso()}})
+    elif t == "customer.subscription.updated":
+        await stripe_service.sync_subscription_status(obj)
+    elif t == "customer.subscription.deleted":
+        await stripe_service.handle_subscription_deleted(obj)
+    elif t == "customer.subscription.trial_will_end":
+        await stripe_service.handle_trial_will_end(obj)
+    elif t == "invoice.payment_failed":
+        await stripe_service.handle_invoice_payment_failed(obj)
+    elif t == "invoice.payment_succeeded":
+        await stripe_service.handle_invoice_payment_succeeded(obj)
     return {"status": "ok"}
 
 

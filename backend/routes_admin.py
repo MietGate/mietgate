@@ -20,11 +20,14 @@ async def admin_stats(user: dict = Depends(admin)):
     active_subs = await db.subscriptions.count_documents({"status": "active"})
     cancelled = await db.subscriptions.count_documents({"cancel_at_period_end": True})
     open_tickets = await db.support_tickets.count_documents({"status": "open"})
-    paid = await db.payment_transactions.find({"payment_status": "paid"}, NO_ID).to_list(10000)
+    active_sub_docs = await db.subscriptions.find({"status": "active"}, NO_ID).to_list(10000)
+    plans = {p["key"]: p async for p in db.plans.find({}, NO_ID)}
     mrr = 0.0
-    for p in paid:
-        amt = p.get("amount", 0)
-        mrr += amt / 12 if p.get("interval") == "yearly" else amt
+    for sub in active_sub_docs:
+        plan = plans.get(sub.get("plan_key"))
+        if not plan:
+            continue
+        mrr += (plan.get("price_yearly") or 0) / 12 if sub.get("interval") == "yearly" else (plan.get("price_monthly") or 0)
     return {
         "total_users": total_users, "landlords": landlords, "applicants": applicants,
         "active_properties": active_props, "total_applications": total_apps,
