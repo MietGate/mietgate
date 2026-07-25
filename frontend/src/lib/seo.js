@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const SITE_URL = "https://mietgate.de";
+const SITE_URL = "https://www.mietgate.de";
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.jpg`;
 
 function setMeta(attr, key, content) {

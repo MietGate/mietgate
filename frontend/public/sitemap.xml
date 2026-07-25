@@ -1,57 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://mietgate.de/</loc>
+    <loc>https://www.mietgate.de/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/funktionen</loc>
+    <loc>https://www.mietgate.de/funktionen</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/fuer-vermieter</loc>
+    <loc>https://www.mietgate.de/fuer-vermieter</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/fuer-mieter</loc>
+    <loc>https://www.mietgate.de/fuer-mieter</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/preise</loc>
+    <loc>https://www.mietgate.de/preise</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/faq</loc>
+    <loc>https://www.mietgate.de/faq</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/kontakt</loc>
+    <loc>https://www.mietgate.de/kontakt</loc>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/registrieren</loc>
+    <loc>https://www.mietgate.de/registrieren</loc>
     <changefreq>yearly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/impressum</loc>
+    <loc>https://www.mietgate.de/impressum</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/datenschutz</loc>
+    <loc>https://www.mietgate.de/datenschutz</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://mietgate.de/agb</loc>
+    <loc>https://www.mietgate.de/agb</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>

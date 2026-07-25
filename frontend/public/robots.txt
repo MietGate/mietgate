@@ -14,4 +14,4 @@ Disallow: /passwort-zuruecksetzen
 Disallow: /aktivieren
 Disallow: /email-bestaetigen
 
-Sitemap: https://mietgate.de/sitemap.xml
+Sitemap: https://www.mietgate.de/sitemap.xml
