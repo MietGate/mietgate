@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart } from "lucide-react";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
@@ -29,11 +29,25 @@ const List = ({ items }) => (
 
 export function Impressum() {
   const [loveShown, setLoveShown] = useState(false);
+  // Own click counter instead of event.detail: Safari/macOS does not report it reliably,
+  // and this also works for three quick taps on touch devices.
+  const clicks = useRef(0);
+  const resetTimer = useRef(null);
+  const hideTimer = useRef(null);
 
-  const revealLove = () => {
-    if (loveShown) return;
-    setLoveShown(true);
-    setTimeout(() => setLoveShown(false), 3400);
+  useEffect(() => () => { clearTimeout(resetTimer.current); clearTimeout(hideTimer.current); }, []);
+
+  const countClick = () => {
+    clearTimeout(resetTimer.current);
+    clicks.current += 1;
+    if (clicks.current >= 3) {
+      clicks.current = 0;
+      if (loveShown) return;
+      setLoveShown(true);
+      hideTimer.current = setTimeout(() => setLoveShown(false), 3400);
+      return;
+    }
+    resetTimer.current = setTimeout(() => { clicks.current = 0; }, 600);
   };
 
   return (
@@ -41,7 +55,7 @@ export function Impressum() {
       <Sec title="Anbieter">
         <p>MietGate ist ein Projekt von<br />
         <strong>BORK Solutions</strong><br />
-        Inhaber: <span onClick={(e) => { if (e.detail === 3) revealLove(); }} className="select-none">Henry</span> Bork<br />
+        Inhaber: <span onClick={countClick} className="select-none cursor-default">Henry</span> Bork<br />
         Pestalozzistraße 25<br />22305 Hamburg<br />Deutschland</p>
       </Sec>
 

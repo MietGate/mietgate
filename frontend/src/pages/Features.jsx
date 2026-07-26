@@ -128,29 +128,35 @@ function InboxConvergeTile() {
 
 const docLineWidths = ["w-full", "w-4/5", "w-full", "w-3/5"];
 
-/* Animated vignette for "Sichere Dokumente": document lines scramble into ciphertext, then a lock snaps shut. */
+/* Animated vignette for "Sichere Dokumente": lines scramble into ciphertext, a lock snaps shut, then a checkmark pulses. */
 function EncryptDocTile() {
   const [encrypted, setEncrypted] = useState(0); // how many lines are encrypted
   const [locked, setLocked] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [pulseKey, setPulseKey] = useState(0);
 
   useEffect(() => {
     const timers = [];
     const schedule = (fn, ms) => timers.push(setTimeout(fn, ms));
+    const lockAt = 600 + docLineWidths.length * 280;
 
     function cycle() {
       setEncrypted(0);
       setLocked(false);
+      setConfirmed(false);
       docLineWidths.forEach((_, i) => schedule(() => setEncrypted(i + 1), 600 + i * 280));
-      schedule(() => setLocked(true), 600 + docLineWidths.length * 280);
-      schedule(cycle, 4200);
+      schedule(() => setLocked(true), lockAt);
+      schedule(() => { setConfirmed(true); setPulseKey((k) => k + 1); }, lockAt + 500);
+      schedule(cycle, 4600);
     }
     cycle();
     return () => timers.forEach(clearTimeout);
   }, []);
 
+  // wrapper spans the full painted area (tile + overhanging badge) so it centers optically
   return (
-    <div className="relative h-14 w-12" data-testid="encrypt-doc-animation">
-      <div className="h-14 w-12 rounded-lg border border-border bg-card shadow-sm p-2 flex flex-col justify-center gap-1.5">
+    <div className="relative h-[3.875rem] w-[3.375rem]" data-testid="encrypt-doc-animation">
+      <div className="absolute top-0 left-0 h-14 w-12 rounded-lg border border-border bg-card shadow-sm p-2 flex flex-col justify-center gap-1.5">
         {docLineWidths.map((w, i) => (
           <div key={i} className={`relative h-1 overflow-hidden ${w}`}>
             {/* plain line */}
@@ -166,12 +172,25 @@ function EncryptDocTile() {
           </div>
         ))}
       </div>
+
       <motion.span
         initial={false}
         animate={locked ? { scale: 1, opacity: 1 } : { scale: 0.3, opacity: 0 }}
         transition={{ type: "spring", stiffness: 420, damping: 15 }}
-        className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-success text-white flex items-center justify-center ring-2 ring-card shadow-sm">
-        <Lock className="h-3 w-3" />
+        className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-success text-white flex items-center justify-center ring-2 ring-card shadow-sm">
+        {/* confirmation pulse ring */}
+        {confirmed && (
+          <motion.span key={pulseKey}
+            initial={{ scale: 1, opacity: 0.6 }} animate={{ scale: 2.1, opacity: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="absolute inset-0 rounded-full bg-success" />
+        )}
+        <motion.span
+          animate={{ scale: confirmed ? [1, 1.25, 1] : 1 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className="relative">
+          {confirmed ? <Check className="h-4 w-4" strokeWidth={3} /> : <Lock className="h-3.5 w-3.5" />}
+        </motion.span>
       </motion.span>
     </div>
   );
@@ -330,7 +349,7 @@ export default function Features() {
         {features.map((f, i) => (
           <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: (i % 2) * 0.05 }}
             className="rounded-2xl border border-border bg-card p-7 sm:p-9 grid md:grid-cols-3 gap-6 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all" data-testid={`feature-${i}`}>
-            <div className={`md:col-span-1 ${i === 0 ? "flex flex-col items-center text-center justify-center" : ""} ${i === 1 ? "flex flex-col items-center text-center" : ""} ${i % 2 === 1 ? "md:order-2" : ""}`}>
+            <div className={`md:col-span-1 ${i === 0 ? "flex flex-col items-center text-center justify-center" : ""} ${i === 1 || i === 2 ? "flex flex-col items-center text-center" : ""} ${i % 2 === 1 ? "md:order-2" : ""}`}>
               {i === 0
                 ? <LinkGenTile />
                 : i === 1
