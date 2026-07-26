@@ -44,6 +44,28 @@ async def admin_stats(user: dict = Depends(admin)):
     }
 
 
+@router.get("/customer-search")
+async def admin_customer_search(q: str = "", user: dict = Depends(admin)):
+    """Lightweight lookup used by the manual-ticket dialog to link a ticket to an
+    existing user/organization instead of retyping their name and email by hand."""
+    q = q.strip()
+    if len(q) < 2:
+        return {"users": [], "organizations": []}
+    rx = {"$regex": re.escape(q), "$options": "i"}
+    users = await db.users.find({"$or": [{"email": rx}, {"name": rx}]}, NO_ID).limit(8).to_list(8)
+    org_ids = list({u["org_id"] for u in users if u.get("org_id")})
+    orgs_by_id = {}
+    if org_ids:
+        for o in await db.organizations.find({"id": {"$in": org_ids}}, NO_ID).to_list(len(org_ids)):
+            orgs_by_id[o["id"]] = o["name"]
+    orgs = await db.organizations.find({"name": rx}, NO_ID).limit(5).to_list(5)
+    return {
+        "users": [{"id": u["id"], "name": u.get("name"), "email": u.get("email"),
+                   "org_name": orgs_by_id.get(u.get("org_id"))} for u in users],
+        "organizations": [{"id": o["id"], "name": o["name"]} for o in orgs],
+    }
+
+
 @router.get("/search")
 async def admin_search(q: str = "", user: dict = Depends(admin)):
     q = q.strip()
@@ -218,6 +240,9 @@ class TicketCreate(BaseModel):
     email: str
     message: str
     source: str = "telefon"
+    linked_user_id: Optional[str] = None
+    linked_org_id: Optional[str] = None
+    linked_label: Optional[str] = None
 
 
 @router.post("/support-tickets")
@@ -226,6 +251,8 @@ async def create_ticket(body: TicketCreate, user: dict = Depends(admin)):
         "id": new_id(), "name": body.name, "email": body.email, "message": body.message,
         "source": body.source, "status": "open", "created_at": now_iso(),
         "created_by": user.get("name") or user.get("email"),
+        "linked_user_id": body.linked_user_id, "linked_org_id": body.linked_org_id,
+        "linked_label": body.linked_label,
     }
     await db.support_tickets.insert_one(ticket)
     ticket.pop("_id", None)
