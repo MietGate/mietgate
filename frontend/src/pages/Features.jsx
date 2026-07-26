@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { Button } from "@/components/ui/button";
@@ -196,6 +196,243 @@ function EncryptDocTile() {
   );
 }
 
+/* Drives the looping tile animations: counts 0..count, pauses, then restarts. */
+function useLoopStep(count, stepMs, pauseMs = 1100, startMs = 450) {
+  const [step, setStep] = useState(0);
+  const [cycleKey, setCycleKey] = useState(0);
+
+  useEffect(() => {
+    const timers = [];
+    function cycle() {
+      setCycleKey((k) => k + 1);
+      setStep(0);
+      for (let i = 1; i <= count; i++) {
+        timers.push(setTimeout(() => setStep(i), startMs + (i - 1) * stepMs));
+      }
+      timers.push(setTimeout(cycle, startMs + count * stepMs + pauseMs));
+    }
+    cycle();
+    return () => timers.forEach(clearTimeout);
+  }, [count, stepMs, pauseMs, startMs]);
+
+  return { step, cycleKey };
+}
+
+/* Counts from 0 to target once `run` flips true. */
+function useCountUp(target, run, duration = 1000) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!run) { setN(0); return undefined; }
+    let raf, start;
+    const tick = (t) => {
+      if (!start) start = t;
+      const p = Math.min((t - start) / duration, 1);
+      setN(Math.round(target * p));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, run, duration]);
+  return n;
+}
+
+/* Bewerberpipeline: an applicant card advances through three pipeline columns. */
+function PipelineTile() {
+  const { step, cycleKey } = useLoopStep(3, 720, 900);
+  const columnX = [0, 34, 68];
+
+  return (
+    <div className="relative h-14 w-24" data-testid="pipeline-animation">
+      <div className="absolute inset-0 grid grid-cols-3 gap-1.5">
+        {[0, 1, 2].map((c) => (
+          <div key={c} className="rounded-md border border-border bg-secondary/60 p-1 flex flex-col gap-1">
+            <span className="h-1 w-3/4 rounded-full bg-border" />
+          </div>
+        ))}
+      </div>
+      <motion.span key={cycleKey}
+        initial={{ x: 0, opacity: 0 }}
+        animate={{ x: columnX[Math.max(step - 1, 0)], opacity: step > 0 ? 1 : 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+        className="absolute top-[18px] left-0 h-4 w-7 rounded-[3px] bg-primary shadow-sm flex items-center justify-center">
+        <span className="h-1 w-3.5 rounded-full bg-white/80" />
+      </motion.span>
+    </div>
+  );
+}
+
+/* Matching-Score: a ring fills while the score counts up. */
+function ScoreTile() {
+  const { step } = useLoopStep(1, 1300, 1500);
+  const run = step >= 1;
+  const value = useCountUp(87, run, 1100);
+  const circumference = 2 * Math.PI * 15;
+
+  return (
+    <div className="relative h-14 w-14" data-testid="score-animation">
+      <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90" aria-hidden="true">
+        <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--secondary))" strokeWidth="3.5" />
+        <motion.circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--brand-teal))" strokeWidth="3.5" strokeLinecap="round"
+          strokeDasharray={circumference}
+          animate={{ strokeDashoffset: run ? circumference * (1 - 0.87) : circumference }}
+          transition={{ duration: 1.1, ease: "easeOut" }} />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center font-display text-sm font-bold text-brand-dark tabular-nums">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/* Besichtigungen: calendar slots get booked one after another. */
+const bookedSlots = [1, 3, 5];
+function CalendarTile() {
+  const { step } = useLoopStep(3, 620, 1000);
+
+  return (
+    <div className="h-14 w-14 rounded-lg border border-border bg-card shadow-sm p-2 flex flex-col gap-1.5" data-testid="calendar-animation">
+      <span className="h-1 w-1/2 rounded-full bg-secondary" />
+      <div className="grid grid-cols-3 gap-1 flex-1">
+        {[0, 1, 2, 3, 4, 5].map((i) => {
+          const bookedAt = bookedSlots.indexOf(i);
+          const isBooked = bookedAt !== -1 && step > bookedAt;
+          return (
+            <motion.div key={i}
+              animate={{ scale: isBooked ? [1, 1.2, 1] : 1 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className={`rounded-[3px] transition-colors ${isBooked ? "bg-primary" : "bg-secondary/80"}`} />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* Nachrichten: chat bubbles arrive alternately, then a notification badge pops. */
+function MessageTile() {
+  const { step, cycleKey } = useLoopStep(4, 520, 900);
+
+  return (
+    <div className="relative h-14 w-20 flex flex-col justify-center gap-1.5" data-testid="message-animation">
+      {[0, 1, 2].map((i) => {
+        const fromLeft = i % 2 === 0;
+        return (
+          <div key={i} className={`relative h-3 ${fromLeft ? "w-11 self-start" : "w-9 self-end"}`}>
+            {/* always-visible placeholder so the tile never looks empty mid-cycle */}
+            <span className="absolute inset-0 rounded-full bg-secondary/40" />
+            <motion.span key={`${cycleKey}-b-${i}`}
+              initial={{ opacity: 0, x: fromLeft ? -10 : 10, scale: 0.8 }}
+              animate={step > i ? { opacity: 1, x: 0, scale: 1 } : { opacity: 0, x: fromLeft ? -10 : 10, scale: 0.8 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className={`absolute inset-0 rounded-full ${fromLeft ? "bg-secondary" : "bg-primary/80"}`} />
+          </div>
+        );
+      })}
+      <motion.span key={`${cycleKey}-bell`}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={step > 3 ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 420, damping: 14 }}
+        className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-success text-white flex items-center justify-center ring-2 ring-card text-[9px] font-bold">
+        3
+      </motion.span>
+    </div>
+  );
+}
+
+/* Makler & Hausverwaltungen: team members join one by one. */
+const teamShades = ["bg-primary", "bg-brand-dark", "bg-primary/60", "bg-secondary"];
+function TeamTile() {
+  const { step, cycleKey } = useLoopStep(4, 480, 1000);
+
+  return (
+    <div className="h-14 flex items-center" data-testid="team-animation">
+      <div className="flex -space-x-2">
+        {teamShades.map((shade, i) => (
+          <div key={i} className="relative h-7 w-7">
+            {/* always-visible placeholder so the tile never looks empty mid-cycle */}
+            <span className="absolute inset-0 rounded-full ring-2 ring-card bg-secondary/50" />
+            <motion.span key={`${cycleKey}-m-${i}`}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={step > i ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 18 }}
+              className={`absolute inset-0 rounded-full ring-2 ring-card ${shade} ${i === 3 ? "text-muted-foreground text-[9px] font-bold flex items-center justify-center" : ""}`}>
+              {i === 3 ? "+9" : null}
+            </motion.span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* White-Label: the same mini page re-skins itself in different brand colors. */
+const brandColors = ["hsl(var(--brand-teal))", "#7c3aed", "#ea580c", "#0369a1"];
+function BrandTile() {
+  const { step } = useLoopStep(brandColors.length, 900, 400, 500);
+  const color = brandColors[Math.max(step - 1, 0)];
+
+  return (
+    <div className="h-14 w-12 rounded-lg border border-border bg-card shadow-sm p-2 flex flex-col gap-1.5" data-testid="brand-animation">
+      <motion.span animate={{ backgroundColor: color }} transition={{ duration: 0.5 }}
+        className="h-3 w-3 rounded-[3px]" />
+      <span className="h-1 w-full rounded-full bg-secondary" />
+      <span className="h-1 w-3/4 rounded-full bg-secondary" />
+      <motion.span animate={{ backgroundColor: color }} transition={{ duration: 0.5 }}
+        className="h-2 w-2/3 rounded-[2px] mt-auto" />
+    </div>
+  );
+}
+
+/* One tile per feature card, in the same order as `features`. */
+const featureTiles = [
+  LinkGenTile, InboxConvergeTile, EncryptDocTile, PipelineTile,
+  ScoreTile, CalendarTile, MessageTile, TeamTile, BrandTile,
+];
+
+/* Hero backdrop scatter. `gap` is the distance from the text column's edge (max-w-4xl = 896px),
+   so a tile can never end up behind the copy regardless of viewport width. */
+const HERO_COLUMN_HALF = 448;
+const floaters = [
+  { side: "left", gap: 10, top: "15%", drift: 20, spin: 4, dur: 19 },   // Bewerbungslink (breit)
+  { side: "right", gap: 0, top: "58%", drift: -16, spin: -5, dur: 23 }, // Bewerbungseingang (breit)
+  { side: "left", gap: 96, top: "70%", drift: 14, spin: 6, dur: 21 },   // Verschlüsselung
+  { side: "right", gap: 52, top: "15%", drift: -20, spin: 3, dur: 26 }, // Pipeline
+  { side: "left", gap: 74, top: "43%", drift: 18, spin: -4, dur: 17 },  // Score
+  { side: "right", gap: 104, top: "39%", drift: -14, spin: 5, dur: 24 },// Kalender
+  { side: "left", gap: 34, top: "83%", drift: 16, spin: -3, dur: 20 },  // Nachrichten
+  { side: "right", gap: 36, top: "80%", drift: -18, spin: 4, dur: 25 }, // Team
+  { side: "left", gap: 110, top: "24%", drift: 13, spin: -6, dur: 18 }, // White-Label
+];
+
+/* The feature vignettes drifting through the hero background, space-station style. */
+function HeroFloatingTiles() {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none hidden xl:block opacity-[0.13]" aria-hidden="true">
+      {floaters.map(({ side, gap, top, drift, spin, dur }, i) => {
+        const Tile = featureTiles[i];
+        const offset = `calc(50% + ${HERO_COLUMN_HALF + gap}px)`;
+        return (
+          <motion.div key={i} className="absolute"
+            style={{ top, [side === "left" ? "right" : "left"]: offset }}
+            animate={reduceMotion ? { scale: 0.7 } : {
+              scale: 0.7,
+              y: [0, drift, 0],
+              x: [0, drift * -0.35, 0],
+              rotate: [0, spin, 0],
+            }}
+            transition={reduceMotion ? undefined : {
+              duration: dur, repeat: Infinity, ease: "easeInOut", delay: i * 0.7,
+            }}>
+            <Tile />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* Wraps given keywords (platforms, key terms) in the CI accent color within a plain text string. */
 function highlight(text, keywords) {
   const pattern = new RegExp(`(${keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
@@ -319,6 +556,7 @@ export default function Features() {
         <div className="absolute inset-0 bg-dots-dark pointer-events-none" aria-hidden="true" />
         <div className="absolute top-[-180px] left-1/2 -translate-x-1/2 h-[520px] w-[820px] rounded-full pointer-events-none"
           style={{ background: "radial-gradient(closest-side, hsl(var(--brand-teal) / 0.28), transparent 70%)", filter: "blur(40px)" }} aria-hidden="true" />
+        <HeroFloatingTiles />
         <div className="relative max-w-4xl mx-auto px-6 py-20 text-center">
           <motion.div {...fade}>
             <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-white/90 bg-white/10 border border-white/15 px-3 py-1 rounded-full backdrop-blur">Funktionen</span>
@@ -346,17 +584,13 @@ export default function Features() {
 
       {/* Feature blocks */}
       <section className="max-w-5xl mx-auto px-6 py-20 space-y-6">
-        {features.map((f, i) => (
+        {features.map((f, i) => {
+          const Tile = featureTiles[i];
+          return (
           <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: (i % 2) * 0.05 }}
             className="rounded-2xl border border-border bg-card p-7 sm:p-9 grid md:grid-cols-3 gap-6 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all" data-testid={`feature-${i}`}>
-            <div className={`md:col-span-1 ${i === 0 ? "flex flex-col items-center text-center justify-center" : ""} ${i === 1 || i === 2 ? "flex flex-col items-center text-center" : ""} ${i % 2 === 1 ? "md:order-2" : ""}`}>
-              {i === 0
-                ? <LinkGenTile />
-                : i === 1
-                ? <InboxConvergeTile />
-                : i === 2
-                ? <EncryptDocTile />
-                : <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><f.icon className="h-6 w-6" /></div>}
+            <div className={`md:col-span-1 flex flex-col items-center justify-center text-center ${i % 2 === 1 ? "md:order-2" : ""}`}>
+              <Tile />
               <h2 className="font-display text-2xl font-semibold mt-4">{f.title}</h2>
             </div>
             <div className={`md:col-span-2 ${i % 2 === 1 ? "md:order-1" : ""}`}>
@@ -370,7 +604,8 @@ export default function Features() {
               </ul>
             </div>
           </motion.div>
-        ))}
+          );
+        })}
       </section>
 
       {/* How it works */}

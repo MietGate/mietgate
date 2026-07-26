@@ -10,6 +10,7 @@ import { Check } from "lucide-react";
 
 export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = false, requireWithdrawalConsent = true }) {
   const [plans, setPlans] = useState([]);
+  const [status, setStatus] = useState("loading"); // loading | ready | error
   const [yearly, setYearly] = useState(false);
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const consentOk = !requireWithdrawalConsent || withdrawalConsent;
@@ -19,7 +20,14 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
     onSelect?.(plan, interval, withdrawalConsent);
   };
 
-  useEffect(() => { api.get("/plans").then((r) => setPlans(r.data)).catch(() => {}); }, []);
+  const loadPlans = () => {
+    setStatus("loading");
+    api.get("/plans")
+      .then((r) => { setPlans(r.data); setStatus("ready"); })
+      .catch(() => setStatus("error"));
+  };
+
+  useEffect(loadPlans, []);
   const main = plans.filter((p) => !p.is_addon);
   const addon = plans.find((p) => p.is_addon);
 
@@ -39,7 +47,7 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
         <Switch checked={yearly} onCheckedChange={setYearly} data-testid="pricing-toggle" />
         <span className={`text-sm ${yearly ? "font-semibold text-foreground" : "text-muted-foreground"}`}>Jährlich <Badge variant="secondary" className="ml-1 text-success">−20%</Badge></span>
       </div>
-      {requireWithdrawalConsent && (
+      {requireWithdrawalConsent && status === "ready" && (
         <label className="flex items-start gap-2.5 max-w-xl mx-auto mb-8 text-sm text-muted-foreground cursor-pointer" data-testid="withdrawal-consent-label">
           <Checkbox checked={withdrawalConsent} onCheckedChange={setWithdrawalConsent} className="mt-0.5" data-testid="withdrawal-consent-checkbox" />
           <span>
@@ -48,7 +56,33 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
           </span>
         </label>
       )}
-      <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+      {status === "loading" && (
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto" data-testid="plans-loading">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card p-7 animate-pulse">
+              <div className="h-5 w-24 rounded bg-secondary" />
+              <div className="h-10 w-32 rounded bg-secondary mt-4" />
+              <div className="mt-6 space-y-3">
+                {[0, 1, 2, 3, 4].map((k) => <div key={k} className="h-3 rounded bg-secondary" style={{ width: `${90 - k * 8}%` }} />)}
+              </div>
+              <div className="h-9 rounded-md bg-secondary mt-7" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {status === "error" && (
+        <div className="max-w-xl mx-auto rounded-2xl border border-dashed border-border bg-card p-8 text-center" data-testid="plans-error">
+          <p className="font-medium text-foreground">Die Preise konnten gerade nicht geladen werden.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Bitte versuchen Sie es erneut. Falls das Problem bestehen bleibt, erreichen Sie uns unter{" "}
+            <a href="mailto:support@mietgate.de" className="text-primary hover:underline">support@mietgate.de</a>.
+          </p>
+          <Button variant="outline" className="mt-5" onClick={loadPlans} data-testid="plans-retry">Erneut versuchen</Button>
+        </div>
+      )}
+
+      <div className={`grid md:grid-cols-3 gap-6 max-w-5xl mx-auto ${status === "ready" ? "" : "hidden"}`}>
         {main.map((p, i) => (
           <motion.div key={p.key} data-testid={`plan-${p.key}`}
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }}
