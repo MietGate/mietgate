@@ -70,7 +70,7 @@ function LinkGenTile() {
 function highlight(text, keywords) {
   const pattern = new RegExp(`(${keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
   return text.split(pattern).map((part, i) =>
-    keywords.includes(part) ? <span key={i} className="text-primary font-semibold">{part}</span> : part
+    keywords.includes(part) ? <span key={i} className="font-semibold">{part}</span> : part
   );
 }
 
@@ -185,17 +185,30 @@ export default function Features() {
       <MarketingNav />
 
       {/* Hero */}
-      <section className="border-b border-border bg-secondary/40">
-        <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+      <section className="relative bg-brand-dark text-white overflow-hidden" style={{ background: "hsl(var(--brand-dark))" }}>
+        <div className="absolute inset-0 bg-dots-dark pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-[-180px] left-1/2 -translate-x-1/2 h-[520px] w-[820px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(closest-side, hsl(var(--brand-teal) / 0.28), transparent 70%)", filter: "blur(40px)" }} aria-hidden="true" />
+        <div className="relative max-w-4xl mx-auto px-6 py-20 text-center">
           <motion.div {...fade}>
-            <span className="inline-block text-xs font-semibold uppercase tracking-[0.15em] text-primary bg-primary/10 px-3 py-1 rounded-full">Funktionen</span>
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mt-6">Alles für Ihre Vermietung – an einem Ort</h1>
-            <p className="text-lg text-muted-foreground mt-5 max-w-2xl mx-auto">
+            <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-white/90 bg-white/10 border border-white/15 px-3 py-1 rounded-full backdrop-blur">Funktionen</span>
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mt-6">
+              Alles für Ihre{" "}
+              <span className="relative z-0 inline-block pb-0.5">
+                Vermietung
+                <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.6, delay: 0.7, ease: "easeOut" }}
+                  style={{ transformOrigin: "left center" }}
+                  className="absolute left-0 right-0 bottom-0 h-[5px] sm:h-[6px] rounded-full bg-primary/50 -z-10" aria-hidden="true" />
+              </span>
+              {" "}– an einem Ort
+            </h1>
+            <p className="text-lg text-white/65 mt-5 max-w-2xl mx-auto">
               MietGate ist kein Immobilienportal. Es beginnt dort, wo Ihr Inserat endet: bei der Bewerbung. Wir organisieren den kompletten Weg vom ersten Interessenten bis zum unterschriebenen Mieter – einfach und übersichtlich.
             </p>
             <div className="flex flex-wrap gap-3 justify-center mt-8">
               <Button size="lg" asChild><Link to="/registrieren">Kostenlos starten <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
-              <Button size="lg" variant="outline" asChild><Link to="/preise">Preise ansehen</Link></Button>
+              <Button size="lg" variant="outline" asChild className="border-white/25 text-white bg-transparent hover:bg-white/10 hover:text-white"><Link to="/preise">Preise ansehen</Link></Button>
             </div>
           </motion.div>
         </div>
