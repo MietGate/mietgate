@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Loader2, Search, Ban, CheckCircle2 } from "lucide-react";
 
+const ROLE_LABELS = { landlord: "Vermieter", applicant: "Bewerber", admin: "Administrator" };
+
 export default function AdminUsers() {
   const [users, setUsers] = useState(null);
   const [q, setQ] = useState("");
@@ -46,7 +48,7 @@ export default function AdminUsers() {
               <TableRow key={u.id} data-testid={`admin-user-${u.id}`}>
                 <TableCell className="font-medium">{u.name}</TableCell>
                 <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                <TableCell><Badge variant="secondary" className="capitalize">{u.role}</Badge></TableCell>
+                <TableCell><Badge variant="secondary">{ROLE_LABELS[u.role] || u.role}</Badge></TableCell>
                 <TableCell>{u.org_name || "—"}</TableCell>
                 <TableCell className="capitalize">{u.plan || "—"}</TableCell>
                 <TableCell>{u.is_blocked ? <Badge variant="destructive">Gesperrt</Badge> : <Badge className="bg-success text-success-foreground">Aktiv</Badge>}</TableCell>

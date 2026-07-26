@@ -85,24 +85,39 @@ async def get_form_fields():
 
 @router.get("/search")
 async def search(q: str = "", user: dict = Depends(get_current_user)):
-    org_id = user.get("org_id")
     q = q.strip()
-    if not org_id or len(q) < 2:
-        return {"properties": [], "applications": []}
+    if len(q) < 2:
+        return {"groups": []}
     rx = {"$regex": re.escape(q), "$options": "i"}
+    groups = []
+
+    if user.get("role") == "applicant":
+        apps = await db.applications.find({"applicant_user_id": user["id"]}, NO_ID).to_list(200)
+        prop_ids = [a["property_id"] for a in apps]
+        props = await db.properties.find({"id": {"$in": prop_ids}, "title": rx}, NO_ID).limit(5).to_list(5)
+        if props:
+            groups.append({"key": "applications", "label": "Meine Bewerbungen",
+                            "items": [{"id": p["id"], "label": p["title"], "link": f"/bewerber"} for p in props]})
+        return {"groups": groups}
+
+    org_id = user.get("org_id")
+    if not org_id:
+        return {"groups": []}
     props = await db.properties.find({"org_id": org_id, "title": rx}, NO_ID).limit(5).to_list(5)
     apps = await db.applications.find(
         {"org_id": org_id, "$or": [
             {"form_data.vorname": rx}, {"form_data.nachname": rx}, {"applicant_email": rx},
         ]}, NO_ID).limit(5).to_list(5)
-    return {
-        "properties": [{"id": p["id"], "title": p["title"]} for p in props],
-        "applications": [{
-            "id": a["id"], "property_id": a["property_id"],
-            "name": (f"{a.get('form_data', {}).get('vorname', '')} {a.get('form_data', {}).get('nachname', '')}".strip()
-                     or a.get("applicant_email")),
-        } for a in apps],
-    }
+    if props:
+        groups.append({"key": "properties", "label": "Objekte",
+                        "items": [{"id": p["id"], "label": p["title"], "link": f"/objekte/{p['id']}"} for p in props]})
+    if apps:
+        groups.append({"key": "applications", "label": "Bewerber", "items": [{
+            "id": a["id"], "link": f"/objekte/{a['property_id']}",
+            "label": (f"{a.get('form_data', {}).get('vorname', '')} {a.get('form_data', {}).get('nachname', '')}".strip()
+                      or a.get("applicant_email")),
+        } for a in apps]})
+    return {"groups": groups}
 
 
 @router.get("/me/entitlements")

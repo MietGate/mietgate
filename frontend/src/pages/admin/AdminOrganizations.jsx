@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2, Pencil } from "lucide-react";
 
 const SUB_STATUSES = ["active", "cancelled", "inactive"];
+const TYPE_LABELS = { private: "Privater Vermieter", makler: "Makler", hausverwaltung: "Hausverwaltung" };
 
 export default function AdminOrganizations() {
   const [orgs, setOrgs] = useState(null);
@@ -52,10 +53,10 @@ export default function AdminOrganizations() {
             {orgs.map((o) => (
               <TableRow key={o.id}>
                 <TableCell className="font-medium">{o.name}</TableCell>
-                <TableCell className="capitalize">{o.type}</TableCell>
+                <TableCell>{TYPE_LABELS[o.type] || o.type}</TableCell>
                 <TableCell>{o.member_count}</TableCell>
                 <TableCell>{o.property_count}</TableCell>
-                <TableCell className="capitalize">{o.plan || "—"}{o.subscription_status && o.subscription_status !== "active" ? ` (${o.subscription_status})` : ""}</TableCell>
+                <TableCell>{o.plan ? (plans.find((p) => p.key === o.plan)?.name || o.plan) : "—"}{o.subscription_status && o.subscription_status !== "active" ? ` (${o.subscription_status})` : ""}</TableCell>
                 <TableCell>{o.white_label_addon ? <Badge>Gebucht</Badge> : "—"}</TableCell>
                 <TableCell><Button variant="ghost" size="icon" onClick={() => openEdit(o)}><Pencil className="h-4 w-4" /></Button></TableCell>
               </TableRow>

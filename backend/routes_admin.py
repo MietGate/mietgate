@@ -1,4 +1,5 @@
 import os
+import re
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
@@ -41,6 +42,28 @@ async def admin_stats(user: dict = Depends(admin)):
         "past_due_subscriptions": past_due_subs, "cancelled_subscriptions": cancelled,
         "open_tickets": open_tickets, "monthly_revenue": round(mrr, 2),
     }
+
+
+@router.get("/search")
+async def admin_search(q: str = "", user: dict = Depends(admin)):
+    q = q.strip()
+    if len(q) < 2:
+        return {"groups": []}
+    rx = {"$regex": re.escape(q), "$options": "i"}
+    groups = []
+    users = await db.users.find({"$or": [{"email": rx}, {"name": rx}]}, NO_ID).limit(5).to_list(5)
+    if users:
+        groups.append({"key": "users", "label": "Nutzer",
+                        "items": [{"id": u["id"], "label": u.get("name") or u.get("email"), "link": "/admin/nutzer"} for u in users]})
+    orgs = await db.organizations.find({"name": rx}, NO_ID).limit(5).to_list(5)
+    if orgs:
+        groups.append({"key": "organizations", "label": "Organisationen",
+                        "items": [{"id": o["id"], "label": o["name"], "link": "/admin/organisationen"} for o in orgs]})
+    leads = await db.leads.find({"$or": [{"name": rx}, {"email": rx}, {"company": rx}]}, NO_ID).limit(5).to_list(5)
+    if leads:
+        groups.append({"key": "leads", "label": "Leads",
+                        "items": [{"id": l["id"], "label": l.get("name") or l.get("company") or l.get("email"), "link": "/admin/leads"} for l in leads]})
+    return {"groups": groups}
 
 
 @router.get("/users")

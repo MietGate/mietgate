@@ -160,7 +160,7 @@ export default function AdminPlans() {
             {promos.map((pr) => (
               <div key={pr.id} className="rounded-lg border border-border bg-card p-4 flex items-center justify-between">
                 <div>
-                  <p className="font-medium">{pr.name} <Badge variant="secondary" className="ml-2">{pr.plan_key}</Badge></p>
+                  <p className="font-medium">{pr.name} <Badge variant="secondary" className="ml-2">{pr.plan_key === "all" ? "Alle Pakete" : plans.find((p) => p.key === pr.plan_key)?.name || pr.plan_key}</Badge></p>
                   <p className="text-sm text-muted-foreground">{pr.discount_percent ? `−${pr.discount_percent}%` : `${pr.fixed_price} €`} · {new Date(pr.start).toLocaleDateString("de-DE")} – {new Date(pr.end).toLocaleDateString("de-DE")}</p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => delPromo(pr.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
