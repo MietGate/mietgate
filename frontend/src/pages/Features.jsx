@@ -1,21 +1,87 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { Button } from "@/components/ui/button";
 import {
   Link2, ClipboardList, ShieldCheck, LayoutGrid, CalendarCheck, MessageSquare,
-  BarChart3, Users, Palette, ArrowRight, Check
+  BarChart3, Users, Palette, ArrowRight, Check, Copy
 } from "lucide-react";
 import { useSEO } from "@/lib/seo";
 
 const fade = { initial: { opacity: 0, y: 20 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.5 } };
 
+const LINK_PATH = "mietgate.de/b/8fk2q1";
+
+/* Animated vignette for the "Bewerbungslink" feature: types out a link, then a copy tooltip pops up. */
+function LinkGenTile() {
+  const [typed, setTyped] = useState("");
+  const [phase, setPhase] = useState("typing"); // typing -> tooltip -> copied
+
+  useEffect(() => {
+    const timers = [];
+    const schedule = (fn, ms) => timers.push(setTimeout(fn, ms));
+
+    function cycle() {
+      setPhase("typing");
+      setTyped("");
+      LINK_PATH.split("").forEach((_, idx) => {
+        schedule(() => setTyped(LINK_PATH.slice(0, idx + 1)), 260 + idx * 40);
+      });
+      const typedDone = 260 + LINK_PATH.length * 40;
+      schedule(() => setPhase("tooltip"), typedDone + 250);
+      schedule(() => setPhase("copied"), typedDone + 1350);
+      schedule(cycle, typedDone + 2800);
+    }
+    cycle();
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="relative h-12 w-fit min-w-[9.5rem]" data-testid="link-gen-animation">
+      <div className="h-12 flex items-center gap-2 rounded-xl border border-border bg-card shadow-sm pl-3 pr-3.5">
+        <span className="h-6 w-6 rounded-lg bg-accent text-primary flex items-center justify-center shrink-0"><Link2 className="h-3.5 w-3.5" /></span>
+        <span className="font-mono text-[12px] text-brand-dark whitespace-nowrap">
+          {typed}
+          {phase === "typing" && <span className="inline-block w-[2px] h-3.5 bg-primary ml-0.5 align-middle animate-pulse" />}
+        </span>
+      </div>
+      <AnimatePresence>
+        {phase !== "typing" && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 4, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            style={{ right: "-1.75rem" }}
+            className="absolute -top-3 flex flex-col items-end">
+            <span className="flex items-center gap-1.5 rounded-full bg-brand-dark text-white text-[11px] font-medium pl-2.5 pr-3 py-1.5 shadow-lg whitespace-nowrap">
+              {phase === "tooltip"
+                ? <><Copy className="h-3 w-3 text-white/80" /> Link kopieren</>
+                : <><Check className="h-3 w-3 text-primary" /> Kopiert!</>}
+            </span>
+            <span className="mr-4 h-2 w-2 rotate-45 bg-brand-dark -mt-1" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* Wraps given keywords (platforms, key terms) in the CI accent color within a plain text string. */
+function highlight(text, keywords) {
+  const pattern = new RegExp(`(${keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
+  return text.split(pattern).map((part, i) =>
+    keywords.includes(part) ? <span key={i} className="text-primary font-semibold">{part}</span> : part
+  );
+}
+
+const linkHighlights = ["Telefon", "E-Mail", "WhatsApp", "ImmoScout", "Kleinanzeigen", "Social Media", "Website", "Link"];
+
 const features = [
   {
     icon: Link2, title: "Der Bewerbungslink",
-    lead: "Ein Link für alles. Statt Anfragen per Telefon, E-Mail und WhatsApp zu sammeln, erhalten Sie einen kurzen, sicheren Link.",
+    lead: highlight("Ein Link für alles. Statt Anfragen per Telefon, E-Mail und WhatsApp zu sammeln, erhalten Sie einen kurzen, sicheren Link.", linkHighlights),
     points: [
-      "Teilen Sie ihn auf ImmoScout, Kleinanzeigen, Social Media oder Ihrer Website",
+      highlight("Teilen Sie ihn auf ImmoScout, Kleinanzeigen, Social Media oder Ihrer Website", linkHighlights),
       "Keine Adresse sichtbar – der Link ist anonym und professionell",
       "Jederzeit deaktivieren oder neu generieren",
       "Sie sehen genau, wie viele Bewerbungen eingegangen sind",
@@ -23,7 +89,7 @@ const features = [
   },
   {
     icon: ClipboardList, title: "Strukturierte Bewerbungen",
-    lead: "Sie entscheiden, welche Angaben Sie brauchen. Der Formular-Builder macht jede Frage zur Pflicht, optional oder blendet sie aus.",
+    lead: highlight("Sie entscheiden, welche Angaben Sie brauchen. Der Formular-Builder macht jede Frage zur Pflicht, optional oder blendet sie aus.", ["Formular-Builder"]),
     points: [
       "Persönliche Daten, Haushalt, Beruf & Einkommen, Wohnsituation",
       "Alle Bewerbungen sind vollständig und direkt vergleichbar",
@@ -33,19 +99,19 @@ const features = [
   },
   {
     icon: ShieldCheck, title: "Sichere Dokumente",
-    lead: "SCHUFA, Gehaltsnachweise, Ausweis & Co. – verschlüsselt gespeichert und nur für Berechtigte zugänglich.",
+    lead: highlight("SCHUFA, Gehaltsnachweise, Ausweis & Co. – verschlüsselt gespeichert und nur für Berechtigte zugänglich.", ["SCHUFA", "verschlüsselt"]),
     points: [
       "Keine öffentlichen Datei-Links – Zugriff nur für Sie",
-      "Zeitlich begrenzte, signierte Download-Links",
+      highlight("Zeitlich begrenzte, signierte Download-Links", ["Download-Links"]),
       "Sie können Dokumente gezielt anfordern",
-      "DSGVO-konform, EU-Hosting",
+      highlight("DSGVO-konform, EU-Hosting", ["DSGVO-konform", "EU-Hosting"]),
     ],
   },
   {
     icon: LayoutGrid, title: "Bewerberpipeline",
-    lead: "Behalten Sie den Überblick mit einem visuellen Board – von der ersten Bewerbung bis zur Zusage.",
+    lead: highlight("Behalten Sie den Überblick mit einem visuellen Board – von der ersten Bewerbung bis zur Zusage.", ["Board"]),
     points: [
-      "Ziehen Sie Bewerber per Drag & Drop durch die Phasen",
+      highlight("Ziehen Sie Bewerber per Drag & Drop durch die Phasen", ["Drag & Drop"]),
       "Vergeben Sie Sterne, Tags und interne Notizen",
       "Neu → Prüfung → Interessant → Besichtigung → Favorit → Zusage",
       "Nichts geht mehr unter",
@@ -55,7 +121,7 @@ const features = [
     icon: BarChart3, title: "Matching-Score",
     lead: "Eine faire Entscheidungshilfe: MietGate zeigt Ihnen auf einen Blick, wie gut ein Bewerber passt.",
     points: [
-      "Berechnet aus Einkommen, Haushaltsgröße, Einzugstermin & Dokumenten",
+      highlight("Berechnet aus Einkommen, Haushaltsgröße, Einzugstermin & Dokumenten", ["Einkommen", "Haushaltsgröße", "Einzugstermin", "Dokumenten"]),
       "Wert von 0–100 – z.B. „87/100 passend“",
       "Keine diskriminierenden Merkmale (Herkunft, Religion, Geschlecht …)",
       "Sie entscheiden am Ende immer selbst",
@@ -65,7 +131,7 @@ const features = [
     icon: CalendarCheck, title: "Besichtigungen",
     lead: "Organisieren Sie Termine komplett in MietGate – auf drei Arten, ganz wie es passt.",
     points: [
-      "Einzeltermin, freie Zeitfenster zum Selbst-Buchen oder Massenbesichtigung",
+      highlight("Einzeltermin, freie Zeitfenster zum Selbst-Buchen oder Massenbesichtigung", ["Einzeltermin", "Selbst-Buchen", "Massenbesichtigung"]),
       "Bewerber bestätigen, sagen ab oder fragen eine Umbuchung an",
       "Automatische Erinnerungen",
       "Kein Terminchaos mehr",
@@ -76,7 +142,7 @@ const features = [
     lead: "Kommunizieren Sie mit Bewerbern direkt in der Plattform – ohne private Kontaktdaten preiszugeben.",
     points: [
       "Objektbezogener Nachrichtenverlauf",
-      "E-Mail- und In-App-Benachrichtigungen bei allen wichtigen Ereignissen",
+      highlight("E-Mail- und In-App-Benachrichtigungen bei allen wichtigen Ereignissen", ["E-Mail", "In-App-Benachrichtigungen"]),
       "Immer nachvollziehbar mit Zeitstempel",
     ],
   },
@@ -84,7 +150,7 @@ const features = [
     icon: Users, title: "Für Makler & Hausverwaltungen",
     lead: "Arbeiten Sie im Team – mit Organisationen, Rollen und Rechten.",
     points: [
-      "Mitarbeiter einladen und Rollen vergeben (Owner, Admin, Mitarbeiter, Assistent)",
+      highlight("Mitarbeiter einladen und Rollen vergeben (Owner, Admin, Mitarbeiter, Assistent)", ["Owner", "Admin", "Assistent"]),
       "Objekte im Team teilen und verwalten",
       "Bis zu 20 aktive Objekte im Makler-Paket",
     ],
@@ -95,7 +161,7 @@ const features = [
     points: [
       "Eigenes Logo, eigene Primärfarbe, eigener Firmenname",
       "„Powered by MietGate“ optional ausblenden",
-      "Eigene Domain in Vorbereitung",
+      highlight("Eigene Domain in Vorbereitung", ["Eigene Domain"]),
     ],
   },
 ];
@@ -140,8 +206,10 @@ export default function Features() {
         {features.map((f, i) => (
           <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: (i % 2) * 0.05 }}
             className="rounded-2xl border border-border bg-card p-7 sm:p-9 grid md:grid-cols-3 gap-6 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all" data-testid={`feature-${i}`}>
-            <div className={`md:col-span-1 ${i % 2 === 1 ? "md:order-2" : ""}`}>
-              <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><f.icon className="h-6 w-6" /></div>
+            <div className={`md:col-span-1 ${i === 0 ? "flex flex-col items-center text-center justify-center" : ""} ${i % 2 === 1 ? "md:order-2" : ""}`}>
+              {i === 0
+                ? <LinkGenTile />
+                : <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><f.icon className="h-6 w-6" /></div>}
               <h2 className="font-display text-2xl font-semibold mt-4">{f.title}</h2>
             </div>
             <div className={`md:col-span-2 ${i % 2 === 1 ? "md:order-1" : ""}`}>
@@ -149,7 +217,7 @@ export default function Features() {
               <ul className="mt-5 grid sm:grid-cols-2 gap-x-6 gap-y-2.5">
                 {f.points.map((p, j) => (
                   <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" /> {p}
+                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" /> <span>{p}</span>
                   </li>
                 ))}
               </ul>
