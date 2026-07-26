@@ -213,6 +213,25 @@ async def admin_tickets(user: dict = Depends(admin)):
 TICKET_STATUSES = ("open", "in_bearbeitung", "erledigt")
 
 
+class TicketCreate(BaseModel):
+    name: str
+    email: str
+    message: str
+    source: str = "telefon"
+
+
+@router.post("/support-tickets")
+async def create_ticket(body: TicketCreate, user: dict = Depends(admin)):
+    ticket = {
+        "id": new_id(), "name": body.name, "email": body.email, "message": body.message,
+        "source": body.source, "status": "open", "created_at": now_iso(),
+        "created_by": user.get("name") or user.get("email"),
+    }
+    await db.support_tickets.insert_one(ticket)
+    ticket.pop("_id", None)
+    return ticket
+
+
 class TicketStatusUpdate(BaseModel):
     status: str
 
