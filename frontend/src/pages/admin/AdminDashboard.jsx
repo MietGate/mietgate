@@ -22,7 +22,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 animate-fade-up">
-      <div><h1 className="font-display text-3xl font-bold">Admin Dashboard</h1><p className="text-muted-foreground mt-1">Steuerung des gesamten SaaS-Betriebs.</p></div>
+      <div><h1 className="font-display text-3xl font-bold">Übersicht</h1><p className="text-muted-foreground mt-1">Steuerung des gesamten SaaS-Betriebs.</p></div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card icon={Users} label="Nutzer" value={s.total_users} />
         <Card icon={Building2} label="Vermieter" value={s.landlords} />

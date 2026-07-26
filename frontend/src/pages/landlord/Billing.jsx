@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Loader2, CreditCard } from "lucide-react";
 
-export default function Billing() {
+export default function Billing({ embedded = false }) {
   const [sub, setSub] = useState(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -40,7 +40,7 @@ export default function Billing() {
 
   return (
     <div className="space-y-8 animate-fade-up">
-      <div><h1 className="font-display text-3xl font-bold">Abo & Zahlungen</h1><p className="text-muted-foreground mt-1">Verwalten Sie Ihr Paket und Ihre Zahlungen.</p></div>
+      {!embedded && <div><h1 className="font-display text-3xl font-bold">Abo & Zahlungen</h1><p className="text-muted-foreground mt-1">Verwalten Sie Ihr Paket und Ihre Zahlungen.</p></div>}
 
       <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
         <div className="rounded-xl border border-border bg-card p-6">

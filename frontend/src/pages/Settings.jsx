@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { validateFile } from "@/lib/validateFile";
 import { useAuth } from "@/context/AuthContext";
@@ -11,11 +11,14 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import Billing from "@/pages/landlord/Billing";
 
 export default function Settings() {
   const { user, refresh, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isLandlord = user?.role === "landlord";
+  const [tab, setTab] = useState(searchParams.get("tab") === "abo" ? "billing" : "profile");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [profile, setProfile] = useState({ first_name: user?.first_name || "", last_name: user?.last_name || "", phone: user?.phone || "" });
   const [pw, setPw] = useState({ current_password: "", new_password: "" });
@@ -84,13 +87,14 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-up max-w-2xl">
+    <div className={`space-y-6 animate-fade-up ${isLandlord ? "max-w-4xl" : "max-w-2xl"}`}>
       <h1 className="font-display text-3xl font-bold">Einstellungen</h1>
-      <Tabs defaultValue="profile">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="profile" data-testid="tab-profile">Profil</TabsTrigger>
           <TabsTrigger value="password">Passwort</TabsTrigger>
           {isLandlord && <TabsTrigger value="org" data-testid="tab-org">Organisation</TabsTrigger>}
+          {isLandlord && <TabsTrigger value="billing" data-testid="tab-billing">Abo & Zahlungen</TabsTrigger>}
           {isLandlord && <TabsTrigger value="whitelabel">White-Label</TabsTrigger>}
         </TabsList>
 
@@ -129,6 +133,18 @@ export default function Settings() {
               </Button>
             </div>
           )}
+
+          {isLandlord && (
+            <div className="rounded-xl border border-border bg-secondary/30 p-6 mt-4">
+              <p className="font-medium">Konto löschen</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Da Ihr Konto Organisationsdaten (Objekte, Bewerbungen, Team-Mitglieder) verwaltet, ist eine
+                automatische Selbstlöschung hier nicht möglich. Bitte kontaktieren Sie{" "}
+                <a href="mailto:support@mietgate.de" className="text-primary hover:underline">support@mietgate.de</a>{" "}
+                für die vollständige Löschung Ihres Kontos (Art. 17 DSGVO).
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         {isLandlord && org && (
@@ -143,6 +159,12 @@ export default function Settings() {
           </TabsContent>
         )}
 
+        {isLandlord && (
+          <TabsContent value="billing" className="mt-6">
+            <Billing embedded />
+          </TabsContent>
+        )}
+
         {isLandlord && org && (
           <TabsContent value="whitelabel" className="mt-6">
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">
@@ -152,7 +174,7 @@ export default function Settings() {
                     <p className="font-medium">White-Label Add-on erforderlich</p>
                     <p className="text-sm text-muted-foreground">Buchen Sie das White-Label Add-on (79 €/Monat), um eigenes Branding zu aktivieren.</p>
                   </div>
-                  <Button asChild size="sm"><Link to="/abo">Add-on buchen</Link></Button>
+                  <Button size="sm" onClick={() => setTab("billing")}>Add-on buchen</Button>
                 </div>
               )}
               <div className="flex items-center justify-between">

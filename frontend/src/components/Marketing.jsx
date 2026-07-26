@@ -64,7 +64,7 @@ export function MarketingNav() {
         <div className="hidden md:flex items-center gap-4">
           <SocialLinks className="text-foreground" />
           {user ? (
-            <Button asChild size="sm"><Link to={dest} data-testid="nav-dashboard">Zum Dashboard</Link></Button>
+            <Button asChild size="sm"><Link to={dest} data-testid="nav-dashboard">Zur Übersicht</Link></Button>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm"><Link to="/login" data-testid="nav-login">Anmelden</Link></Button>
@@ -82,7 +82,7 @@ export function MarketingNav() {
           <Link to="/preise" className="block text-sm">Preise</Link>
           <Link to="/faq" className="block text-sm">FAQ</Link>
           {user ? (
-            <Button asChild className="w-full"><Link to={dest} data-testid="nav-mobile-dashboard">Dashboard</Link></Button>
+            <Button asChild className="w-full"><Link to={dest} data-testid="nav-mobile-dashboard">Übersicht</Link></Button>
           ) : (
             <div className="space-y-2 pt-1">
               <Button asChild variant="outline" className="w-full"><Link to="/login" data-testid="nav-mobile-login">Anmelden</Link></Button>

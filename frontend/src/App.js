@@ -1,6 +1,6 @@
 import "@/App.css";
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardShell } from "@/components/DashboardShell";
 import { CookieConsent } from "@/components/CookieConsent";
@@ -27,7 +27,6 @@ import Properties from "@/pages/landlord/Properties";
 import PropertyForm from "@/pages/landlord/PropertyForm";
 import PropertyDetail from "@/pages/landlord/PropertyDetail";
 import Team from "@/pages/landlord/Team";
-import Billing from "@/pages/landlord/Billing";
 import Settings from "@/pages/Settings";
 import ApplicantDashboard from "@/pages/applicant/ApplicantDashboard";
 import ApplicantDocuments from "@/pages/applicant/ApplicantDocuments";
@@ -89,7 +88,7 @@ function AppRouter() {
         <Route path="/objekte/:id/bearbeiten" element={<PropertyForm />} />
         <Route path="/objekte/:id" element={<PropertyDetail />} />
         <Route path="/team" element={<Team />} />
-        <Route path="/abo" element={<Billing />} />
+        <Route path="/abo" element={<Navigate to="/einstellungen?tab=abo" replace />} />
       </Route>
 
       {/* Applicant */}

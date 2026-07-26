@@ -17,6 +17,12 @@ const COLUMNS = [
   { key: "absage", label: "Absage", dot: "bg-destructive" }, { key: "archiv", label: "Archiv", dot: "bg-muted-foreground" },
 ];
 
+let fieldsCache = null;
+async function loadFieldDefs() {
+  if (!fieldsCache) fieldsCache = api.get("/form-fields").then((r) => r.data.fields).catch(() => []);
+  return fieldsCache;
+}
+
 function scoreColor(s) {
   if (s >= 75) return "bg-success/15 text-success border-success/30";
   if (s >= 50) return "bg-amber-100 text-amber-800 border-amber-200";
@@ -30,6 +36,7 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   const [notes, setNotes] = useState("");
   const [viewings, setViewings] = useState([]);
   const [selViewing, setSelViewing] = useState("");
+  const [fieldDefs, setFieldDefs] = useState([]);
   const msgEndRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -43,6 +50,8 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
       setViewings(v.data);
     }
   }, [appId, propertyId]);
+
+  useEffect(() => { loadFieldDefs().then(setFieldDefs); }, []);
 
   useEffect(() => { if (open) load(); }, [open, load]);
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -118,12 +127,19 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
               <div>
                 <Label2>Angaben</Label2>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(app.form_data || {}).filter(([, v]) => v !== "" && v != null).map(([k, v]) => (
-                    <div key={k} className="rounded-md bg-secondary/50 px-3 py-2">
-                      <p className="text-xs text-muted-foreground capitalize">{k.replace(/_/g, " ")}</p>
-                      <p className="font-medium truncate">{String(v)}</p>
-                    </div>
-                  ))}
+                  {Object.entries(app.form_data || {}).filter(([, v]) => v !== "" && v != null).map(([k, v]) => {
+                    const def = fieldDefs.find((f) => f.key === k);
+                    const label = def?.label || k.replace(/_/g, " ");
+                    let display = String(v);
+                    if (def?.option_labels?.[v]) display = def.option_labels[v];
+                    else if (def?.type === "date" && /^\d{4}-\d{2}-\d{2}/.test(v)) display = new Date(v).toLocaleDateString("de-DE");
+                    return (
+                      <div key={k} className="rounded-md bg-secondary/50 px-3 py-2">
+                        <p className="text-xs text-muted-foreground">{label}</p>
+                        <p className="font-medium truncate">{display}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

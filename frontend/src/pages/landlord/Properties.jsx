@@ -37,18 +37,21 @@ export default function Properties() {
           {props.map((p) => (
             <Link key={p.id} to={`/objekte/${p.id}`} data-testid={`property-card-${p.id}`}
               className="rounded-xl border border-border bg-card overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all">
-              <div className="h-28 bg-brand-dark relative flex items-end p-4">
+              <div className="h-28 bg-brand-dark relative flex items-end p-4 gap-1.5 flex-wrap">
                 <Building2 className="absolute top-4 right-4 h-6 w-6 text-white/20" />
                 <Badge className={`${p.status === "active" ? "bg-success text-success-foreground" : "bg-white/20 text-white"}`}>
                   {p.status === "active" ? "Aktiv" : p.status === "rented" ? "Vermietet" : "Inaktiv"}
                 </Badge>
+                {!p.link_active && <Badge className="bg-amber-500 text-white">Link inaktiv</Badge>}
               </div>
               <div className="p-5">
                 <h3 className="font-display font-bold truncate">{p.title}</h3>
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1"><MapPin className="h-3.5 w-3.5" /> {[p.zip, p.city].filter(Boolean).join(" ") || "Kein Ort"}</p>
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-border text-sm">
                   <span className="flex items-center gap-1.5 text-muted-foreground"><Users className="h-4 w-4" /> {p.application_count} Bewerbungen</span>
-                  <span className="font-mono text-xs bg-secondary px-2 py-1 rounded">/b/{p.application_code}</span>
+                  {p.link_active
+                    ? <span className="font-mono text-xs bg-secondary px-2 py-1 rounded">/b/{p.application_code}</span>
+                    : <span className="text-xs text-amber-600 font-medium">Link nicht aktiv</span>}
                 </div>
               </div>
             </Link>

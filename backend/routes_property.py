@@ -1,4 +1,5 @@
 import random
+import re
 import string
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -80,6 +81,28 @@ async def _require_manage_role(org_id, user, roles=("owner", "admin", "employee"
 @router.get("/form-fields")
 async def get_form_fields():
     return {"fields": FORM_FIELDS, "default_config": DEFAULT_FORM_CONFIG, "document_types": DOCUMENT_TYPES}
+
+
+@router.get("/search")
+async def search(q: str = "", user: dict = Depends(get_current_user)):
+    org_id = user.get("org_id")
+    q = q.strip()
+    if not org_id or len(q) < 2:
+        return {"properties": [], "applications": []}
+    rx = {"$regex": re.escape(q), "$options": "i"}
+    props = await db.properties.find({"org_id": org_id, "title": rx}, NO_ID).limit(5).to_list(5)
+    apps = await db.applications.find(
+        {"org_id": org_id, "$or": [
+            {"form_data.vorname": rx}, {"form_data.nachname": rx}, {"applicant_email": rx},
+        ]}, NO_ID).limit(5).to_list(5)
+    return {
+        "properties": [{"id": p["id"], "title": p["title"]} for p in props],
+        "applications": [{
+            "id": a["id"], "property_id": a["property_id"],
+            "name": (f"{a.get('form_data', {}).get('vorname', '')} {a.get('form_data', {}).get('nachname', '')}".strip()
+                     or a.get("applicant_email")),
+        } for a in apps],
+    }
 
 
 @router.get("/me/entitlements")

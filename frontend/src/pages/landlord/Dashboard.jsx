@@ -85,7 +85,7 @@ export default function LandlordDashboard() {
           {!["active", "trialing"].includes(data.subscription_status) && (
             <>
               <p className="text-sm text-muted-foreground mt-3">Schalten Sie mehr Objekte und Funktionen frei.</p>
-              <Button asChild variant="outline" size="sm" className="mt-4 w-full"><Link to="/abo">Paket wählen</Link></Button>
+              <Button asChild variant="outline" size="sm" className="mt-4 w-full"><Link to="/einstellungen?tab=abo">Paket wählen</Link></Button>
             </>
           )}
           <div className="mt-6 pt-6 border-t border-border">

@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import api from "@/lib/api";
 import {
   LayoutDashboard, Building2, Users, Settings, LogOut, Bell, Menu, X,
-  CreditCard, ShieldCheck, FileText, CalendarDays, Home, ChevronRight, Link2, Contact
+  CreditCard, ShieldCheck, FileText, CalendarDays, Home, ChevronRight, Link2, Contact, Search
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,10 +14,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const landlordNav = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
   { to: "/objekte", label: "Objekte", icon: Building2 },
   { to: "/team", label: "Team", icon: Users },
-  { to: "/abo", label: "Abo & Zahlungen", icon: CreditCard },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 
@@ -25,11 +24,11 @@ const applicantNav = [
   { to: "/bewerber", label: "Übersicht", icon: LayoutDashboard },
   { to: "/bewerber/dokumente", label: "Dokumente", icon: FileText },
   { to: "/bewerber/termine", label: "Termine", icon: CalendarDays },
-  { to: "/einstellungen", label: "Profil", icon: Settings },
+  { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 
 const adminNav = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/admin", label: "Übersicht", icon: LayoutDashboard },
   { to: "/admin/nutzer", label: "Nutzer", icon: Users },
   { to: "/admin/organisationen", label: "Organisationen", icon: Building2 },
   { to: "/admin/pakete", label: "Pakete & Aktionen", icon: CreditCard },
@@ -38,6 +37,91 @@ const adminNav = [
   { to: "/admin/support", label: "Support & Logs", icon: ShieldCheck },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ];
+
+function HeaderSearch() {
+  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (q.trim().length < 2) { setResults(null); return; }
+    const t = setTimeout(() => {
+      api.get(`/search?q=${encodeURIComponent(q.trim())}`).then((r) => setResults(r.data)).catch(() => setResults(null));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const goTo = (path) => {
+    setOpen(false); setMobileOpen(false); setQ(""); setResults(null);
+    navigate(path);
+  };
+
+  const hasResults = results && (results.properties.length > 0 || results.applications.length > 0);
+
+  const dropdown = open && q.trim().length >= 2 && (
+    <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-30 max-h-80 overflow-y-auto" data-testid="search-results">
+      {!hasResults && <div className="px-3 py-4 text-sm text-muted-foreground text-center">Keine Treffer</div>}
+      {results?.properties?.length > 0 && (
+        <div className="py-1.5">
+          <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Objekte</p>
+          {results.properties.map((p) => (
+            <button key={p.id} onMouseDown={() => goTo(`/objekte/${p.id}`)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors">{p.title}</button>
+          ))}
+        </div>
+      )}
+      {results?.applications?.length > 0 && (
+        <div className="py-1.5 border-t border-border">
+          <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bewerber</p>
+          {results.applications.map((a) => (
+            <button key={a.id} onMouseDown={() => goTo(`/objekte/${a.property_id}`)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors">{a.name}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop: persistent input */}
+      <div className="hidden md:block relative w-64">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
+          placeholder="Objekte, Bewerber suchen…" data-testid="header-search"
+          className="w-full pl-8 pr-3 py-1.5 text-sm rounded-md border border-border bg-secondary/40 focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors" />
+        {dropdown}
+      </div>
+
+      {/* Mobile: icon that expands to a full-width overlay */}
+      <button className="md:hidden p-2 rounded-md hover:bg-secondary transition-colors" onClick={() => setMobileOpen(true)} data-testid="mobile-search-open">
+        <Search className="h-5 w-5 text-muted-foreground" />
+      </button>
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-background flex flex-col">
+          <div className="h-16 border-b border-border flex items-center gap-2 px-4">
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)}
+              placeholder="Objekte, Bewerber suchen…" data-testid="mobile-search-input"
+              className="flex-1 text-sm bg-transparent focus:outline-none" />
+            <button onClick={() => { setMobileOpen(false); setQ(""); setResults(null); }}><X className="h-5 w-5 text-muted-foreground" /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {q.trim().length >= 2 && !hasResults && <div className="px-4 py-6 text-sm text-muted-foreground text-center">Keine Treffer</div>}
+            {results?.properties?.map((p) => (
+              <button key={p.id} onClick={() => goTo(`/objekte/${p.id}`)} className="w-full text-left px-4 py-3 text-sm border-b border-border hover:bg-secondary">{p.title}</button>
+            ))}
+            {results?.applications?.map((a) => (
+              <button key={a.id} onClick={() => goTo(`/objekte/${a.property_id}`)} className="w-full text-left px-4 py-3 text-sm border-b border-border hover:bg-secondary">{a.name}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 function NotificationBell() {
   const navigate = useNavigate();
@@ -151,10 +235,11 @@ export function DashboardShell() {
             <div className="hidden sm:flex items-center text-sm text-muted-foreground">
               <span className="capitalize">{user?.role === "applicant" ? "Bewerber" : user?.role === "admin" ? "Administrator" : "Vermieter"}</span>
               <ChevronRight className="h-4 w-4 mx-1" />
-              <span className="text-foreground font-medium">{nav.find((n) => location.pathname === n.to || location.pathname.startsWith(n.to + "/"))?.label || "Übersicht"}</span>
+              <span className="text-foreground font-medium">{baseNav.find((n) => location.pathname === n.to || location.pathname.startsWith(n.to + "/"))?.label || "Übersicht"}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {user?.role === "landlord" && <HeaderSearch />}
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

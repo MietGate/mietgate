@@ -122,7 +122,7 @@ export default function PropertyDetail() {
         </div>
       )}
 
-      <Tabs defaultValue="pipeline">
+      <Tabs key={prop.id} defaultValue={prop.link_active ? "pipeline" : "link"}>
         <TabsList>
           <TabsTrigger value="pipeline" data-testid="tab-pipeline">Bewerber ({prop.application_count})</TabsTrigger>
           <TabsTrigger value="link" data-testid="tab-link">Bewerbungslink</TabsTrigger>

@@ -88,7 +88,7 @@ export default function Team() {
             <h3 className="font-display font-bold flex items-center gap-2"><Lock className="h-4 w-4 text-primary" /> Team-Funktion nicht verfügbar</h3>
             <p className="text-sm text-muted-foreground mt-1">Mitarbeiter & Rollen sind im Makler-/Hausverwaltungs-Paket enthalten. Upgraden Sie, um Ihr Team einzuladen.</p>
           </div>
-          <Button asChild><Link to="/abo">Paket upgraden</Link></Button>
+          <Button asChild><Link to="/einstellungen?tab=abo">Paket upgraden</Link></Button>
         </div>
       )}
 
