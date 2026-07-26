@@ -5,7 +5,7 @@ import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { Button } from "@/components/ui/button";
 import {
   Link2, ClipboardList, ShieldCheck, LayoutGrid, CalendarCheck, MessageSquare,
-  BarChart3, Users, Palette, ArrowRight, Check, Copy
+  BarChart3, Users, Palette, ArrowRight, Check, Copy, Mail, Building2
 } from "lucide-react";
 import { useSEO } from "@/lib/seo";
 
@@ -66,6 +66,60 @@ function LinkGenTile() {
   );
 }
 
+const sourceChipIcons = [Mail, Building2, MessageSquare];
+const chipOffsets = [-14, 0, 14];
+
+/* Animated vignette for "Zentrale Bewerbungsverwaltung": source chips fly in and land as rows in a central inbox. */
+function InboxConvergeTile() {
+  const [step, setStep] = useState(0);
+  const [cycleKey, setCycleKey] = useState(0);
+
+  useEffect(() => {
+    const timers = [];
+    const schedule = (fn, ms) => timers.push(setTimeout(fn, ms));
+
+    function cycle() {
+      setCycleKey((k) => k + 1);
+      setStep(0);
+      schedule(() => setStep(1), 500);
+      schedule(() => setStep(2), 1050);
+      schedule(() => setStep(3), 1600);
+      schedule(cycle, 3600);
+    }
+    cycle();
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="relative h-12 w-36" data-testid="inbox-converge-animation">
+      {sourceChipIcons.map((Icon, i) => (
+        <motion.span key={`${cycleKey}-chip-${i}`}
+          initial={{ opacity: 0, x: -6 }}
+          animate={step > i
+            ? { x: [-6, 42, 88], y: [0, -9, 0], opacity: [1, 1, 0] }
+            : { opacity: 1, x: 0 }}
+          transition={step > i
+            ? { duration: 0.55, ease: "easeIn", times: [0, 0.55, 1] }
+            : { duration: 0.35, ease: "easeOut" }}
+          style={{ top: `calc(50% + ${chipOffsets[i]}px)` }}
+          className="absolute left-0 -translate-y-1/2 h-6 w-6 rounded-full bg-accent text-primary flex items-center justify-center shadow-sm">
+          <Icon className="h-3.5 w-3.5" />
+        </motion.span>
+      ))}
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 h-11 w-9 rounded-lg border border-border bg-card shadow-sm p-1.5 flex flex-col justify-end gap-1">
+        {[0, 1, 2].map((i) => (
+          <motion.div key={`${cycleKey}-row-${i}`}
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={step > i ? { scaleX: 1, opacity: 1 } : { scaleX: 0, opacity: 0 }}
+            transition={{ duration: 0.25, delay: 0.35 }}
+            style={{ transformOrigin: "left" }}
+            className="h-1.5 rounded-full bg-primary/70" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* Wraps given keywords (platforms, key terms) in the CI accent color within a plain text string. */
 function highlight(text, keywords) {
   const pattern = new RegExp(`(${keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
@@ -88,8 +142,8 @@ const features = [
     ],
   },
   {
-    icon: ClipboardList, title: "Strukturierte Bewerbungen",
-    lead: highlight("Sie entscheiden, welche Angaben Sie brauchen. Der Formular-Builder macht jede Frage zur Pflicht, optional oder blendet sie aus.", ["Formular-Builder"]),
+    icon: ClipboardList, title: "Zentrale Bewerbungsverwaltung",
+    lead: "Empfangen und verwalten Sie Bewerbungen aus allen Quellen in einer einzigen Übersicht – schnell, strukturiert und intuitiv.",
     points: [
       "Persönliche Daten, Haushalt, Beruf & Einkommen, Wohnsituation",
       "Alle Bewerbungen sind vollständig und direkt vergleichbar",
@@ -219,9 +273,11 @@ export default function Features() {
         {features.map((f, i) => (
           <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: (i % 2) * 0.05 }}
             className="rounded-2xl border border-border bg-card p-7 sm:p-9 grid md:grid-cols-3 gap-6 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all" data-testid={`feature-${i}`}>
-            <div className={`md:col-span-1 ${i === 0 ? "flex flex-col items-center text-center justify-center" : ""} ${i % 2 === 1 ? "md:order-2" : ""}`}>
+            <div className={`md:col-span-1 ${i === 0 ? "flex flex-col items-center text-center justify-center" : ""} ${i === 1 ? "flex flex-col items-end text-right" : ""} ${i % 2 === 1 ? "md:order-2" : ""}`}>
               {i === 0
                 ? <LinkGenTile />
+                : i === 1
+                ? <InboxConvergeTile />
                 : <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><f.icon className="h-6 w-6" /></div>}
               <h2 className="font-display text-2xl font-semibold mt-4">{f.title}</h2>
             </div>
