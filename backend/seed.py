@@ -52,7 +52,11 @@ DEFAULT_PLANS = [
 
 async def seed_admin():
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@mietgate.de")
-    admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+    if not admin_password:
+        raise RuntimeError(
+            "ADMIN_PASSWORD environment variable must be set (no default password allowed)."
+        )
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
         await db.users.insert_one({
