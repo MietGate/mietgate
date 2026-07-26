@@ -75,6 +75,18 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RequestLoginCodeRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyLoginCodeRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+
+OTP_TTL_MIN = 10
+
+
 class ForgotRequest(BaseModel):
     email: EmailStr
     origin_url: Optional[str] = None
@@ -241,6 +253,65 @@ async def login(req: LoginRequest, request: Request):
     await db.login_attempts.delete_one({"identifier": identifier})
     await db.login_attempts.delete_one({"identifier": email_identifier})
     await log_activity(user.get("org_id"), user["id"], "login", "user", user["id"])
+    token = create_access_token(user["id"], email)
+    return {"token": token, "user": _public_user(user)}
+
+
+@router.post("/login/request-code")
+async def request_login_code(req: RequestLoginCodeRequest, request: Request):
+    """Fallback login path for when the password-lockout above is triggered (e.g. a few
+    mistyped passwords). Sends a one-time code to the account's own email; entering it
+    correctly proves inbox ownership and logs the user in without the password, clearing
+    the lockout in the process."""
+    email = req.email.lower().strip()
+    if await _hit_rate_limit(f"login-code:{email}", max_attempts=3, window_minutes=15):
+        raise HTTPException(status_code=429, detail="Zu viele Anfragen. Bitte später erneut versuchen.")
+    user = await db.users.find_one({"email": email}, NO_ID)
+    if user and not user.get("is_blocked"):
+        code = f"{secrets.randbelow(1000000):06d}"
+        await db.login_otps.update_one(
+            {"email": email},
+            {"$set": {
+                "email": email, "code": code, "used": False,
+                "created_at": now_iso(),
+                "expires_at": datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MIN),
+            }}, upsert=True)
+        await send_email(email, "Ihr Anmeldecode – MietGate", "Ihr Anmeldecode",
+                          f"<p>Ihr Code lautet: <strong style=\"font-size:22px;letter-spacing:3px;\">{code}</strong></p>"
+                          f"<p>Er ist {OTP_TTL_MIN} Minuten gültig. Falls Sie diesen Code nicht angefordert haben, "
+                          f"ignorieren Sie diese E-Mail.</p>")
+    return {"ok": True, "message": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Code versendet."}
+
+
+@router.post("/login/verify-code")
+async def verify_login_code(req: VerifyLoginCodeRequest, request: Request):
+    email = req.email.lower().strip()
+    code = req.code.strip()
+    if await _hit_rate_limit(f"login-code-verify:{email}", max_attempts=8, window_minutes=15):
+        raise HTTPException(status_code=429, detail="Zu viele Versuche. Bitte fordern Sie einen neuen Code an.")
+    otp = await db.login_otps.find_one({"email": email})
+    if not otp or otp.get("used") or otp.get("code") != code:
+        raise HTTPException(status_code=401, detail="Code ungültig oder abgelaufen")
+    expires_at = otp["expires_at"]
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=401, detail="Code ungültig oder abgelaufen")
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=401, detail="Code ungültig oder abgelaufen")
+    if user.get("is_blocked"):
+        raise HTTPException(status_code=403, detail="Konto gesperrt")
+    if user.get("auth_provider") == "password" and not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse. Prüfen Sie Ihren Posteingang.")
+
+    await db.login_otps.update_one({"email": email}, {"$set": {"used": True}})
+    ip = request.client.host if request.client else "unknown"
+    await db.login_attempts.delete_one({"identifier": f"{ip}:{email}"})
+    await db.login_attempts.delete_one({"identifier": f"email:{email}"})
+    await log_activity(user.get("org_id"), user["id"], "login_via_code", "user", user["id"])
     token = create_access_token(user["id"], email)
     return {"token": token, "user": _public_user(user)}
 

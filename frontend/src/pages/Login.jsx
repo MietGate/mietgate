@@ -7,7 +7,65 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Building2, User } from "lucide-react";
+import { Loader2, Building2, User, Mail, ShieldCheck } from "lucide-react";
+
+function CodeLogin({ email: initialEmail, onSuccess }) {
+  const [email, setEmail] = useState(initialEmail || "");
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const requestCode = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post("/auth/login/request-code", { email });
+      setSent(true);
+      toast.success("Falls das Konto existiert, wurde ein Code an Ihre E-Mail gesendet.");
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyCode = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { data } = await api.post("/auth/login/verify-code", { email, code });
+      onSuccess(data);
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-secondary/30 p-4 mt-4" data-testid="code-login">
+      <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-primary" /> Anmeldung per E-Mail-Code</div>
+      {!sent ? (
+        <form onSubmit={requestCode} className="mt-3 space-y-2">
+          <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@beispiel.de" data-testid="code-login-email" />
+          <Button type="submit" variant="outline" className="w-full" disabled={loading} data-testid="code-login-request">
+            {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />} Code an E-Mail senden
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={verifyCode} className="mt-3 space-y-2">
+          <p className="text-xs text-muted-foreground">Code an {email} gesendet — 10 Minuten gültig.</p>
+          <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="6-stelliger Code"
+            maxLength={6} data-testid="code-login-code" />
+          <Button type="submit" className="w-full" disabled={loading} data-testid="code-login-verify">
+            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Anmelden
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,17 +74,23 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleRole, setGoogleRole] = useState("landlord");
+  const [lockedOut, setLockedOut] = useState(false);
+
+  const afterLogin = (data) => {
+    login(data.token, data.user);
+    toast.success("Willkommen zurück!");
+    navigate(data.user.role === "applicant" ? "/bewerber" : data.user.role === "admin" ? "/admin" : "/dashboard");
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const { data } = await api.post("/auth/login", { email, password });
-      login(data.token, data.user);
-      toast.success("Willkommen zurück!");
-      navigate(data.user.role === "applicant" ? "/bewerber" : data.user.role === "admin" ? "/admin" : "/dashboard");
+      afterLogin(data);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
+      if (e.response?.status === 429) setLockedOut(true);
     } finally {
       setLoading(false);
     }
@@ -69,6 +133,7 @@ export default function Login() {
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Anmelden
             </Button>
           </form>
+          {lockedOut && <CodeLogin email={email} onSuccess={afterLogin} />}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
             <div className="relative flex justify-center text-xs"><span className="bg-background px-2 text-muted-foreground">oder</span></div>
