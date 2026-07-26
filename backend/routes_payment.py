@@ -79,6 +79,36 @@ async def premium_checkout(req: PremiumCheckout, request: Request, user: dict = 
     return {"checkout_url": session.url, "session_id": session.id}
 
 
+class PremiumBillingPortalRequest(BaseModel):
+    origin_url: str
+
+
+@router.post("/premium/billing-portal")
+async def premium_billing_portal(req: PremiumBillingPortalRequest, user: dict = Depends(get_current_user)):
+    sub = await db.subscriptions.find_one({"user_id": user["id"], "kind": "premium"}, NO_ID)
+    if not sub or not sub.get("stripe_customer_id"):
+        raise HTTPException(status_code=404, detail="Kein Stripe-Kunde hinterlegt")
+    try:
+        session = stripe_service.create_billing_portal_session(sub["stripe_customer_id"], f"{req.origin_url}/bewerber")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Portal fehlgeschlagen: {e}")
+    return {"portal_url": session.url}
+
+
+@router.post("/premium/cancel")
+async def cancel_premium(user: dict = Depends(get_current_user)):
+    sub = await db.subscriptions.find_one({"user_id": user["id"], "kind": "premium"})
+    if not sub or not sub.get("stripe_subscription_id"):
+        raise HTTPException(status_code=404, detail="Kein aktives Premium-Abo")
+    try:
+        stripe.Subscription.modify(sub["stripe_subscription_id"], cancel_at_period_end=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Kündigung fehlgeschlagen: {e}")
+    await db.subscriptions.update_one({"user_id": user["id"], "kind": "premium"},
+                                      {"$set": {"cancel_at_period_end": True, "updated_at": now_iso()}})
+    return {"ok": True}
+
+
 @router.get("/payments/status/{session_id}")
 async def payment_status(session_id: str):
     record = await stripe_service.sync_status(session_id)

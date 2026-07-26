@@ -25,6 +25,9 @@ function PremiumCard() {
   const { user, refresh } = useAuth();
   const [loading, setLoading] = useState(false);
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelScheduled, setCancelScheduled] = useState(false);
 
   const buyPremium = async () => {
     if (!withdrawalConsent) return;
@@ -38,14 +41,54 @@ function PremiumCard() {
     }
   };
 
+  const manageBilling = async () => {
+    setPortalLoading(true);
+    try {
+      const { data } = await api.post("/premium/billing-portal", { origin_url: window.location.origin });
+      window.location.href = data.portal_url;
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+      setPortalLoading(false);
+    }
+  };
+
+  const cancelPremium = async () => {
+    if (!window.confirm("Bewerber-Premium wirklich kündigen? Ihr Profil-Link bleibt bis zum Ende der aktuellen Abrechnungsperiode aktiv.")) return;
+    setCanceling(true);
+    try {
+      await api.post("/premium/cancel");
+      toast.success("Kündigung vorgemerkt. Premium bleibt bis zum Ende der Abrechnungsperiode aktiv.");
+      setCancelScheduled(true);
+      refresh?.();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    } finally {
+      setCanceling(false);
+    }
+  };
+
   if (user?.premium) {
     return (
       <div className="rounded-2xl border-2 border-amber-400/40 bg-amber-50/60 p-6" data-testid="premium-active-banner">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-amber-400 text-white flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Premium aktiv 👑</h2>
-            <p className="text-muted-foreground text-sm mt-0.5">Ihr Bewerber-Profil wird bevorzugt angezeigt. Danke für Ihre Unterstützung!</p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-xl bg-amber-400 text-white flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
+            <div>
+              <h2 className="font-display text-xl font-bold">Premium aktiv 👑</h2>
+              <p className="text-muted-foreground text-sm mt-0.5">
+                {cancelScheduled ? "Gekündigt — bleibt bis zum Periodenende aktiv." : "Ihr Bewerber-Profil wird bevorzugt angezeigt. Danke für Ihre Unterstützung!"}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button size="sm" variant="outline" disabled={portalLoading} onClick={manageBilling} data-testid="premium-manage-billing">
+              {portalLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Zahlungsmethode verwalten"}
+            </Button>
+            {!cancelScheduled && (
+              <Button size="sm" variant="ghost" disabled={canceling} onClick={cancelPremium} data-testid="premium-cancel">
+                {canceling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Kündigen"}
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -42,3 +42,4 @@ async def ensure_indexes():
     await db.profile_inquiries.create_index("id", unique=True)
     await db.profile_inquiries.create_index("applicant_user_id")
     await db.profile_inquiries.create_index("share_token", unique=True, sparse=True)
+    await db.subscriptions.create_index([("user_id", 1), ("kind", 1)])

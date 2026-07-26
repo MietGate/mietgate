@@ -130,9 +130,29 @@ async def _mark_paid(session_id, subscription, payment_intent):
                   "stripe_payment_intent_id": payment_intent,
                   "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
-    # Bewerber-Premium: activate flag on the user
+    # Bewerber-Premium: activate flag on the user, track the subscription so cancellation
+    # and failed-payment webhooks can find and downgrade it later
     if tx.get("purpose") == "premium":
         if tx.get("user_id"):
+            sub_status, customer_id = "active", None
+            if subscription:
+                try:
+                    s = stripe.Subscription.retrieve(subscription)
+                    sub_status = s.status
+                    customer_id = s.customer
+                except Exception:
+                    pass
+            await db.subscriptions.update_one(
+                {"user_id": tx["user_id"], "kind": "premium"},
+                {"$set": {
+                    "user_id": tx["user_id"], "org_id": None, "kind": "premium",
+                    "plan_key": "premium", "status": sub_status, "interval": "monthly",
+                    "stripe_subscription_id": subscription,
+                    "stripe_customer_id": customer_id,
+                    "cancel_at_period_end": False, "payment_failure_count": 0,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }}, upsert=True,
+            )
             await db.users.update_one({"id": tx["user_id"]}, {"$set": {"premium": True}})
             await _email_user(tx["user_id"], "Willkommen bei MietGate Premium",
                               "Ihr Premium-Profil ist aktiv",
@@ -246,6 +266,15 @@ async def handle_subscription_deleted(subscription_obj):
         {"stripe_subscription_id": sub_id},
         {"$set": {"status": "canceled", "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    if sub.get("kind") == "premium":
+        if sub.get("user_id"):
+            await db.users.update_one({"id": sub["user_id"]}, {"$set": {"premium": False}})
+            await notify(sub["user_id"], "premium_canceled", "Premium beendet",
+                         "Ihr Bewerber-Premium wurde beendet. Ihr Profil-Link ist damit nicht mehr aktiv.", "/bewerber")
+            await _email_user(sub["user_id"], "Bewerber-Premium beendet", "Ihr Premium wurde beendet",
+                              "<p>Ihr Bewerber-Premium (4,99 €/Monat) wurde beendet. Ihr Profil-Link ist damit "
+                              "nicht mehr aktiv, Ihre Dokumente bleiben aber erhalten.</p>")
+        return
     await _lock_org_links(sub.get("org_id"))
     owner_id = await _org_owner_user_id(sub.get("org_id"))
     if owner_id:
@@ -266,6 +295,25 @@ async def handle_invoice_payment_failed(invoice_obj):
         {"$set": {"status": "past_due", "payment_failure_count": failure_count,
                   "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    if sub.get("kind") == "premium":
+        user_id = sub.get("user_id")
+        if failure_count < 2:
+            if user_id:
+                await notify(user_id, "payment_failed_warning", "Zahlung fehlgeschlagen",
+                             "Ihre Zahlung für Bewerber-Premium ist fehlgeschlagen. Wir versuchen es automatisch erneut — bitte prüfen Sie Ihre Zahlungsmethode.", "/bewerber")
+                await _email_user(user_id, "Zahlung fehlgeschlagen — wir versuchen es erneut", "Ihre Zahlung ist fehlgeschlagen",
+                                  "<p>Wir konnten die Zahlung für Ihr Bewerber-Premium nicht abbuchen. Stripe versucht es "
+                                  "automatisch erneut — bitte aktualisieren Sie vorsorglich Ihre Zahlungsmethode.</p>")
+            return
+        if user_id:
+            await db.users.update_one({"id": user_id}, {"$set": {"premium": False}})
+            await notify(user_id, "payment_failed", "Premium deaktiviert",
+                         "Ihre Zahlung für Bewerber-Premium ist fehlgeschlagen — Premium wurde deaktiviert.", "/bewerber")
+            await _email_user(user_id, "Premium deaktiviert", "Bewerber-Premium deaktiviert",
+                              "<p>Wir konnten die Zahlung für Ihr Bewerber-Premium auch im zweiten Versuch nicht "
+                              "abbuchen. Premium wurde deshalb deaktiviert, Ihre Dokumente bleiben erhalten. "
+                              "Bitte aktualisieren Sie Ihre Zahlungsmethode und aktivieren Sie Premium erneut.</p>")
+        return
     owner_id = await _org_owner_user_id(sub.get("org_id"))
     if failure_count < 2:
         # Give Stripe's own automatic retry a chance before locking anything —
@@ -301,6 +349,12 @@ async def handle_invoice_payment_succeeded(invoice_obj):
         {"$set": {"status": "active", "payment_failure_count": 0,
                   "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    if sub.get("kind") == "premium":
+        if sub.get("user_id"):
+            await db.users.update_one({"id": sub["user_id"]}, {"$set": {"premium": True}})
+            await notify(sub["user_id"], "payment_recovered", "Zahlung erfolgreich",
+                         "Ihre Zahlungsmethode wurde erfolgreich belastet — Ihr Bewerber-Premium ist wieder aktiv.", "/bewerber")
+        return
     await _unlock_org_links(sub.get("org_id"))
     owner_id = await _org_owner_user_id(sub.get("org_id"))
     if owner_id:
