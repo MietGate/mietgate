@@ -169,8 +169,8 @@ function ExplainerVideoPlayer() {
 
 export default function Landing() {
   useSEO({
-    title: "Digitales Vermietungsmanagement für Vermieter, Makler & Hausverwaltungen",
-    description: "Ein Bewerbungslink für Ihr Inserat. Strukturierte Bewerbungen, verschlüsselte Dokumente und organisierte Besichtigungen – statt E-Mail-Chaos. Kostenlos starten, DSGVO-konform.",
+    title: "Mietbewerbungen digital verwalten",
+    description: "Bewerbungen von ImmoScout, Kleinanzeigen & Co. an einem Ort statt über mehrere Portale verstreut. Ein Link fürs Inserat. DSGVO-konform, kostenlos starten.",
     path: "/",
   });
   const navigate = useNavigate();
