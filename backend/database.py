@@ -38,3 +38,7 @@ async def ensure_indexes():
     await db.lead_activities.create_index("lead_id")
     await db.lead_tasks.create_index("id", unique=True)
     await db.lead_tasks.create_index("lead_id")
+    await db.users.create_index("profile_token", unique=True, sparse=True)
+    await db.profile_inquiries.create_index("id", unique=True)
+    await db.profile_inquiries.create_index("applicant_user_id")
+    await db.profile_inquiries.create_index("share_token", unique=True, sparse=True)

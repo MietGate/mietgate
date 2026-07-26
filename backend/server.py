@@ -23,6 +23,7 @@ import routes_viewing
 import routes_message
 import routes_payment
 import routes_admin
+import routes_profile
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("mietgate")
@@ -36,7 +37,8 @@ async def health():
 
 
 for module in (routes_auth, routes_core, routes_property, routes_application,
-               routes_document, routes_viewing, routes_message, routes_payment, routes_admin):
+               routes_document, routes_viewing, routes_message, routes_payment, routes_admin,
+               routes_profile):
     app.include_router(module.router)
 
 cors_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]

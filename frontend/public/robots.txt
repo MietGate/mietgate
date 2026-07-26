@@ -8,6 +8,8 @@ Disallow: /einstellungen
 Disallow: /bewerber
 Disallow: /admin
 Disallow: /b/
+Disallow: /p/
+Disallow: /geteilt/
 Disallow: /payment/
 Disallow: /passwort-vergessen
 Disallow: /passwort-zuruecksetzen

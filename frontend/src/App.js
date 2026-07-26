@@ -17,6 +17,8 @@ import Contact from "@/pages/Contact";
 import FAQ from "@/pages/FAQ";
 import { Impressum, Datenschutz, AGB, Widerruf, Cookies, Plattformregeln } from "@/pages/LegalPages";
 import PublicApplication from "@/pages/PublicApplication";
+import PublicProfile from "@/pages/PublicProfile";
+import SharedDocuments from "@/pages/SharedDocuments";
 import PaymentResult from "@/pages/PaymentResult";
 import AuthReset from "@/pages/AuthReset";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -74,6 +76,8 @@ function AppRouter() {
       <Route path="/plattformregeln" element={<Plattformregeln />} />
       <Route path="/email-bestaetigen" element={<EmailVerify />} />
       <Route path="/b/:code" element={<PublicApplication />} />
+      <Route path="/p/:token" element={<PublicProfile />} />
+      <Route path="/geteilt/:token" element={<SharedDocuments />} />
       <Route path="/payment/success" element={<PaymentResult />} />
       <Route path="/payment/cancel" element={<PaymentResult />} />
 
