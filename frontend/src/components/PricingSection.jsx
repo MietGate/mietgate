@@ -94,7 +94,7 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
           <div className="rounded-2xl border border-dashed border-border p-6 bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h4 className="font-display font-bold flex items-center gap-2">{addon.name}</h4>
-              <p className="text-sm text-muted-foreground mt-1">Eigenes Branding, Logo & Farben · <span className="font-mono">{priceOf(addon).toFixed(2)}€/{yearly ? "Jahr" : "Monat"}</span></p>
+              <p className="text-sm text-muted-foreground mt-1">Eigenes Branding, Logo & Farben, eigene Domain (in Vorbereitung) · <span className="font-mono">{priceOf(addon).toFixed(2)}€/{yearly ? "Jahr" : "Monat"}</span></p>
             </div>
             <Button variant="outline" disabled={!consentOk} onClick={() => select(addon, yearly ? "yearly" : "monthly")} data-testid="select-whitelabel">Hinzubuchen</Button>
           </div>

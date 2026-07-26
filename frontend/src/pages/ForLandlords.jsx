@@ -27,13 +27,12 @@ const personas = [
   {
     icon: Briefcase, t: "Makler",
     scenario: "Sie betreuen mehrere Objekte parallel und brauchen den Überblick.",
-    points: ["Mehrere Objekte & Pipelines gleichzeitig", "Team & Rollen für Ihre Mitarbeiter", "White-Label mit Ihrem Branding (Add-on)"],
-    highlight: true,
+    points: ["Mehrere Objekte & Pipelines gleichzeitig", "Team & Rollen für Ihre Mitarbeiter", "White-Label mit Branding, eigene Domain bald (Add-on)"],
   },
   {
     icon: Users, t: "Hausverwaltungen",
     scenario: "Sie skalieren Vermietungen über ein ganzes Portfolio.",
-    points: ["Organisationsverwaltung & Teams", "Einheitliche, nachvollziehbare Prozesse", "Aktivitäten-Protokoll & Compliance"],
+    points: ["Organisationsverwaltung & Teams", "Einheitliche, nachvollziehbare Prozesse", "White-Label inkl. eigener Domain (in Vorbereitung)", "Aktivitäten-Protokoll & Compliance"],
   },
 ];
 
@@ -105,7 +104,7 @@ export default function ForLandlords() {
           <div className="grid md:grid-cols-3 gap-6 mt-12">
             {personas.map((g, i) => (
               <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }}
-                className={`rounded-2xl border bg-card p-8 flex flex-col ${g.highlight ? "border-2 border-primary shadow-lg shadow-primary/10 md:-translate-y-2" : "border-border"}`} data-testid={`landlord-persona-${i}`}>
+                className="rounded-2xl border border-border bg-card p-8 flex flex-col transition-all hover:border-2 hover:border-primary hover:shadow-lg hover:shadow-primary/10 md:hover:-translate-y-2" data-testid={`landlord-persona-${i}`}>
                 <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><g.icon className="h-6 w-6" /></div>
                 <h3 className="font-display text-xl font-semibold mt-5 text-brand-dark">{g.t}</h3>
                 <p className="text-muted-foreground text-sm mt-2 italic">„{g.scenario}"</p>
@@ -116,7 +115,7 @@ export default function ForLandlords() {
                     </li>
                   ))}
                 </ul>
-                <Button variant={g.highlight ? "default" : "outline"} className="mt-6 w-full" asChild><Link to="/registrieren">Passendes Paket wählen</Link></Button>
+                <Button variant="outline" className="mt-6 w-full" asChild><Link to="/registrieren">Passendes Paket wählen</Link></Button>
               </motion.div>
             ))}
           </div>
@@ -127,15 +126,30 @@ export default function ForLandlords() {
       <section className="max-w-5xl mx-auto px-6 py-20">
         <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-center text-brand-dark">So funktioniert's</motion.h2>
         <motion.p {...fade} transition={{ duration: 0.5, delay: 0.05 }} className="text-muted-foreground text-lg text-center mt-3 max-w-xl mx-auto">In drei Schritten vom Inserat zum passenden Mieter.</motion.p>
-        <div className="grid md:grid-cols-3 gap-6 mt-14">
+        <div className="relative isolate grid md:grid-cols-3 gap-6 mt-14">
+          {/* Loading track: base line + progress fill + travelling pulse */}
+          <div className="hidden md:block absolute top-[27px] left-[28px] h-1 rounded-full bg-border/70 -z-10 overflow-visible"
+            style={{ width: "calc(66.666% + 18px)" }}>
+            <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }}
+              transition={{ duration: 2, ease: "easeInOut", delay: 0.3 }}
+              className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-primary/70 to-primary origin-left" />
+            <span className="animate-travel absolute top-1/2 -translate-y-1/2 -ml-1.5 h-3 w-3 rounded-full bg-primary"
+              style={{ boxShadow: "0 0 12px 3px hsl(var(--brand-teal) / 0.55)" }} />
+          </div>
           {steps.map((s, i) => (
-            <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.08 }} className="rounded-2xl border border-border bg-card p-8" data-testid={`landlord-step-${i}`}>
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary"><s.icon className="h-5 w-5" /></div>
-                <span className="font-display text-2xl font-bold text-primary/30">{s.n}</span>
-              </div>
-              <h3 className="font-display font-semibold text-lg mt-5 text-brand-dark">{s.t}</h3>
-              <p className="text-muted-foreground text-sm mt-2">{s.d}</p>
+            <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.12 }} className="relative" data-testid={`landlord-step-${i}`}>
+              <span className="relative inline-block">
+                <motion.span initial={{ scale: 0.4, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }}
+                  transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.3 + i * 0.67 }}
+                  className="h-14 w-14 rounded-full bg-brand-dark text-white flex items-center justify-center ring-4 ring-background shadow-md">
+                  <s.icon className="h-6 w-6" />
+                </motion.span>
+                <motion.span initial={{ scale: 0, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }}
+                  transition={{ type: "spring", stiffness: 380, damping: 14, delay: 0.55 + i * 0.67 }}
+                  className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-primary text-primary-foreground font-display text-xs font-semibold flex items-center justify-center ring-2 ring-background">{s.n}</motion.span>
+              </span>
+              <h3 className="font-display font-semibold mt-4 text-brand-dark">{s.t}</h3>
+              <p className="text-muted-foreground text-sm mt-1.5">{s.d}</p>
             </motion.div>
           ))}
         </div>

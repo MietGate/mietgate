@@ -162,10 +162,23 @@ export default function Features() {
       <section className="bg-brand-dark text-white">
         <div className="max-w-5xl mx-auto px-6 py-20">
           <motion.h2 {...fade} className="font-display text-3xl sm:text-4xl font-bold text-center">So einfach funktioniert es</motion.h2>
-          <div className="grid md:grid-cols-5 gap-6 mt-14">
+          <div className="relative isolate grid md:grid-cols-5 gap-6 mt-14">
+            {/* Loading track: base line + progress fill + travelling pulse */}
+            <div className="hidden md:block absolute top-[27px] left-[28px] h-1 rounded-full bg-white/15 -z-10 overflow-visible"
+              style={{ width: "calc(80% + 18px)" }}>
+              <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }}
+                transition={{ duration: 2, ease: "easeInOut", delay: 0.3 }}
+                className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-primary/70 to-primary origin-left" />
+              <span className="animate-travel absolute top-1/2 -translate-y-1/2 -ml-1.5 h-3 w-3 rounded-full bg-primary"
+                style={{ boxShadow: "0 0 12px 3px hsl(var(--brand-teal) / 0.55)" }} />
+            </div>
             {steps.map((s, i) => (
-              <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: i * 0.06 }}>
-                <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground font-display font-bold flex items-center justify-center">{s.n}</div>
+              <motion.div key={i} {...fade} transition={{ duration: 0.5, delay: i * 0.12 }} className="relative">
+                <motion.div initial={{ scale: 0.4, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }}
+                  transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.3 + i * 0.54 }}
+                  className="h-14 w-14 rounded-full bg-primary text-primary-foreground font-display font-bold flex items-center justify-center ring-4 ring-brand-dark shadow-md">
+                  {s.n}
+                </motion.div>
                 <h3 className="font-display font-semibold mt-4">{s.t}</h3>
                 <p className="text-white/60 text-sm mt-1.5">{s.d}</p>
               </motion.div>

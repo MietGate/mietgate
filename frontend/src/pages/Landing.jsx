@@ -110,8 +110,8 @@ const personas = [
   },
   {
     icon: Users, t: "Hausverwaltungen", sub: "Skalierbare Prozesse fürs ganze Team.",
-    points: ["White-Label mit Ihrem Branding", "Einheitlicher Prozess für alle Einheiten", "Individuelle Konditionen möglich"],
-    cta: "Angebot anfordern", to: "/kontakt",
+    points: ["White-Label mit Ihrem Branding", "Eigene Domain (in Vorbereitung)", "Einheitlicher Prozess für alle Einheiten", "Individuelle Konditionen möglich"],
+    cta: "Kostenlos starten", to: "/registrieren?plan=hausverwaltung",
   },
 ];
 
@@ -352,7 +352,7 @@ export default function Landing() {
                     </li>
                   ))}
                 </ul>
-                <Button className="mt-7 w-full" variant={i === 2 ? "secondary" : "default"} asChild>
+                <Button className="mt-7 w-full" asChild>
                   <Link to={g.to}>{g.cta}</Link>
                 </Button>
               </motion.div>
