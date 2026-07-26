@@ -1,4 +1,7 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Heart } from "lucide-react";
 import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { useSEO } from "@/lib/seo";
 
@@ -25,14 +28,48 @@ const List = ({ items }) => (
 );
 
 export function Impressum() {
+  const [loveShown, setLoveShown] = useState(false);
+
+  const revealLove = () => {
+    if (loveShown) return;
+    setLoveShown(true);
+    setTimeout(() => setLoveShown(false), 3400);
+  };
+
   return (
     <LegalShell title="Impressum" path="/impressum" subtitle="Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz)">
       <Sec title="Anbieter">
         <p>MietGate ist ein Projekt von<br />
         <strong>BORK Solutions</strong><br />
-        Inhaber: Henry Bork<br />
+        Inhaber: <span onClick={(e) => { if (e.detail === 3) revealLove(); }} className="select-none">Henry</span> Bork<br />
         Pestalozzistraße 25<br />22305 Hamburg<br />Deutschland</p>
       </Sec>
+
+      <AnimatePresence>
+        {loveShown && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center pointer-events-none bg-background/70 backdrop-blur-sm">
+            <motion.p
+              initial={{ scale: 0.3, opacity: 0 }}
+              animate={{ scale: [0.3, 1.15, 1], opacity: 1 }}
+              exit={{ scale: 1.4, opacity: 0 }}
+              transition={{ duration: 0.9, ease: "easeOut", times: [0, 0.65, 1] }}
+              className="font-display text-3xl sm:text-5xl font-semibold text-brand-dark text-center px-6">
+              Ich liebe dich, Nouria
+            </motion.p>
+            <motion.span
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 1.25, 1], opacity: 1 }}
+              exit={{ scale: 1.5, opacity: 0 }}
+              transition={{ duration: 0.7, delay: 0.85, ease: "easeOut", times: [0, 0.6, 1] }}
+              className="mt-8">
+              <Heart className="h-16 w-16 sm:h-20 sm:w-20 text-rose-500 fill-rose-500 animate-soft-pulse" />
+            </motion.span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <Sec title="Steuernummer">
         <p>43/027/06145</p>
       </Sec>

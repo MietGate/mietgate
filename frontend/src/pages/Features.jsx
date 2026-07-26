@@ -5,7 +5,7 @@ import { MarketingNav, MarketingFooter } from "@/components/Marketing";
 import { Button } from "@/components/ui/button";
 import {
   Link2, ClipboardList, ShieldCheck, LayoutGrid, CalendarCheck, MessageSquare,
-  BarChart3, Users, Palette, ArrowRight, Check, Copy, Mail, Building2
+  BarChart3, Users, Palette, ArrowRight, Check, Copy, Mail, Building2, Globe, Lock
 } from "lucide-react";
 import { useSEO } from "@/lib/seo";
 
@@ -66,10 +66,11 @@ function LinkGenTile() {
   );
 }
 
-const sourceChipIcons = [Mail, Building2, MessageSquare];
-const chipOffsets = [-14, 0, 14];
+const sourceChipIcons = [Mail, Building2, MessageSquare, Globe];
+const chipSides = ["left", "right", "left", "right"];
+const chipVerticalOffsets = [-14, -14, 14, 14];
 
-/* Animated vignette for "Zentrale Bewerbungsverwaltung": source chips fly in and land as rows in a central inbox. */
+/* Animated vignette for "Zentrale Bewerbungsverwaltung": source chips fly in from both sides and land as rows in a central inbox. */
 function InboxConvergeTile() {
   const [step, setStep] = useState(0);
   const [cycleKey, setCycleKey] = useState(0);
@@ -82,40 +83,96 @@ function InboxConvergeTile() {
       setCycleKey((k) => k + 1);
       setStep(0);
       schedule(() => setStep(1), 500);
-      schedule(() => setStep(2), 1050);
-      schedule(() => setStep(3), 1600);
-      schedule(cycle, 3600);
+      schedule(() => setStep(2), 1000);
+      schedule(() => setStep(3), 1500);
+      schedule(() => setStep(4), 2000);
+      schedule(cycle, 4000);
     }
     cycle();
     return () => timers.forEach(clearTimeout);
   }, []);
 
   return (
-    <div className="relative h-12 w-36" data-testid="inbox-converge-animation">
-      {sourceChipIcons.map((Icon, i) => (
-        <motion.span key={`${cycleKey}-chip-${i}`}
-          initial={{ opacity: 0, x: -6 }}
-          animate={step > i
-            ? { x: [-6, 42, 88], y: [0, -9, 0], opacity: [1, 1, 0] }
-            : { opacity: 1, x: 0 }}
-          transition={step > i
-            ? { duration: 0.55, ease: "easeIn", times: [0, 0.55, 1] }
-            : { duration: 0.35, ease: "easeOut" }}
-          style={{ top: `calc(50% + ${chipOffsets[i]}px)` }}
-          className="absolute left-0 -translate-y-1/2 h-6 w-6 rounded-full bg-accent text-primary flex items-center justify-center shadow-sm">
-          <Icon className="h-3.5 w-3.5" />
-        </motion.span>
-      ))}
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 h-11 w-9 rounded-lg border border-border bg-card shadow-sm p-1.5 flex flex-col justify-end gap-1">
-        {[0, 1, 2].map((i) => (
+    <div className="relative h-14 w-56 mx-auto" data-testid="inbox-converge-animation">
+      {sourceChipIcons.map((Icon, i) => {
+        const fromLeft = chipSides[i] === "left";
+        const travel = fromLeft ? 92 : -92;
+        return (
+          <motion.span key={`${cycleKey}-chip-${i}`}
+            initial={{ opacity: 0, x: 0 }}
+            animate={step > i
+              ? { x: [0, travel * 0.55, travel], y: [0, -9, 0], opacity: [1, 1, 0] }
+              : { opacity: 1, x: 0 }}
+            transition={step > i
+              ? { duration: 0.55, ease: "easeIn", times: [0, 0.55, 1] }
+              : { duration: 0.35, ease: "easeOut" }}
+            style={{ top: `calc(50% + ${chipVerticalOffsets[i]}px)`, [fromLeft ? "left" : "right"]: 0 }}
+            className="absolute -translate-y-1/2 h-6 w-6 rounded-full bg-accent text-primary flex items-center justify-center shadow-sm">
+            <Icon className="h-3.5 w-3.5" />
+          </motion.span>
+        );
+      })}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-11 w-10 rounded-lg border border-border bg-card shadow-sm p-1.5 flex flex-col justify-center gap-1">
+        {[0, 1, 2, 3].map((i) => (
           <motion.div key={`${cycleKey}-row-${i}`}
             initial={{ scaleX: 0, opacity: 0 }}
             animate={step > i ? { scaleX: 1, opacity: 1 } : { scaleX: 0, opacity: 0 }}
             transition={{ duration: 0.25, delay: 0.35 }}
-            style={{ transformOrigin: "left" }}
-            className="h-1.5 rounded-full bg-primary/70" />
+            style={{ transformOrigin: "center" }}
+            className="h-1 rounded-full bg-primary/70" />
         ))}
       </div>
+    </div>
+  );
+}
+
+const docLineWidths = ["w-full", "w-4/5", "w-full", "w-3/5"];
+
+/* Animated vignette for "Sichere Dokumente": document lines scramble into ciphertext, then a lock snaps shut. */
+function EncryptDocTile() {
+  const [encrypted, setEncrypted] = useState(0); // how many lines are encrypted
+  const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    const timers = [];
+    const schedule = (fn, ms) => timers.push(setTimeout(fn, ms));
+
+    function cycle() {
+      setEncrypted(0);
+      setLocked(false);
+      docLineWidths.forEach((_, i) => schedule(() => setEncrypted(i + 1), 600 + i * 280));
+      schedule(() => setLocked(true), 600 + docLineWidths.length * 280);
+      schedule(cycle, 4200);
+    }
+    cycle();
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="relative h-14 w-12" data-testid="encrypt-doc-animation">
+      <div className="h-14 w-12 rounded-lg border border-border bg-card shadow-sm p-2 flex flex-col justify-center gap-1.5">
+        {docLineWidths.map((w, i) => (
+          <div key={i} className={`relative h-1 overflow-hidden ${w}`}>
+            {/* plain line */}
+            <motion.span animate={{ opacity: encrypted > i ? 0 : 1 }} transition={{ duration: 0.2 }}
+              className="absolute inset-0 rounded-full bg-secondary" />
+            {/* encrypted line: dotted cipher */}
+            <motion.span animate={{ opacity: encrypted > i ? 1 : 0 }} transition={{ duration: 0.2 }}
+              className="absolute inset-0 flex items-center gap-[2px]">
+              {Array.from({ length: 6 }).map((_, k) => (
+                <span key={k} className="h-1 w-1 rounded-full bg-primary/70 shrink-0" />
+              ))}
+            </motion.span>
+          </div>
+        ))}
+      </div>
+      <motion.span
+        initial={false}
+        animate={locked ? { scale: 1, opacity: 1 } : { scale: 0.3, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 420, damping: 15 }}
+        className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-success text-white flex items-center justify-center ring-2 ring-card shadow-sm">
+        <Lock className="h-3 w-3" />
+      </motion.span>
     </div>
   );
 }
@@ -273,11 +330,13 @@ export default function Features() {
         {features.map((f, i) => (
           <motion.div key={i} {...fade} transition={{ duration: 0.45, delay: (i % 2) * 0.05 }}
             className="rounded-2xl border border-border bg-card p-7 sm:p-9 grid md:grid-cols-3 gap-6 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all" data-testid={`feature-${i}`}>
-            <div className={`md:col-span-1 ${i === 0 ? "flex flex-col items-center text-center justify-center" : ""} ${i === 1 ? "flex flex-col items-end text-right" : ""} ${i % 2 === 1 ? "md:order-2" : ""}`}>
+            <div className={`md:col-span-1 ${i === 0 ? "flex flex-col items-center text-center justify-center" : ""} ${i === 1 ? "flex flex-col items-center text-center" : ""} ${i % 2 === 1 ? "md:order-2" : ""}`}>
               {i === 0
                 ? <LinkGenTile />
                 : i === 1
                 ? <InboxConvergeTile />
+                : i === 2
+                ? <EncryptDocTile />
                 : <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center text-primary"><f.icon className="h-6 w-6" /></div>}
               <h2 className="font-display text-2xl font-semibold mt-4">{f.title}</h2>
             </div>
