@@ -51,6 +51,16 @@ const groups = [
 
 const fade = { initial: { opacity: 0, y: 16 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.45 } };
 
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: groups.flatMap((g) => g.items).map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
 export default function FAQ() {
   useSEO({
     title: "Häufige Fragen",
@@ -59,6 +69,7 @@ export default function FAQ() {
   });
   return (
     <div className="bg-background min-h-screen">
+      <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
       <MarketingNav />
       <section className="border-b border-border bg-secondary/40">
         <div className="max-w-3xl mx-auto px-6 py-20 text-center">
