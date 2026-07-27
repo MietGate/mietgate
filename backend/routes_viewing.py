@@ -17,6 +17,7 @@ class ViewingPayload(BaseModel):
     slots: List[str] = []                # ISO datetimes for slot system
     max_participants: Optional[int] = None
     notes: Optional[str] = None
+    duration_minutes: int = 30
 
 
 @router.post("/viewings")
@@ -28,7 +29,7 @@ async def create_viewing(payload: ViewingPayload, user: dict = Depends(get_curre
     doc = {
         "id": vid, "property_id": payload.property_id, "org_id": user["org_id"],
         "type": payload.type, "title": payload.title or "Besichtigung",
-        "datetime": payload.datetime,
+        "datetime": payload.datetime, "duration_minutes": payload.duration_minutes,
         "slots": [{"time": s, "application_id": None} for s in payload.slots],
         "max_participants": payload.max_participants, "notes": payload.notes,
         "participants": [], "created_by": user["id"], "created_at": now_iso(),

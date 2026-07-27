@@ -26,7 +26,7 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
 
   const [type, setType] = useState("single");
   const [propId, setPropId] = useState(propertyId || "");
-  const [form, setForm] = useState({ title: "", datetime: "", max_participants: "", notes: "" });
+  const [form, setForm] = useState({ title: "", datetime: "", max_participants: "", notes: "", duration_minutes: "30" });
   const [slots, setSlots] = useState([""]);
   const [saving, setSaving] = useState(false);
 
@@ -51,11 +51,12 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
       slots: type === "slots" ? slots.filter(Boolean) : [],
       max_participants: form.max_participants ? Number(form.max_participants) : null,
       notes: form.notes,
+      duration_minutes: form.duration_minutes ? Number(form.duration_minutes) : 30,
     };
     try {
       await api.post("/viewings", payload);
       toast.success("Termin erstellt"); setOpen(false); onCreated();
-      setForm({ title: "", datetime: "", max_participants: "", notes: "" }); setSlots([""]);
+      setForm({ title: "", datetime: "", max_participants: "", notes: "", duration_minutes: "30" }); setSlots([""]);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setSaving(false); }
   };
@@ -105,6 +106,7 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
             </div>
           )}
           {type === "group" && <div><Label>Max. Teilnehmer</Label><Input type="number" value={form.max_participants} onChange={(e) => setForm({ ...form, max_participants: e.target.value })} className="mt-1.5" /></div>}
+          <div><Label>Dauer (Minuten)</Label><Input type="number" min="5" step="5" value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} className="mt-1.5" data-testid="viewing-duration" /></div>
           <div><Label>Notizen</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1.5" /></div>
         </div>
         <DialogFooter>
@@ -167,7 +169,7 @@ export function Viewings({ propertyId, property }) {
 
   const addToCalendar = (v) => {
     const location = property ? [property.street, property.house_number, property.zip, property.city].filter(Boolean).join(" ") : "";
-    const ok = downloadIcs({ title: v.title, start: v.datetime, location, description: v.notes || "" });
+    const ok = downloadIcs({ title: v.title, start: v.datetime, durationMinutes: v.duration_minutes || 30, location, description: v.notes || "" });
     if (ok) toast.success("Kalenderdatei heruntergeladen"); else toast.error("Kein gültiges Datum für diesen Termin");
   };
 

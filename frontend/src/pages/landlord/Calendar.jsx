@@ -67,7 +67,7 @@ function ViewingDetail({ entry, property, onClose, onChanged }) {
 
   const addToCalendar = () => {
     const location = property ? [property.street, property.house_number, property.zip, property.city].filter(Boolean).join(" ") : "";
-    const ok = downloadIcs({ title: v.title, start: entry.when, location, description: v.notes || "" });
+    const ok = downloadIcs({ title: v.title, start: entry.when, durationMinutes: v.duration_minutes || 30, location, description: v.notes || "" });
     if (ok) toast.success("Kalenderdatei heruntergeladen"); else toast.error("Kein gültiges Datum für diesen Termin");
   };
 

@@ -22,7 +22,7 @@ function ViewingCard({ v, onChanged }) {
   const when = v.slot || v.datetime;
   const addToCalendar = () => {
     const location = [v.property_title, v.city].filter(Boolean).join(" · ");
-    const ok = downloadIcs({ title: v.title, start: when, location, description: `Besichtigung: ${v.property_title || ""}` });
+    const ok = downloadIcs({ title: v.title, start: when, durationMinutes: v.duration_minutes || 30, location, description: `Besichtigung: ${v.property_title || ""}` });
     if (ok) toast.success("Kalenderdatei heruntergeladen"); else toast.error("Kein gültiges Datum vorhanden");
   };
   const badge = v.cancelled ? { v: "destructive", t: "Vom Vermieter abgesagt" } : v.my_status === "confirmed" ? { v: "default", t: "Bestätigt" } : v.my_status === "declined" ? { v: "destructive", t: "Abgesagt" } : v.my_status === "reschedule_requested" ? { v: "secondary", t: "Umbuchung angefragt" } : { v: "secondary", t: "Eingeladen" };
