@@ -5,7 +5,8 @@ import { Logo } from "@/components/Logo";
 import api from "@/lib/api";
 import {
   LayoutDashboard, Building2, Users, Settings, LogOut, Bell, Menu, X,
-  CreditCard, ShieldCheck, FileText, CalendarDays, Home, ChevronRight, Link2, Contact, Search
+  CreditCard, ShieldCheck, FileText, CalendarDays, Home, ChevronRight, Link2, Contact, Search,
+  Inbox, MessageSquare
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,8 +14,12 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 
+// Ordered along the landlord's actual workflow: overview → incoming → conversation → scheduling → objects.
 const landlordNav = [
   { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
+  { to: "/bewerbungen", label: "Bewerbungen", icon: Inbox },
+  { to: "/nachrichten", label: "Nachrichten", icon: MessageSquare },
+  { to: "/kalender", label: "Kalender", icon: CalendarDays },
   { to: "/objekte", label: "Objekte", icon: Building2 },
   { to: "/team", label: "Team", icon: Users },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
@@ -86,7 +91,7 @@ function HeaderSearch({ role }) {
   return (
     <>
       {/* Desktop: persistent input */}
-      <div className="hidden md:block relative w-64">
+      <div className="hidden md:block relative w-full max-w-md">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
           placeholder={cfg.placeholder} data-testid="header-search"
@@ -223,17 +228,23 @@ export function DashboardShell() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20">
-          <div className="flex items-center gap-3">
+        <header className="h-16 border-b border-border bg-card flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <button className="lg:hidden p-2" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
-            <div className="hidden sm:flex items-center text-sm text-muted-foreground">
+            <div className="hidden sm:flex items-center text-sm text-muted-foreground truncate">
               <span className="capitalize">{user?.role === "applicant" ? "Bewerber" : user?.role === "admin" ? "Administrator" : "Vermieter"}</span>
-              <ChevronRight className="h-4 w-4 mx-1" />
-              <span className="text-foreground font-medium">{baseNav.find((n) => location.pathname === n.to || location.pathname.startsWith(n.to + "/"))?.label || "Übersicht"}</span>
+              <ChevronRight className="h-4 w-4 mx-1 shrink-0" />
+              <span className="text-foreground font-medium truncate">{baseNav.find((n) => location.pathname === n.to || location.pathname.startsWith(n.to + "/"))?.label || "Übersicht"}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {SEARCH_CONFIG[user?.role] && <HeaderSearch role={user.role} />}
+          {/* Search sits centred in the header, the position users know from Pipedrive & co.
+              HeaderSearch renders the desktop input and the mobile icon itself, so mount it once. */}
+          {SEARCH_CONFIG[user?.role] && (
+            <div className="flex justify-center md:flex-1 md:max-w-md">
+              <HeaderSearch role={user.role} />
+            </div>
+          )}
+          <div className="flex items-center gap-2 flex-1 justify-end">
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -257,7 +268,7 @@ export function DashboardShell() {
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-8 max-w-[1400px] w-full">
+        <main className="flex-1 p-4 lg:p-8 max-w-[1400px] w-full mx-auto">
           <Outlet />
         </main>
       </div>

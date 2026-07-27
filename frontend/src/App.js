@@ -23,6 +23,9 @@ import PaymentResult from "@/pages/PaymentResult";
 import AuthReset from "@/pages/AuthReset";
 import ForgotPassword from "@/pages/ForgotPassword";
 import LandlordDashboard from "@/pages/landlord/Dashboard";
+import Applications from "@/pages/landlord/Applications";
+import Messages from "@/pages/landlord/Messages";
+import Calendar from "@/pages/landlord/Calendar";
 import Properties from "@/pages/landlord/Properties";
 import PropertyForm from "@/pages/landlord/PropertyForm";
 import PropertyDetail from "@/pages/landlord/PropertyDetail";
@@ -83,6 +86,9 @@ function AppRouter() {
       {/* Landlord */}
       <Route element={<ProtectedRoute roles={["landlord"]}><DashboardShell /></ProtectedRoute>}>
         <Route path="/dashboard" element={<LandlordDashboard />} />
+        <Route path="/bewerbungen" element={<Applications />} />
+        <Route path="/nachrichten" element={<Messages />} />
+        <Route path="/kalender" element={<Calendar />} />
         <Route path="/objekte" element={<Properties />} />
         <Route path="/objekte/neu" element={<PropertyForm />} />
         <Route path="/objekte/:id/bearbeiten" element={<PropertyForm />} />

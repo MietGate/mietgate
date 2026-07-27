@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Loader2, ArrowLeft, ArrowRight, Save } from "lucide-react";
 
@@ -21,6 +22,49 @@ function Section({ title, children }) {
     <div className="rounded-xl border border-border bg-card p-6">
       <h2 className="font-display font-bold text-lg mb-4">{title}</h2>
       {children}
+    </div>
+  );
+}
+
+/* Only `title` is required server-side, so every other field is flagged as optional. */
+function FieldLabel({ children, required }) {
+  return (
+    <Label>
+      {children}
+      {required
+        ? <span className="text-primary ml-0.5">*</span>
+        : <span className="text-muted-foreground font-normal ml-1.5 text-xs">(optional)</span>}
+    </Label>
+  );
+}
+
+/* Numeric input with the unit shown inside the field, for values that must stay exact. */
+function NumberField({ label, unit, value, onChange, ...rest }) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <div className="relative mt-1.5">
+        <Input type="number" value={value} onChange={onChange} className={unit ? "pr-10" : ""} {...rest} />
+        {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">{unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+/* Slider for small, coarse ranges where dragging beats typing. */
+function SliderField({ label, value, onValueChange, min, max, step, format }) {
+  const current = value === "" || value == null ? null : Number(value);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <FieldLabel>{label}</FieldLabel>
+        <span className="text-sm font-medium tabular-nums">{current == null ? "—" : format(current)}</span>
+      </div>
+      <Slider className="mt-3" min={min} max={max} step={step}
+        value={[current ?? min]} onValueChange={([v]) => onValueChange(v)} />
+      <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5">
+        <span>{format(min)}</span><span>{format(max)}+</span>
+      </div>
     </div>
   );
 }
@@ -85,16 +129,16 @@ export default function PropertyForm() {
   const basisdatenSection = (
     <Section title="Basisdaten">
       <div className="grid gap-4">
-        <div><Label>Titel der Wohnung *</Label><Input required value={form.title} onChange={set("title")} className="mt-1.5" data-testid="prop-title" placeholder="z.B. Helle 3-Zimmer-Altbauwohnung" /></div>
-        <div><Label>Interne Bezeichnung</Label><Input value={form.internal_name} onChange={set("internal_name")} className="mt-1.5" placeholder="nur für Sie sichtbar" /></div>
+        <div><FieldLabel required>Titel der Wohnung</FieldLabel><Input required value={form.title} onChange={set("title")} className="mt-1.5" data-testid="prop-title" placeholder="z.B. Helle 3-Zimmer-Altbauwohnung" /></div>
+        <div><FieldLabel>Interne Bezeichnung</FieldLabel><Input value={form.internal_name} onChange={set("internal_name")} className="mt-1.5" placeholder="nur für Sie sichtbar" /></div>
         <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2"><Label>Straße</Label><Input value={form.street} onChange={set("street")} className="mt-1.5" /></div>
-          <div><Label>Hausnr.</Label><Input value={form.house_number} onChange={set("house_number")} className="mt-1.5" /></div>
+          <div className="col-span-2"><FieldLabel>Straße</FieldLabel><Input value={form.street} onChange={set("street")} className="mt-1.5" /></div>
+          <div><FieldLabel>Hausnr.</FieldLabel><Input value={form.house_number} onChange={set("house_number")} className="mt-1.5" /></div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div><Label>PLZ</Label><Input value={form.zip} onChange={set("zip")} className="mt-1.5" /></div>
-          <div><Label>Ort</Label><Input value={form.city} onChange={set("city")} className="mt-1.5" /></div>
-          <div className="col-span-2 sm:col-span-1"><Label>Stadtteil</Label><Input value={form.district} onChange={set("district")} className="mt-1.5" /></div>
+          <div><FieldLabel>PLZ</FieldLabel><Input value={form.zip} onChange={set("zip")} className="mt-1.5" /></div>
+          <div><FieldLabel>Ort</FieldLabel><Input value={form.city} onChange={set("city")} className="mt-1.5" /></div>
+          <div className="col-span-2 sm:col-span-1"><FieldLabel>Stadtteil</FieldLabel><Input value={form.district} onChange={set("district")} className="mt-1.5" /></div>
         </div>
       </div>
     </Section>
@@ -102,11 +146,15 @@ export default function PropertyForm() {
 
   const wohnungsdatenSection = (
     <Section title="Wohnungsdaten">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div><Label>Wohnfläche (m²)</Label><Input type="number" value={form.area} onChange={set("area")} className="mt-1.5" /></div>
-        <div><Label>Zimmer</Label><Input type="number" step="0.5" value={form.rooms} onChange={set("rooms")} className="mt-1.5" /></div>
-        <div><Label>Badezimmer</Label><Input type="number" value={form.bathrooms} onChange={set("bathrooms")} className="mt-1.5" /></div>
-        <div><Label>Etage</Label><Input value={form.floor} onChange={set("floor")} className="mt-1.5" /></div>
+      <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5">
+        <NumberField label="Wohnfläche" unit="m²" value={form.area} onChange={set("area")} min="0" />
+        <div><FieldLabel>Etage</FieldLabel><Input value={form.floor} onChange={set("floor")} className="mt-1.5" placeholder="z.B. 2. OG" /></div>
+        <SliderField label="Zimmer" value={form.rooms} min={1} max={8} step={0.5}
+          onValueChange={(v) => setForm({ ...form, rooms: v })}
+          format={(v) => `${v} Zi.`} />
+        <SliderField label="Badezimmer" value={form.bathrooms} min={1} max={4} step={1}
+          onValueChange={(v) => setForm({ ...form, bathrooms: v })}
+          format={(v) => (v === 1 ? "1 Bad" : `${v} Bäder`)} />
       </div>
       <div className="flex flex-wrap gap-6 mt-5">
         {[["balcony", "Balkon/Terrasse"], ["cellar", "Keller"], ["parking", "Stellplatz"]].map(([k, l]) => (
@@ -121,10 +169,10 @@ export default function PropertyForm() {
   const mietdatenSection = (
     <Section title="Mietdaten">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div><Label>Kaltmiete (€)</Label><Input type="number" value={form.cold_rent} onChange={set("cold_rent")} className="mt-1.5" /></div>
-        <div><Label>Nebenkosten (€)</Label><Input type="number" value={form.extra_costs} onChange={set("extra_costs")} className="mt-1.5" /></div>
-        <div><Label>Warmmiete (€)</Label><Input type="number" value={form.warm_rent} onChange={set("warm_rent")} className="mt-1.5" /></div>
-        <div><Label>Kaution (€)</Label><Input type="number" value={form.deposit} onChange={set("deposit")} className="mt-1.5" /></div>
+        <NumberField label="Kaltmiete" unit="€" value={form.cold_rent} onChange={set("cold_rent")} min="0" step="0.01" />
+        <NumberField label="Nebenkosten" unit="€" value={form.extra_costs} onChange={set("extra_costs")} min="0" step="0.01" />
+        <NumberField label="Warmmiete" unit="€" value={form.warm_rent} onChange={set("warm_rent")} min="0" step="0.01" />
+        <NumberField label="Kaution" unit="€" value={form.deposit} onChange={set("deposit")} min="0" step="0.01" />
       </div>
     </Section>
   );
@@ -132,10 +180,10 @@ export default function PropertyForm() {
   const weitereInfosSection = (
     <Section title="Weitere Informationen">
       <div className="grid gap-4">
-        <div><Label>Frühester Einzugstermin</Label><Input type="date" value={form.earliest_move_in || ""} onChange={set("earliest_move_in")} className="mt-1.5" /></div>
-        <div><Label>Beschreibung</Label><Textarea rows={4} value={form.description} onChange={set("description")} className="mt-1.5" placeholder="Öffentlich sichtbare Beschreibung" /></div>
-        <div><Label>Interne Notizen</Label><Textarea rows={2} value={form.internal_notes} onChange={set("internal_notes")} className="mt-1.5" placeholder="nur für Sie sichtbar" /></div>
-        <div><Label>Externer Inseratslink</Label><Input value={form.external_listing_url} onChange={set("external_listing_url")} className="mt-1.5" placeholder="https://www.immobilienscout24.de/..." /><p className="text-xs text-muted-foreground mt-1">Erscheint als Button „Wohnungsanzeige ansehen" auf der Bewerbungsseite.</p></div>
+        <div><FieldLabel>Frühester Einzugstermin</FieldLabel><Input type="date" value={form.earliest_move_in || ""} onChange={set("earliest_move_in")} className="mt-1.5" /></div>
+        <div><FieldLabel>Beschreibung</FieldLabel><Textarea rows={4} value={form.description} onChange={set("description")} className="mt-1.5" placeholder="Öffentlich sichtbare Beschreibung" /></div>
+        <div><FieldLabel>Interne Notizen</FieldLabel><Textarea rows={2} value={form.internal_notes} onChange={set("internal_notes")} className="mt-1.5" placeholder="nur für Sie sichtbar" /></div>
+        <div><FieldLabel>Externer Inseratslink</FieldLabel><Input value={form.external_listing_url} onChange={set("external_listing_url")} className="mt-1.5" placeholder="https://www.immobilienscout24.de/..." /><p className="text-xs text-muted-foreground mt-1">Erscheint als Button „Wohnungsanzeige ansehen" auf der Bewerbungsseite.</p></div>
         <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-border">
           <div>
             <Label>Wann Dokumente benötigt?</Label>
@@ -196,7 +244,7 @@ export default function PropertyForm() {
   // Edit mode: unchanged, everything on one page.
   if (isEdit) {
     return (
-      <form onSubmit={submit} className="space-y-6 animate-fade-up max-w-3xl">
+      <form onSubmit={submit} className="space-y-6 animate-fade-up max-w-3xl mx-auto">
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => navigate(-1)} className="p-2 rounded-md hover:bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
           <h1 className="font-display text-3xl font-bold">Objekt bearbeiten</h1>
@@ -228,7 +276,7 @@ export default function PropertyForm() {
   const stepContent = [basisdatenSection, wohnungsdatenSection, mietdatenSection, weitereInfosSection, formBuilderSection, null][step];
 
   return (
-    <form onSubmit={submit} className="space-y-6 animate-fade-up max-w-3xl">
+    <form onSubmit={submit} className="space-y-6 animate-fade-up max-w-3xl mx-auto">
       <div className="flex items-center gap-3">
         <button type="button" onClick={() => navigate(-1)} className="p-2 rounded-md hover:bg-secondary"><ArrowLeft className="h-5 w-5" /></button>
         <h1 className="font-display text-3xl font-bold">Neues Objekt</h1>

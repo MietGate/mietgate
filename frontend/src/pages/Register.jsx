@@ -87,8 +87,9 @@ export default function Register() {
         </div>
         <p className="relative text-white/40 text-sm flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> © 2026 MietGate.de</p>
       </div>
-      <div className="h-screen flex items-start justify-center p-6 lg:p-12 bg-background overflow-y-auto">
-        <div className="w-full max-w-sm py-2">
+      <div className="h-screen flex justify-center p-6 lg:p-12 bg-background overflow-y-auto">
+        {/* my-auto (not items-center) so the form centers but stays fully scrollable when it is taller than the viewport */}
+        <div className="w-full max-w-sm my-auto py-2">
           <div className="lg:hidden mb-8"><Logo /></div>
           {sentTo ? (
             <div data-testid="verify-sent">

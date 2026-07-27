@@ -14,19 +14,39 @@ import { toast } from "sonner";
 import { CalendarDays, Plus, Users, Trash2, Loader2, UserPlus, CalendarPlus } from "lucide-react";
 import { downloadIcs } from "@/lib/ics";
 
-const TYPE_LABEL = { single: "Einzelbesichtigung", slots: "Zeitfenster", group: "Massenbesichtigung" };
+export const TYPE_LABEL = { single: "Einzelbesichtigung", slots: "Zeitfenster", group: "Massenbesichtigung" };
 
-function CreateViewingDialog({ propertyId, onCreated }) {
-  const [open, setOpen] = useState(false);
+/* Shared by the per-property tab and the global calendar.
+   `properties` turns on the object picker; `defaultDate` (yyyy-mm-dd) pre-fills a clicked calendar day. */
+export function CreateViewingDialog({ propertyId, properties, defaultDate, onCreated, open: openProp, onOpenChange, hideTrigger }) {
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = controlled ? onOpenChange : setOpenState;
+
   const [type, setType] = useState("single");
+  const [propId, setPropId] = useState(propertyId || "");
   const [form, setForm] = useState({ title: "", datetime: "", max_participants: "", notes: "" });
   const [slots, setSlots] = useState([""]);
   const [saving, setSaving] = useState(false);
 
+  // When a day is clicked in the calendar, start that day at 10:00.
+  useEffect(() => {
+    if (!open) return;
+    if (defaultDate) {
+      setForm((f) => ({ ...f, datetime: `${defaultDate}T10:00` }));
+      setSlots([`${defaultDate}T10:00`]);
+    }
+    if (propertyId) setPropId(propertyId);
+  }, [open, defaultDate, propertyId]);
+
+  const targetProperty = propertyId || propId;
+
   const submit = async () => {
+    if (!targetProperty) { toast.error("Bitte wählen Sie ein Objekt aus."); return; }
     setSaving(true);
     const payload = {
-      property_id: propertyId, type, title: form.title || "Besichtigung",
+      property_id: targetProperty, type, title: form.title || "Besichtigung",
       datetime: type === "slots" ? null : form.datetime,
       slots: type === "slots" ? slots.filter(Boolean) : [],
       max_participants: form.max_participants ? Number(form.max_participants) : null,
@@ -42,10 +62,23 @@ function CreateViewingDialog({ propertyId, onCreated }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button data-testid="new-viewing-btn"><Plus className="h-4 w-4 mr-1" /> Termin erstellen</Button></DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild><Button data-testid="new-viewing-btn"><Plus className="h-4 w-4 mr-1" /> Termin erstellen</Button></DialogTrigger>
+      )}
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Neue Besichtigung</DialogTitle></DialogHeader>
         <div className="space-y-4">
+          {properties && (
+            <div>
+              <Label>Objekt</Label>
+              <Select value={propId} onValueChange={setPropId}>
+                <SelectTrigger className="mt-1.5" data-testid="viewing-property"><SelectValue placeholder="Objekt wählen" /></SelectTrigger>
+                <SelectContent>
+                  {properties.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label>Art der Besichtigung</Label>
             <Select value={type} onValueChange={setType}>
@@ -82,7 +115,7 @@ function CreateViewingDialog({ propertyId, onCreated }) {
   );
 }
 
-function InviteDialog({ viewing, propertyId, onDone }) {
+export function InviteDialog({ viewing, propertyId, onDone }) {
   const [open, setOpen] = useState(false);
   const [apps, setApps] = useState([]);
   const [selected, setSelected] = useState([]);

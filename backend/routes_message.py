@@ -28,6 +28,65 @@ async def get_messages(application_id: str, user: dict = Depends(get_current_use
     return msgs
 
 
+@router.get("/conversations")
+async def list_conversations(user: dict = Depends(get_current_user)):
+    """One row per application that has messages, newest first.
+
+    GET /messages only works per application, so the inbox needs this to show
+    every conversation across all properties in one place.
+    """
+    org_id = user.get("org_id")
+    if org_id:
+        match = {"org_id": org_id}
+    else:
+        own = await db.applications.find({"applicant_user_id": user["id"]}, {"id": 1, "_id": 0}).to_list(500)
+        match = {"application_id": {"$in": [a["id"] for a in own]}}
+
+    rows = await db.messages.aggregate([
+        {"$match": match},
+        {"$sort": {"created_at": 1}},
+        {"$group": {
+            "_id": "$application_id",
+            "property_id": {"$last": "$property_id"},
+            "last_body": {"$last": "$body"},
+            "last_at": {"$last": "$created_at"},
+            "last_sender_role": {"$last": "$sender_role"},
+            "total": {"$sum": 1},
+            "unread": {"$sum": {"$cond": [
+                {"$and": [{"$eq": ["$recipient_id", user["id"]]}, {"$eq": ["$read", False]}]}, 1, 0]}},
+        }},
+        {"$sort": {"last_at": -1}},
+        {"$limit": 200},
+    ]).to_list(200)
+
+    prop_cache = {}
+    out = []
+    for r in rows:
+        app = await db.applications.find_one({"id": r["_id"]}, NO_ID)
+        if not app:
+            continue
+        pid = r.get("property_id") or app.get("property_id")
+        if pid not in prop_cache:
+            prop_cache[pid] = await db.properties.find_one({"id": pid}, NO_ID)
+        prop = prop_cache[pid] or {}
+        fd = app.get("form_data") or {}
+        name = " ".join(filter(None, [fd.get("vorname"), fd.get("nachname")])).strip()
+        out.append({
+            "application_id": r["_id"],
+            "property_id": pid,
+            "property_title": prop.get("title"),
+            "applicant_name": name or app.get("applicant_email"),
+            "applicant_email": app.get("applicant_email"),
+            "application_status": app.get("status"),
+            "last_body": r["last_body"],
+            "last_at": r["last_at"],
+            "last_sender_role": r["last_sender_role"],
+            "total": r["total"],
+            "unread": r["unread"],
+        })
+    return out
+
+
 class MessagePayload(BaseModel):
     application_id: str
     body: str
