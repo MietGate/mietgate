@@ -164,8 +164,19 @@ async def submit_application(req: ApplyRequest):
         )
     else:
         activation_block = "<p>Sie können den Status in Ihrem MietGate-Konto verfolgen.</p>"
+    # Applicants who never activate their account only ever see this email, so the
+    # Premium pitch has to live here rather than only in the dashboard.
+    premium_block = (
+        "<div style='margin-top:24px;padding:16px;border:1px solid #e2e8f0;border-radius:8px;background:#fffbeb'>"
+        "<p style='margin:0 0 8px;font-weight:bold;color:#0a2540'>Mehr Chancen auf Ihre Wunschwohnung</p>"
+        "<p style='margin:0 0 12px;font-size:14px;color:#334155'>Mit MietGate Premium (4,99 €/Monat) wird Ihr "
+        "Profil Vermietern bevorzugt angezeigt, Sie erhalten ein verifiziertes Bewerber-Badge und teilen "
+        "Ihre Unterlagen mit einem einzigen Link.</p>"
+        "</div>"
+    ) if activation_link else ""
     await render_and_send("application_received", email, prop["org_id"],
-                          {"property_title": prop["title"], "activation_block": activation_block})
+                          {"property_title": prop["title"], "activation_block": activation_block,
+                           "premium_block": premium_block})
     return {"ok": True, "application_id": app_id, "activation_token": activation_link,
             "account_created": activation_link is not None}
 

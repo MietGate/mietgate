@@ -300,7 +300,7 @@ export default function ApplicantDashboard() {
       ) : (
         <div className="space-y-3">
           {apps.map((a) => (
-            <Link key={a.id} to={`/bewerber/nachrichten?application_id=${a.id}`} data-testid={`my-app-${a.id}`}
+            <Link key={a.id} to={`/bewerber/bewerbung/${a.id}`} data-testid={`my-app-${a.id}`}
               className="rounded-xl border border-border bg-card p-5 flex flex-wrap items-center justify-between gap-3 hover:border-primary/40 hover:bg-secondary/30 transition-colors">
               <div>
                 <h3 className="font-semibold">{a.property_title}</h3>

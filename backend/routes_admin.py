@@ -660,7 +660,8 @@ async def update_email_template(key: str, body: EmailTemplatePayload, user: dict
     await db.email_templates.update_one(
         {"key": key},
         {"$set": {"key": key, "name": DEFAULT_TEMPLATES[key]["name"], "placeholders": DEFAULT_TEMPLATES[key]["placeholders"],
-                  "subject": body.subject, "title": body.title, "body_html": body.body_html}},
+                  "subject": body.subject, "title": body.title, "body_html": body.body_html,
+                  "customized": True}},
         upsert=True,
     )
     return await db.email_templates.find_one({"key": key}, NO_ID)

@@ -52,17 +52,25 @@ DEFAULT_TEMPLATES = {
         "body_html": (
             "<p>Vielen Dank für Ihre Bewerbung für <b>{{property_title}}</b>.</p>"
             "{{activation_block}}"
+            "{{premium_block}}"
         ),
-        "placeholders": ["property_title", "activation_block"],
+        "placeholders": ["property_title", "activation_block", "premium_block"],
     },
 }
 
 
 async def seed_defaults():
+    """Keep DB templates in sync with the defaults above, unless an admin edited them.
+
+    Without the re-sync, adding a placeholder to a default here would silently do
+    nothing on any environment where the row was already seeded.
+    """
     for key, tpl in DEFAULT_TEMPLATES.items():
         existing = await db.email_templates.find_one({"key": key})
         if not existing:
             await db.email_templates.insert_one({"key": key, **tpl})
+        elif not existing.get("customized"):
+            await db.email_templates.update_one({"key": key}, {"$set": tpl})
 
 
 def _fill(text: str, context: dict) -> str:
