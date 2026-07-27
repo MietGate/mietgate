@@ -108,11 +108,42 @@ def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_
     except stripe.error.InvalidRequestError as e:
         msg = (getattr(e, "user_message", "") or "").lower()
         if "managed payments" in msg or "ineligible" in msg:
+            # This fallback is not cosmetic: it moves the VAT liability from Stripe to us
+            # for this one checkout (see tax_facts below). It must never pass unnoticed —
+            # the resulting transaction is recorded with a different tax_mode, and this is
+            # logged at ERROR level so it surfaces in the platform logs.
+            logger.error(
+                "Managed Payments ineligible for lookup_key=%s (user=%s, org=%s) — falling back "
+                "to automatic_tax. VAT liability for this checkout moves from Stripe to us. %s",
+                lookup_key, user_id, org_id, e)
             session = stripe.checkout.Session.create(
                 **kwargs, automatic_tax={"enabled": True}, billing_address_collection="required")
         else:
             raise
     return session, price
+
+
+def tax_facts(session) -> dict:
+    """Which VAT regime a checkout ran under, for the books.
+
+    Two mutually exclusive regimes can apply, and they differ in *who owes the VAT*:
+
+      managed_payments -> Stripe is merchant of record and remits the VAT itself
+                          (automatic_tax.liability.type == "stripe")
+      automatic_tax    -> we are the seller; Stripe Tax only calculates, we file and remit
+                          (automatic_tax.liability.type == "self")
+
+    Which one applied cannot be reconstructed from our own records afterwards, so it is
+    stored on every payment transaction at creation time.
+    """
+    at = getattr(session, "automatic_tax", None) or {}
+    mp = getattr(session, "managed_payments", None) or {}
+    liability = at.get("liability") or {}
+    return {
+        "tax_mode": "managed_payments" if mp.get("enabled") else "automatic_tax",
+        "tax_liability": liability.get("type"),
+        "tax_amount": (getattr(session, "total_details", None) or {}).get("amount_tax"),
+    }
 
 
 def create_billing_portal_session(customer_id: str, return_url: str):
@@ -138,12 +169,19 @@ async def _mark_paid(session_id, subscription, payment_intent):
     tx = await db.payment_transactions.find_one({"session_id": session_id})
     if not tx or tx.get("payment_status") == "paid":
         return
+    paid_fields = {"status": "completed", "payment_status": "paid",
+                   "stripe_subscription_id": subscription,
+                   "stripe_payment_intent_id": payment_intent,
+                   "updated_at": datetime.now(timezone.utc).isoformat()}
+    # The tax figures recorded at checkout creation are still zero for trials and can change
+    # once a billing address is known, so re-read them from the settled session.
+    try:
+        paid_fields.update(tax_facts(stripe.checkout.Session.retrieve(session_id)))
+    except stripe.error.StripeError as e:
+        logger.warning("Could not re-read tax facts for %s: %s", session_id, e)
     await db.payment_transactions.update_one(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
-        {"$set": {"status": "completed", "payment_status": "paid",
-                  "stripe_subscription_id": subscription,
-                  "stripe_payment_intent_id": payment_intent,
-                  "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"$set": paid_fields},
     )
     # One-time Starter link activation: no Stripe subscription, just a timed access window.
     if tx.get("purpose") == "link_activation_onetime":

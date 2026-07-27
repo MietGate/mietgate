@@ -337,6 +337,7 @@ async def activate_link(pid: str, body: ActivateLinkRequest, request: Request, u
         "purpose": purpose, "property_id": pid,
         "one_time_duration_days": plan.get("one_time_duration_days") if is_one_time else None,
         "created_at": now_iso(), "updated_at": now_iso(),
+        **stripe_service.tax_facts(session),
         "withdrawal_consent_at": now_iso(),
         "withdrawal_consent_ip": request.client.host if request.client else None,
     })

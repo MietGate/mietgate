@@ -44,6 +44,7 @@ async def create_checkout(req: CheckoutRequest, request: Request, user: dict = D
         "lookup_key": lookup_key, "amount": (price.unit_amount or 0) / 100,
         "currency": price.currency, "status": "initiated", "payment_status": "pending",
         "purpose": "subscription", "created_at": now_iso(), "updated_at": now_iso(),
+        **stripe_service.tax_facts(session),
         "withdrawal_consent_at": now_iso(),
         "withdrawal_consent_ip": request.client.host if request.client else None,
     })
@@ -73,6 +74,7 @@ async def premium_checkout(req: PremiumCheckout, request: Request, user: dict = 
         "amount": (price.unit_amount or 0) / 100, "currency": price.currency,
         "status": "initiated", "payment_status": "pending", "purpose": "premium",
         "created_at": now_iso(), "updated_at": now_iso(),
+        **stripe_service.tax_facts(session),
         "withdrawal_consent_at": now_iso(),
         "withdrawal_consent_ip": request.client.host if request.client else None,
     })
