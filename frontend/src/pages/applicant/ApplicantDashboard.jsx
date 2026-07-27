@@ -123,7 +123,7 @@ function PremiumCard() {
           <Link to="/widerruf" target="_blank" rel="noreferrer" className="text-primary hover:underline">Widerrufsrecht</Link> mit vollständiger Vertragserfüllung verliere.
         </span>
       </label>
-      <p className="text-[11px] text-muted-foreground mt-3">Monatlich kündbar. Wird sicher über Stripe abgewickelt.</p>
+      <p className="text-[11px] text-muted-foreground mt-3">Preis inkl. MwSt. Monatlich kündbar. Wird sicher über Stripe abgewickelt.</p>
     </div>
   );
 }

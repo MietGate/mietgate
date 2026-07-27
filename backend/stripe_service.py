@@ -16,8 +16,10 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 # muss hier manuell auf den regulaeren Anker-Preis umgestellt werden (siehe
 # project_mietgate_session_2026-07-26_part3_handoff Memory fuer die genauen Zielwerte:
 # Starter 29,90€ einmalig, Plus 39,90€/Jahr 383€, Makler 99,90€/Jahr 959€).
-# tax_behavior: "inclusive" = Preis ist bereits Bruttopreis (Endkunden/Verbraucher, Starter).
-# "exclusive" = Preis ist Nettopreis, MwSt wird beim Checkout addiert (B2B, Plus/Makler).
+# tax_behavior: "inclusive" = Preis ist bereits Bruttopreis — gilt fuer alles, was an
+# Verbraucher verkauft wird (Starter, Bewerber-Premium), sonst weicht der angezeigte
+# Preis vom abgebuchten ab. "exclusive" = Nettopreis, MwSt kommt im Checkout dazu —
+# nur fuer die B2B-Pakete (Plus, Makler, White-Label-Add-on).
 CATALOG = [
     {"mietgate_product_id": "mietgate_starter", "name": "MietGate Starter", "tax_code": "txcd_10103001",
      "prices": [
@@ -35,12 +37,12 @@ CATALOG = [
      ]},
     {"mietgate_product_id": "mietgate_whitelabel", "name": "MietGate White-Label", "tax_code": "txcd_10103001",
      "prices": [
-         {"lookup_key": "whitelabel_monthly", "amount": 7900, "currency": "eur", "interval": "month"},
-         {"lookup_key": "whitelabel_yearly", "amount": 75800, "currency": "eur", "interval": "year"},
+         {"lookup_key": "whitelabel_monthly", "amount": 7900, "currency": "eur", "interval": "month", "tax_behavior": "exclusive"},
+         {"lookup_key": "whitelabel_yearly", "amount": 75800, "currency": "eur", "interval": "year", "tax_behavior": "exclusive"},
      ]},
     {"mietgate_product_id": "mietgate_premium", "name": "MietGate Bewerber-Premium", "tax_code": "txcd_10103001",
      "prices": [
-         {"lookup_key": "applicant_premium_monthly", "amount": 499, "currency": "eur", "interval": "month"},
+         {"lookup_key": "applicant_premium_monthly", "amount": 499, "currency": "eur", "interval": "month", "tax_behavior": "inclusive"},
      ]},
 ]
 
