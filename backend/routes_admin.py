@@ -652,6 +652,53 @@ async def admin_funnel(days: int = 30, user: dict = Depends(admin)):
     }
 
 
+# ---------- Anschreiben-Vorlagen (Vertrieb) ----------
+DEFAULT_OUTREACH = [
+    {"key": "kurz", "name": "Kurz & direkt",
+     "body": "Hallo,\n\nich habe Ihr Inserat für die Wohnung in {{ort}} gesehen. Falls Sie gerade viele "
+             "Anfragen bekommen: Mit MietGate erhalten Sie alle Bewerbungen strukturiert an einem Ort, "
+             "statt sie im Postfach zu sortieren.\n\nSie legen das Objekt an, teilen einen Link im Inserat "
+             "und bekommen vollständige Bewerbungen inklusive Unterlagen:\n{{link}}\n\nViele Grüße\n{{absender}}"},
+    {"key": "problem", "name": "Über das Problem",
+     "body": "Hallo,\n\nzu Ihrem Inserat in {{ort}} bekommen Sie vermutlich sehr viele Zuschriften — oft "
+             "unvollständig, und die Rückfragen kosten Abende.\n\nMietGate löst genau das: ein Link im "
+             "Inserat, jeder Interessent füllt dasselbe Formular aus, Sie vergleichen die Bewerbungen "
+             "nebeneinander und laden per Klick zur Besichtigung ein.\n\nHier ansehen: {{link}}\n\n"
+             "Viele Grüße\n{{absender}}"},
+    {"key": "kostenlos", "name": "Kostenlos testen",
+     "body": "Hallo,\n\nich schreibe Ihnen wegen Ihres Inserats in {{ort}}. MietGate bündelt Mietbewerbungen: "
+             "Interessenten bewerben sich über einen Link, Sie sehen alle Angaben und Unterlagen auf einen "
+             "Blick.\n\nDas Anlegen ist kostenlos — bezahlt wird erst, wenn Sie den Bewerbungslink "
+             "veröffentlichen. Einfach ausprobieren:\n{{link}}\n\nViele Grüße\n{{absender}}"},
+]
+
+
+@router.get("/outreach-templates")
+async def list_outreach_templates(user: dict = Depends(admin)):
+    stored = {t["key"]: t async for t in db.outreach_templates.find({}, NO_ID)}
+    return [stored.get(t["key"], t) for t in DEFAULT_OUTREACH]
+
+
+class OutreachPayload(BaseModel):
+    name: str
+    body: str
+
+
+@router.put("/outreach-templates/{key}")
+async def update_outreach_template(key: str, body: OutreachPayload, user: dict = Depends(admin)):
+    if key not in {t["key"] for t in DEFAULT_OUTREACH}:
+        raise HTTPException(status_code=404, detail="Unbekannte Vorlage")
+    await db.outreach_templates.update_one(
+        {"key": key}, {"$set": {"key": key, "name": body.name, "body": body.body}}, upsert=True)
+    return await db.outreach_templates.find_one({"key": key}, NO_ID)
+
+
+@router.delete("/outreach-templates/{key}")
+async def reset_outreach_template(key: str, user: dict = Depends(admin)):
+    await db.outreach_templates.delete_one({"key": key})
+    return {"ok": True}
+
+
 # ---------- Newsletter ----------
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 

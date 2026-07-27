@@ -46,6 +46,7 @@ import AdminLeads from "@/pages/admin/AdminLeads";
 import AdminSupport from "@/pages/admin/AdminSupport";
 import AdminNewsletter from "@/pages/admin/AdminNewsletter";
 import AdminEmailTemplates from "@/pages/admin/AdminEmailTemplates";
+import AdminOutreach from "@/pages/admin/AdminOutreach";
 import NewsletterConfirm from "@/pages/NewsletterConfirm";
 import NewsletterUnsubscribe from "@/pages/NewsletterUnsubscribe";
 import NotFound from "@/pages/NotFound";
@@ -143,6 +144,7 @@ function AppRouter() {
         <Route path="/admin/support" element={<AdminSupport />} />
         <Route path="/admin/newsletter" element={<AdminNewsletter />} />
         <Route path="/admin/email-vorlagen" element={<AdminEmailTemplates />} />
+        <Route path="/admin/anschreiben" element={<AdminOutreach />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
