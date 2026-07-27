@@ -4,6 +4,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import {
   Building2, Inbox, FileText, CalendarDays, MessageSquare, Plus, ArrowRight, Loader2
 } from "lucide-react";
@@ -41,6 +42,8 @@ export default function LandlordDashboard() {
         </div>
         <Button asChild data-testid="dashboard-new-property"><Link to="/objekte/neu"><Plus className="h-4 w-4 mr-1" /> Neues Objekt</Link></Button>
       </div>
+
+      <OnboardingChecklist />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Building2} label="Aktive Objekte" value={data.active_properties} to="/objekte" />

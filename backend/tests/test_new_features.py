@@ -109,15 +109,17 @@ class TestPartners:
     def test_admin_put_partners_forbidden_for_non_admin(self, s, state):
         h = {"Authorization": f"Bearer {state['landlord_token']}"}
         r = s.put(f"{API}/admin/partners",
-                  json={"schufa_url": "https://x", "schufa_text": "x", "offers": []},
+                  json={"bonify_url": "https://x", "bonify_text": "x", "offers": []},
                   headers=h)
         assert r.status_code == 403, f"Expected 403, got {r.status_code}: {r.text}"
 
     def test_admin_put_partners_and_public_visibility(self, s, state):
         h = {"Authorization": f"Bearer {state['admin_token']}"}
         payload = {
-            "schufa_url": f"https://schufa-test-{_RUN}.example.com",
-            "schufa_text": f"TEST_SCHUFA_TEXT_{_RUN}",
+            "bonify_url": f"https://bonify-test-{_RUN}.example.com",
+            "bonify_text": f"TEST_BONITY_TEXT_{_RUN}",
+            "bonify_steps": ["Schritt eins", "Schritt zwei"],
+            "bonify_is_affiliate": True,
             "offers": [
                 {"category": "Strom", "name": f"TEST_Anbieter_{_RUN}",
                  "url": f"https://strom-{_RUN}.example.com",
@@ -129,21 +131,24 @@ class TestPartners:
         r = s.put(f"{API}/admin/partners", json=payload, headers=h)
         assert r.status_code == 200, r.text
         data = r.json()
-        assert data.get("schufa_url") == payload["schufa_url"]
-        assert data.get("schufa_text") == payload["schufa_text"]
+        assert data.get("bonify_url") == payload["bonify_url"]
+        assert data.get("bonify_text") == payload["bonify_text"]
+        assert data.get("bonify_steps") == payload["bonify_steps"]
         assert len(data.get("offers", [])) == 2
 
         # Read back via admin GET
         r2 = s.get(f"{API}/admin/partners", headers=h)
         assert r2.status_code == 200
-        assert r2.json().get("schufa_url") == payload["schufa_url"]
+        assert r2.json().get("bonify_url") == payload["bonify_url"]
         assert len(r2.json().get("offers", [])) == 2
 
         # Public visibility on /api/partners (no auth)
         r3 = requests.get(f"{API}/partners")
         assert r3.status_code == 200, r3.text
         pub = r3.json()
-        assert pub.get("schufa_url") == payload["schufa_url"]
+        assert pub.get("bonify_url") == payload["bonify_url"]
+        # The former SCHUFA affiliate fields must not leak back out.
+        assert "schufa_url" not in pub
         offers = pub.get("offers", [])
         assert any(o.get("name") == f"TEST_Anbieter_{_RUN}" for o in offers), pub
         # ensure Mongo _id was NOT leaked

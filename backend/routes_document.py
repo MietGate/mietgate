@@ -7,7 +7,8 @@ from database import db, NO_ID
 from security import get_current_user, resolve_user_by_token
 from storage import put_object, get_object, delete_object, guess_mime, APP_NAME
 from helpers import new_id, now_iso, log_activity, notify
-from constants import DOCUMENT_TYPES
+from constants import (DOCUMENT_TYPES, doc_released_to_landlord, doc_release_hint,
+                       redact_doc_for_landlord)
 
 
 router = APIRouter(prefix="/api", tags=["documents"])
@@ -85,8 +86,14 @@ async def list_documents(application_id: Optional[str] = None, user: dict = Depe
         if not (is_owner or is_landlord):
             raise HTTPException(status_code=403, detail="Keine Berechtigung")
         q = {"application_id": application_id, "is_deleted": False}
-    else:
-        q = {"applicant_user_id": user["id"], "is_deleted": False}
+        docs = await db.documents.find(q, NO_ID).sort("created_at", -1).to_list(200)
+        # The applicant always sees their own uploads in full; the landlord only sees
+        # what the application's current stage allows.
+        if is_landlord and not is_owner:
+            status = app.get("status", "neu")
+            return [redact_doc_for_landlord(d, status) for d in docs]
+        return docs
+    q = {"applicant_user_id": user["id"], "is_deleted": False}
     return await db.documents.find(q, NO_ID).sort("created_at", -1).to_list(200)
 
 
@@ -104,6 +111,16 @@ async def download_document(doc_id: str, authorization: Optional[str] = Header(N
     is_admin = user.get("role") == "admin"
     if not (is_owner or is_landlord or is_admin):
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    # Staged release: a landlord must not be able to bypass the list view by calling
+    # the download URL directly.
+    if is_landlord and not is_owner and not is_admin:
+        app = await db.applications.find_one({"id": rec.get("application_id")}) if rec.get("application_id") else None
+        status = app.get("status", "neu") if app else "neu"
+        if not doc_released_to_landlord(rec.get("doc_type", "Sonstiges"), status):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Dieses Dokument ist noch nicht freigegeben. {doc_release_hint(rec.get('doc_type', ''))}.",
+            )
     if rec.get("org_id") and is_landlord:
         await log_activity(rec["org_id"], user["id"], "document_view", "document", doc_id)
     data, content_type = await run_in_threadpool(get_object, rec["storage_path"])

@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import {
   LayoutDashboard, Building2, Users, Settings, LogOut, Bell, Menu, X,
   CreditCard, ShieldCheck, FileText, CalendarDays, Home, ChevronRight, Link2, Contact, Search,
-  Inbox, MessageSquare, Mail, Megaphone
+  Inbox, MessageSquare, Mail, Megaphone, ClipboardList
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,6 +41,7 @@ const adminNav = [
   { to: "/admin/partner", label: "Partner-Links", icon: Link2 },
   { to: "/admin/leads", label: "Leads & CRM", icon: Contact },
   { to: "/admin/anschreiben", label: "Anschreiben", icon: Megaphone },
+  { to: "/admin/inserat-vorlagen", label: "Inserats-Texte", icon: ClipboardList },
   { to: "/admin/newsletter", label: "Newsletter", icon: Mail },
   { to: "/admin/email-vorlagen", label: "E-Mail-Vorlagen", icon: FileText },
   { to: "/admin/support", label: "Support & Logs", icon: ShieldCheck },

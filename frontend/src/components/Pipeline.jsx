@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus } from "lucide-react";
+import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus, Lock } from "lucide-react";
 
 const COLUMNS = [
   { key: "neu", label: "Neu", dot: "bg-slate-400" }, { key: "pruefung", label: "Prüfung", dot: "bg-blue-500" },
@@ -149,11 +149,22 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
                 <div className="mt-2 space-y-2">
                   {(!app.documents || app.documents.length === 0) && <p className="text-sm text-muted-foreground">Keine Dokumente hochgeladen.</p>}
                   {app.documents?.map((d) => (
-                    <button key={d.id} onClick={() => openDocument(d.id, d.original_filename).catch(() => toast.error("Download fehlgeschlagen"))}
-                      className="w-full flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary transition-colors" data-testid={`doc-${d.id}`}>
-                      <span className="flex items-center gap-2 truncate"><FileText className="h-4 w-4 text-primary" /> <span className="truncate">{d.doc_type}</span></span>
-                      <Download className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                    /* Bonity and ID documents stay locked until the application reaches the
+                       stage where they may lawfully be seen — the backend enforces this too. */
+                    d.released === false ? (
+                      <div key={d.id} className="w-full flex items-center justify-between rounded-md border border-dashed border-border px-3 py-2 text-sm" data-testid={`doc-locked-${d.id}`}>
+                        <span className="flex items-center gap-2 truncate text-muted-foreground">
+                          <Lock className="h-4 w-4 shrink-0" /> <span className="truncate">{d.doc_type}</span>
+                        </span>
+                        <span className="text-xs text-muted-foreground shrink-0 ml-2">{d.release_hint}</span>
+                      </div>
+                    ) : (
+                      <button key={d.id} onClick={() => openDocument(d.id, d.original_filename).catch(() => toast.error("Download fehlgeschlagen"))}
+                        className="w-full flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary transition-colors" data-testid={`doc-${d.id}`}>
+                        <span className="flex items-center gap-2 truncate"><FileText className="h-4 w-4 text-primary" /> <span className="truncate">{d.doc_type}</span></span>
+                        <Download className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    )
                   ))}
                 </div>
               </div>

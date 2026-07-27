@@ -6,7 +6,8 @@ from typing import Optional, List, Dict, Any
 from database import db, NO_ID
 from security import get_current_user, hash_password
 from helpers import new_id, now_iso, log_activity, notify, compute_matching_score, email_user, notify_org_team
-from constants import FORM_FIELDS, STATUS_LABELS, PIPELINE_STATUSES
+from constants import (FORM_FIELDS, STATUS_LABELS, PIPELINE_STATUSES,
+                       redact_doc_for_landlord)
 from email_templates import render_and_send
 
 router = APIRouter(prefix="/api", tags=["applications"])
@@ -41,6 +42,7 @@ def _public_property(prop, org):
         "description": prop.get("description"),
         "external_listing_url": prop.get("external_listing_url"),
         "document_timing": prop.get("document_timing", "before"),
+        "required_documents": prop.get("required_documents", []),
         "form_config": prop.get("form_config", {}),
         "code": prop["application_code"],
         "branding": branding,
@@ -218,7 +220,9 @@ async def get_application(app_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
     await _enrich(app)
     docs = await db.documents.find({"application_id": app_id, "is_deleted": False}, NO_ID).to_list(100)
-    app["documents"] = docs
+    # Bonity/ID documents stay withheld until the application reaches the stage where the
+    # landlord may lawfully see them — see constants.DOC_RELEASE_STAGE.
+    app["documents"] = [redact_doc_for_landlord(d, app.get("status", "neu")) for d in docs]
     return app
 
 
@@ -273,6 +277,10 @@ async def my_applications(user: dict = Depends(get_current_user)):
         prop = await db.properties.find_one({"id": a["property_id"]}, NO_ID)
         a["property_title"] = (prop or {}).get("title")
         a["status_label"] = STATUS_LABELS.get(a["status"], a["status"])
+        # The applicant needs to know which documents this landlord made mandatory —
+        # anything else may be deferred ("später hochladen").
+        a["required_documents"] = (prop or {}).get("required_documents", [])
+        a["document_timing"] = (prop or {}).get("document_timing", "after")
         a["document_count"] = await db.documents.count_documents({"application_id": a["id"], "is_deleted": False})
     return apps
 

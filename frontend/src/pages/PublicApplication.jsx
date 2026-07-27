@@ -36,12 +36,13 @@ import {
   Loader2, ExternalLink, MapPin, Home, CheckCircle2, Upload, FileText, ShieldCheck, Sparkles, ArrowLeft, ArrowRight
 } from "lucide-react";
 
-const DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
+/* Only the document types a landlord may lawfully collect before the viewing. Bonity and
+   ID documents are handled later, in the applicant's own document area. */
+const PRE_VIEWING_DOC_TYPES = ["Sonstiges"];
 
 export default function PublicApplication() {
   const { code } = useParams();
   const [data, setData] = useState(null);
-  const [partners, setPartners] = useState(null);
   const [error, setError] = useState(null); // null | "invalid" | "payment_locked"
   const [form, setForm] = useState({});
   const [email, setEmail] = useState("");
@@ -221,7 +222,9 @@ export default function PublicApplication() {
                     <Label>Typ</Label>
                     <Select value={docType} onValueChange={setDocType}>
                       <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                      <SelectContent>{DOC_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                      {/* Bonity documents are omitted here on purpose: this screen is shown
+                          before the viewing, where a landlord may not collect them. */}
+                      <SelectContent>{PRE_VIEWING_DOC_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <input ref={fileRef} type="file" onChange={uploadDoc} className="hidden" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} data-testid="public-file-input" />
@@ -244,14 +247,16 @@ export default function PublicApplication() {
               </div>
             )}
 
+            {/* No bonity link before the viewing — pushing one here would create exactly the
+                pressure that makes the applicant's later consent invalid. */}
             <div className="mt-8 rounded-lg bg-accent/50 border border-accent p-4 text-left flex items-start gap-3">
               <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-sm">Tipp: SCHUFA-Auskunft</p>
-                <p className="text-sm text-muted-foreground">{partners?.schufa_text || "Eine aktuelle Bonitätsauskunft kann Ihre Bewerbung unterstützen."}{" "}
-                  {partners?.schufa_url ? (
-                    <a href={partners.schufa_url} target="_blank" rel="noreferrer" className="text-primary hover:underline font-medium" data-testid="schufa-link">SCHUFA-Auskunft erhalten →</a>
-                  ) : null}
+                <p className="font-medium text-sm">Bonitätsauskunft erst später nötig</p>
+                <p className="text-sm text-muted-foreground">
+                  Der Vermieter darf eine SCHUFA- oder Bonitätsauskunft erst anfordern, wenn Sie nach der
+                  Besichtigung in der engeren Auswahl sind. In „Meine Dokumente" können Sie sie in Ruhe
+                  vorbereiten — kostenlos über bonify oder mit einer vorhandenen Auskunft.
                 </p>
               </div>
             </div>

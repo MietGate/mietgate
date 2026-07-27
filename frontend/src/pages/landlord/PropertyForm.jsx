@@ -9,7 +9,12 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, ArrowRight, Save } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, Save, AlertTriangle } from "lucide-react";
+
+const DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
+/* Mirrors constants.DOC_RELEASE_STAGE on the backend — documents the authorities only
+   allow once the applicant is shortlisted. */
+const BONITY_DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Ausweis", "Aufenthaltstitel"];
 
 const STATE_OPTS = [
   { v: "required", l: "Pflicht" },
@@ -83,8 +88,8 @@ export default function PropertyForm() {
     title: "", internal_name: "", street: "", house_number: "", zip: "", city: "", district: "",
     area: "", rooms: "", bathrooms: "", floor: "", balcony: false, cellar: false, parking: false,
     cold_rent: "", extra_costs: "", warm_rent: "", deposit: "", earliest_move_in: "",
-    description: "", internal_notes: "", external_listing_url: "", document_timing: "before",
-    status: "active", form_config: {},
+    description: "", internal_notes: "", external_listing_url: "", document_timing: "after",
+    required_documents: [], status: "active", form_config: {},
   });
 
   useEffect(() => {
@@ -104,6 +109,16 @@ export default function PropertyForm() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const num = (v) => (v === "" || v == null ? null : Number(v));
+
+  /* Bonity documents may not be demanded before the viewing, so they aren't offered as
+     mandatory in that mode. The backend strips them again regardless. */
+  const selectableDocTypes = form.document_timing === "before"
+    ? DOC_TYPES.filter((t) => !BONITY_DOC_TYPES.includes(t))
+    : DOC_TYPES;
+  const toggleRequiredDoc = (t) => {
+    const cur = form.required_documents || [];
+    setForm({ ...form, required_documents: cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t] });
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -190,11 +205,21 @@ export default function PropertyForm() {
             <Select value={form.document_timing} onValueChange={(v) => setForm({ ...form, document_timing: v })}>
               <SelectTrigger className="mt-1.5" data-testid="doc-timing"><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="after">Nach Besichtigung (empfohlen)</SelectItem>
                 <SelectItem value="before">Vor Besichtigung</SelectItem>
-                <SelectItem value="after">Nach Besichtigung</SelectItem>
                 <SelectItem value="none">Keine Dokumente über MietGate</SelectItem>
               </SelectContent>
             </Select>
+            {form.document_timing === "before" && (
+              <p className="text-xs text-amber-700 dark:text-amber-500 mt-2 flex gap-1.5" data-testid="doc-timing-warning">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  Bonitätsunterlagen (SCHUFA, Gehaltsnachweis, Mietschuldenfreiheit) dürfen Sie
+                  erst nach der Besichtigung anfordern, wenn Bewerber in der engeren Auswahl sind.
+                  MietGate gibt sie Ihnen deshalb automatisch erst ab dem Status „Favorit" frei.
+                </span>
+              </p>
+            )}
           </div>
           <div>
             <Label>Status</Label>
@@ -208,6 +233,24 @@ export default function PropertyForm() {
             </Select>
           </div>
         </div>
+        {form.document_timing !== "none" && (
+          <div className="pt-2 border-t border-border">
+            <Label>Pflichtdokumente</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Nicht angehakte Dokumente darf der Bewerber später nachreichen.
+              {form.document_timing === "before" && " Bonitätsunterlagen sind hier ausgeblendet, weil sie vor der Besichtigung nicht verlangt werden dürfen."}
+            </p>
+            <div className="grid sm:grid-cols-2 gap-2 mt-3">
+              {selectableDocTypes.map((t) => (
+                <label key={t} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={(form.required_documents || []).includes(t)}
+                    onChange={() => toggleRequiredDoc(t)} data-testid={`req-doc-${t}`} />
+                  {t}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </Section>
   );

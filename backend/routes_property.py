@@ -11,7 +11,7 @@ from database import db, NO_ID
 from security import get_current_user
 from helpers import new_id, now_iso, log_activity, get_plan_limit, active_property_count, plan_supports_team
 from storage import put_object, get_object, get_object_ranged, delete_object, guess_mime, APP_NAME
-from constants import FORM_FIELDS, DEFAULT_FORM_CONFIG, DOCUMENT_TYPES
+from constants import FORM_FIELDS, DEFAULT_FORM_CONFIG, DOCUMENT_TYPES, DOC_RELEASE_STAGE
 import stripe_service
 
 router = APIRouter(prefix="/api", tags=["properties"])
@@ -45,9 +45,22 @@ class PropertyPayload(BaseModel):
     description: Optional[str] = None
     internal_notes: Optional[str] = None
     external_listing_url: Optional[str] = None
-    document_timing: str = "before"  # before | after | none
+    # Default is "after" on purpose: the data-protection authorities' Orientierungshilfe
+    # Wohnungswirtschaft only allows bonity/income documents once the applicant is in the
+    # shortlist (i.e. after the viewing). "before" stays selectable for landlords who only
+    # collect uncritical documents, but it must not be what MietGate suggests by default.
+    document_timing: str = "after"  # before | after | none
+    # Document types the applicant must supply. Anything not listed here may be deferred
+    # ("später hochladen"). Bonity types are stripped when document_timing is "before" —
+    # demanding them ahead of the viewing is what the Orientierungshilfe forbids.
+    required_documents: List[str] = []
     form_config: Optional[Dict[str, str]] = None
     status: str = "active"
+
+    @field_validator("required_documents")
+    @classmethod
+    def _known_doc_types(cls, v):
+        return [d for d in (v or []) if d in DOCUMENT_TYPES]
 
     @field_validator("area", "rooms", "cold_rent", "extra_costs", "warm_rent", "deposit")
     @classmethod
@@ -62,6 +75,20 @@ class PropertyPayload(BaseModel):
         if v is not None and v < 0:
             raise ValueError("Wert darf nicht negativ sein")
         return v
+
+
+def _sanitize_required_documents(doc: dict) -> dict:
+    """A landlord must not be able to make bonity documents mandatory before the viewing.
+
+    Requiring them at that point is exactly what the Orientierungshilfe Wohnungswirtschaft
+    forbids, so we drop them from the requirement list instead of trusting the client.
+    """
+    if doc.get("document_timing") == "before":
+        doc["required_documents"] = [d for d in doc.get("required_documents", [])
+                                     if d not in DOC_RELEASE_STAGE]
+    elif doc.get("document_timing") == "none":
+        doc["required_documents"] = []
+    return doc
 
 
 async def _require_org(user):
@@ -146,7 +173,7 @@ async def create_property(payload: PropertyPayload, user: dict = Depends(get_cur
     code = gen_code()
     while await db.properties.find_one({"application_code": code}):
         code = gen_code()
-    doc = payload.model_dump()
+    doc = _sanitize_required_documents(payload.model_dump())
     doc.update({
         "id": pid, "org_id": org_id, "created_by": user["id"],
         "application_code": code, "link_active": False,
@@ -174,7 +201,7 @@ async def update_property(pid: str, payload: PropertyPayload, user: dict = Depen
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
     await _require_manage_role(prop["org_id"], user)
-    upd = payload.model_dump(exclude_none=False)
+    upd = _sanitize_required_documents(payload.model_dump(exclude_none=False))
     if payload.form_config is None:
         upd.pop("form_config", None)
     await db.properties.update_one({"id": pid}, {"$set": upd})

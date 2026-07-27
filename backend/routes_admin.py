@@ -7,6 +7,7 @@ from database import db, NO_ID
 from security import require_roles
 from helpers import new_id, now_iso, notify, email_user, log_activity
 from email_service import send_email
+from constants import DEFAULT_BONIFY, DEFAULT_INSERAT_TEMPLATES
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin = require_roles("admin")
@@ -314,27 +315,59 @@ class PartnerOffer(BaseModel):
 
 
 class PartnersPayload(BaseModel):
-    schufa_url: Optional[str] = None
-    schufa_text: Optional[str] = None
+    # Replaces the former schufa_* affiliate fields: bonify issues a tenant bonity report
+    # free of charge, which is a better applicant experience than a paid SCHUFA link.
+    bonify_url: Optional[str] = None
+    bonify_text: Optional[str] = None
+    bonify_steps: List[str] = []
+    bonify_is_affiliate: bool = False
     offers: List[PartnerOffer] = []
 
 
 @router.get("/partners")
 async def admin_get_partners(user: dict = Depends(admin)):
-    doc = await db.settings.find_one({"key": "partners"}, NO_ID)
-    return doc or {"key": "partners", "schufa_url": None, "schufa_text": None, "offers": []}
+    doc = await db.settings.find_one({"key": "partners"}, NO_ID) or {"key": "partners"}
+    for k, v in DEFAULT_BONIFY.items():
+        if not doc.get(k):
+            doc[k] = v
+    doc.setdefault("offers", [])
+    return doc
 
 
 @router.put("/partners")
 async def admin_update_partners(body: PartnersPayload, user: dict = Depends(admin)):
     upd = {
-        "schufa_url": body.schufa_url,
-        "schufa_text": body.schufa_text,
+        "bonify_url": body.bonify_url or DEFAULT_BONIFY["bonify_url"],
+        "bonify_text": body.bonify_text or DEFAULT_BONIFY["bonify_text"],
+        "bonify_steps": [s for s in body.bonify_steps if s.strip()] or DEFAULT_BONIFY["bonify_steps"],
+        "bonify_is_affiliate": body.bonify_is_affiliate,
         "offers": [o.model_dump() for o in body.offers],
     }
     await db.settings.update_one({"key": "partners"}, {"$set": upd}, upsert=True)
     doc = await db.settings.find_one({"key": "partners"}, NO_ID)
     return doc
+
+
+class InseratTemplatesPayload(BaseModel):
+    templates: List[dict]
+
+
+@router.get("/inserat-vorlagen")
+async def admin_get_inserat_templates(user: dict = Depends(admin)):
+    doc = await db.settings.find_one({"key": "inserat_templates"}, NO_ID)
+    return {"templates": (doc or {}).get("templates") or DEFAULT_INSERAT_TEMPLATES}
+
+
+@router.put("/inserat-vorlagen")
+async def admin_update_inserat_templates(body: InseratTemplatesPayload, user: dict = Depends(admin)):
+    """Global defaults every org sees until it saves its own snippets."""
+    templates = [
+        {"key": t.get("key") or new_id(), "label": t.get("label") or "Vorlage", "text": t.get("text", "")}
+        for t in body.templates if (t.get("text") or "").strip()
+    ]
+    await db.settings.update_one({"key": "inserat_templates"},
+                                 {"$set": {"templates": templates}}, upsert=True)
+    return {"templates": templates}
 
 
 @router.post("/maintenance/run")

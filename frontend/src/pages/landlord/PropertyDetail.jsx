@@ -5,6 +5,7 @@ import { Pipeline } from "@/components/Pipeline";
 import { Viewings } from "@/components/Viewings";
 import { PropertyImages } from "@/components/PropertyImages";
 import { PricingSection } from "@/components/PricingSection";
+import { InseratTemplates } from "@/components/InseratTemplates";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -173,10 +174,10 @@ export default function PropertyDetail() {
                   <Button variant="ghost" size="sm" asChild><a href={appLink} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4 mr-1" /> Bewerbungsseite ansehen</a></Button>
                 </div>
               </div>
-              <div className="mt-4 rounded-lg bg-accent/50 border border-accent p-4 max-w-2xl text-sm">
-                <p className="font-medium">Beispieltext für Ihr Inserat:</p>
-                <p className="text-muted-foreground mt-1 italic">„Bitte bewerben Sie sich ausschließlich über folgenden Link: {appLink}"</p>
-              </div>
+              {/* Copying a snippet is the only observable signal that the link made it into
+                  a listing, so it also completes the matching onboarding step. */}
+              <InseratTemplates property={prop} appLink={appLink}
+                onCopied={() => api.post("/onboarding/flag", { key: "inserat_kopiert" }).catch(() => {})} />
             </>
           ) : (
             <div className="rounded-xl border border-dashed border-border bg-card p-8 max-w-2xl text-center" data-testid="link-activate-panel">

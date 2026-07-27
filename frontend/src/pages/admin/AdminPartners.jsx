@@ -14,10 +14,12 @@ export default function AdminPartners() {
 
   useEffect(() => {
     api.get("/admin/partners").then((r) => setData({
-      schufa_url: r.data.schufa_url || "",
-      schufa_text: r.data.schufa_text || "",
+      bonify_url: r.data.bonify_url || "",
+      bonify_text: r.data.bonify_text || "",
+      bonify_steps: r.data.bonify_steps?.length ? r.data.bonify_steps : ["", "", ""],
+      bonify_is_affiliate: !!r.data.bonify_is_affiliate,
       offers: r.data.offers || [],
-    })).catch(() => setData({ schufa_url: "", schufa_text: "", offers: [] }));
+    })).catch(() => setData({ bonify_url: "", bonify_text: "", bonify_steps: ["", "", ""], bonify_is_affiliate: false, offers: [] }));
   }, []);
 
   if (!data) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -28,6 +30,13 @@ export default function AdminPartners() {
     offers[i] = { ...offers[i], [k]: e.target.value };
     setData({ ...data, offers });
   };
+  const setStep = (i) => (e) => {
+    const bonify_steps = [...data.bonify_steps];
+    bonify_steps[i] = e.target.value;
+    setData({ ...data, bonify_steps });
+  };
+  const addStep = () => setData({ ...data, bonify_steps: [...data.bonify_steps, ""] });
+  const removeStep = (i) => setData({ ...data, bonify_steps: data.bonify_steps.filter((_, idx) => idx !== i) });
   const addOffer = () => setData({ ...data, offers: [...data.offers, { ...EMPTY_OFFER }] });
   const removeOffer = (i) => setData({ ...data, offers: data.offers.filter((_, idx) => idx !== i) });
 
@@ -46,7 +55,7 @@ export default function AdminPartners() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-bold">Partner & Affiliate-Links</h1>
-          <p className="text-muted-foreground mt-1">SCHUFA-Auskunft und Partnerangebote für Bewerber verwalten.</p>
+          <p className="text-muted-foreground mt-1">Bonitätsauskunft und Partnerangebote für Bewerber verwalten.</p>
         </div>
         <Button onClick={save} disabled={saving} data-testid="save-partners-btn">
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Speichern
@@ -54,9 +63,35 @@ export default function AdminPartners() {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 space-y-4 max-w-2xl">
-        <div className="flex items-center gap-2"><Link2 className="h-4 w-4 text-primary" /><h2 className="font-display font-bold text-lg">SCHUFA / Bonität</h2></div>
-        <div><Label>SCHUFA-Link (Affiliate)</Label><Input value={data.schufa_url} onChange={setField("schufa_url")} placeholder="https://…" className="mt-1.5" data-testid="schufa-url-input" /></div>
-        <div><Label>Hinweistext</Label><Input value={data.schufa_text} onChange={setField("schufa_text")} placeholder="Eine aktuelle Bonitätsauskunft…" className="mt-1.5" data-testid="schufa-text-input" /></div>
+        <div className="flex items-center gap-2"><Link2 className="h-4 w-4 text-primary" /><h2 className="font-display font-bold text-lg">Bonitätsauskunft (bonify)</h2></div>
+        <p className="text-sm text-muted-foreground">
+          Wird Bewerbern auf „Meine Dokumente" als kostenlose Alternative zur SCHUFA angeboten.
+          Leere Felder fallen auf die eingebauten Standardwerte zurück.
+        </p>
+        <div><Label>Link zur Bonitätsauskunft</Label><Input value={data.bonify_url} onChange={setField("bonify_url")} placeholder="https://www.bonify.de/…" className="mt-1.5" data-testid="bonify-url-input" /></div>
+        <div><Label>Hinweistext</Label><Input value={data.bonify_text} onChange={setField("bonify_text")} placeholder="bonify stellt eine Bonitätsauskunft für Mieter kostenlos aus…" className="mt-1.5" data-testid="bonify-text-input" /></div>
+        <div>
+          <Label>Schritte für den Bewerber</Label>
+          <div className="space-y-2 mt-1.5">
+            {data.bonify_steps.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="h-6 w-6 shrink-0 rounded-full bg-accent text-primary text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                <Input value={s} onChange={setStep(i)} placeholder={`Schritt ${i + 1}`} data-testid={`bonify-step-${i}`} />
+                {data.bonify_steps.length > 1 && (
+                  <button onClick={() => removeStep(i)} className="p-2 rounded-md hover:bg-secondary" title="Schritt entfernen"><Trash2 className="h-4 w-4 text-destructive" /></button>
+                )}
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="mt-2" onClick={addStep} data-testid="add-bonify-step"><Plus className="h-4 w-4 mr-1" /> Schritt hinzufügen</Button>
+        </div>
+        {/* Only disclose advertising when there really is a commission — bonify's tenant
+            report is free, so a partner agreement may well not exist. */}
+        <label className="flex items-start gap-2 text-sm pt-2 border-t border-border">
+          <input type="checkbox" className="mt-1" checked={data.bonify_is_affiliate}
+            onChange={(e) => setData({ ...data, bonify_is_affiliate: e.target.checked })} data-testid="bonify-affiliate-toggle" />
+          <span>Der Link ist ein Partnerlink mit Provision — Werbekennzeichnung („Anzeige") beim Bewerber anzeigen.</span>
+        </label>
       </div>
 
       <div className="space-y-4">

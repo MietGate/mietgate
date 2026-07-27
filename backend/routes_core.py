@@ -8,6 +8,7 @@ from database import db, NO_ID
 from security import get_current_user, hash_password, verify_password
 from helpers import new_id, now_iso, active_property_count, get_plan_limit, plan_supports_team, notify, email_user
 from email_service import send_email
+from constants import DEFAULT_BONIFY, DEFAULT_INSERAT_TEMPLATES
 
 router = APIRouter(prefix="/api", tags=["core"])
 
@@ -42,8 +43,16 @@ async def active_promotions():
 
 @router.get("/partners")
 async def get_partners():
-    doc = await db.settings.find_one({"key": "partners"}, NO_ID)
-    return doc or {"schufa_url": None, "offers": []}
+    doc = await db.settings.find_one({"key": "partners"}, NO_ID) or {}
+    # Fall back to the built-in bonify defaults so the guided bonity step works even
+    # before an admin has touched /admin/partner.
+    for k, v in DEFAULT_BONIFY.items():
+        if not doc.get(k):
+            doc[k] = v
+    doc.setdefault("offers", [])
+    doc.pop("schufa_url", None)
+    doc.pop("schufa_text", None)
+    return doc
 
 
 class ContactPayload(BaseModel):
@@ -299,6 +308,53 @@ async def reset_org_email_template(key: str, user: dict = Depends(get_current_us
     return {"ok": True}
 
 
+# ---------- Listing snippets ----------
+class InseratTemplate(BaseModel):
+    key: str
+    label: str
+    text: str
+
+
+class InseratTemplatesPayload(BaseModel):
+    templates: List[InseratTemplate]
+
+
+async def _global_inserat_templates():
+    doc = await db.settings.find_one({"key": "inserat_templates"}, NO_ID)
+    return (doc or {}).get("templates") or DEFAULT_INSERAT_TEMPLATES
+
+
+@router.get("/inserat-vorlagen")
+async def get_inserat_templates(user: dict = Depends(get_current_user)):
+    """The org's own snippets if it has edited any, otherwise the global defaults."""
+    if not user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Keine Organisation")
+    org = await db.organizations.find_one({"id": user["org_id"]}, NO_ID) or {}
+    own = org.get("inserat_templates")
+    return {"templates": own or await _global_inserat_templates(), "customized": bool(own)}
+
+
+@router.put("/inserat-vorlagen")
+async def update_inserat_templates(body: InseratTemplatesPayload, user: dict = Depends(get_current_user)):
+    if not user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Keine Organisation")
+    member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
+    if not member or member["role"] not in ("owner", "admin", "employee"):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    templates = [t.model_dump() for t in body.templates if t.text.strip()]
+    await db.organizations.update_one({"id": user["org_id"]}, {"$set": {"inserat_templates": templates}})
+    return {"templates": templates, "customized": True}
+
+
+@router.delete("/inserat-vorlagen")
+async def reset_inserat_templates(user: dict = Depends(get_current_user)):
+    """Drop the org's overrides and fall back to the global defaults again."""
+    if not user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Keine Organisation")
+    await db.organizations.update_one({"id": user["org_id"]}, {"$unset": {"inserat_templates": ""}})
+    return {"templates": await _global_inserat_templates(), "customized": False}
+
+
 @router.get("/organization/members")
 async def list_members(user: dict = Depends(get_current_user)):
     if not user.get("org_id"):
@@ -446,6 +502,100 @@ async def get_subscription(user: dict = Depends(get_current_user)):
     return {"subscription": sub, "plan": plan, "usage": {"used": used, "limit": limit},
             "supports_team": bool(plan and plan.get("supports_team")),
             "white_label_addon": bool((org or {}).get("white_label_addon"))}
+
+
+# ---------- Onboarding ----------
+#
+# Every step is derived from real data rather than something the landlord ticks off, so
+# the checklist can never claim a step is done when it isn't. The one exception is
+# "Link ins Inserat einfügen": that happens on a third-party site we can't observe, so
+# copying a snippet is taken as the signal.
+@router.get("/onboarding")
+async def onboarding(user: dict = Depends(get_current_user)):
+    org_id = user.get("org_id")
+    if not org_id:
+        raise HTTPException(status_code=404, detail="Keine Organisation")
+
+    org = await db.organizations.find_one({"id": org_id}, NO_ID) or {}
+    prop = await db.properties.find_one({"org_id": org_id}, NO_ID)
+    live_prop = await db.properties.find_one({"org_id": org_id, "link_active": True}, NO_ID)
+    has_application = await db.applications.count_documents({"org_id": org_id}) > 0
+    has_viewing = await db.viewings.count_documents({"org_id": org_id}) > 0
+    flags = user.get("onboarding") or {}
+
+    first_id = (live_prop or prop or {}).get("id")
+    steps = [
+        {
+            "key": "profil",
+            "title": "Profil vervollständigen",
+            "description": "Firmenname und Kontaktdaten erscheinen auf Ihrer Bewerbungsseite.",
+            "done": bool(org.get("name") and user.get("phone")),
+            "link": "/einstellungen",
+            "cta": "Zu den Einstellungen",
+        },
+        {
+            "key": "objekt",
+            "title": "Erstes Objekt anlegen",
+            "description": "Anlegen und bearbeiten ist kostenlos.",
+            "done": bool(prop),
+            "link": "/objekte/neu",
+            "cta": "Objekt anlegen",
+        },
+        {
+            "key": "link",
+            "title": "Bewerbungslink aktivieren",
+            "description": "Paket wählen — mit 3 Tagen kostenlosem Test.",
+            "done": bool(live_prop),
+            "link": f"/objekte/{first_id}" if first_id else "/objekte",
+            "cta": "Link aktivieren",
+        },
+        {
+            "key": "inserat",
+            "title": "Link ins Inserat einfügen",
+            "description": "Fertigen Textbaustein kopieren und in Ihre Anzeige einfügen.",
+            "done": bool(flags.get("inserat_kopiert")),
+            "link": f"/objekte/{first_id}" if first_id else "/objekte",
+            "cta": "Textbaustein kopieren",
+        },
+        {
+            "key": "bewerbung",
+            "title": "Erste Bewerbung erhalten",
+            "description": "Sobald Ihr Link online ist, landen Bewerbungen automatisch hier.",
+            "done": has_application,
+            "link": "/bewerbungen",
+            "cta": "Bewerbungen ansehen",
+        },
+        {
+            "key": "besichtigung",
+            "title": "Besichtigung anlegen",
+            "description": "Termine anbieten und Bewerber sich selbst eintragen lassen.",
+            "done": has_viewing,
+            "link": "/kalender",
+            "cta": "Termin anlegen",
+        },
+    ]
+    done = sum(1 for s in steps if s["done"])
+    return {
+        "steps": steps,
+        "done": done,
+        "total": len(steps),
+        "complete": done == len(steps),
+        "dismissed": bool(flags.get("dismissed")),
+    }
+
+
+class OnboardingFlag(BaseModel):
+    key: str
+
+
+@router.post("/onboarding/flag")
+async def set_onboarding_flag(body: OnboardingFlag, user: dict = Depends(get_current_user)):
+    """Record a step we cannot observe from data alone ("inserat_kopiert"), or the
+    landlord dismissing the card ("dismissed")."""
+    if body.key not in ("inserat_kopiert", "dismissed"):
+        raise HTTPException(status_code=400, detail="Unbekannter Schritt")
+    await db.users.update_one({"id": user["id"]}, {"$set": {f"onboarding.{body.key}": True}})
+    return {"ok": True}
 
 
 @router.get("/dashboard")
