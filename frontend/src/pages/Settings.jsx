@@ -13,6 +13,57 @@ import { toast } from "sonner";
 import { Loader2, Save, RotateCcw, Mail } from "lucide-react";
 import Billing from "@/pages/landlord/Billing";
 
+function NotificationSettings() {
+  const [categories, setCategories] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get("/me/notification-settings")
+      .then((r) => setCategories(r.data.categories))
+      .catch(() => toast.error("Einstellungen konnten nicht geladen werden"));
+  }, []);
+
+  const toggle = (key, value) => setCategories(categories.map((c) => (c.key === key ? { ...c, enabled: value } : c)));
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const settings = Object.fromEntries(categories.map((c) => [c.key, c.enabled]));
+      await api.put("/me/notification-settings", { settings });
+      toast.success("Benachrichtigungen gespeichert");
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
+  };
+
+  if (!categories) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+      <div>
+        <h2 className="font-display font-bold text-lg flex items-center gap-2"><Mail className="h-4 w-4" /> E-Mail-Benachrichtigungen</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Legen Sie fest, worüber wir Sie per E-Mail informieren. Im Postfach der Anwendung sehen Sie
+          weiterhin alles — unabhängig von diesen Einstellungen.
+        </p>
+      </div>
+      <div className="divide-y divide-border">
+        {categories.map((c) => (
+          <div key={c.key} className="flex items-center justify-between gap-4 py-3">
+            <span className="text-sm">{c.label}</span>
+            <Switch checked={c.enabled} onCheckedChange={(v) => toggle(c.key, v)} data-testid={`notif-${c.key}`} />
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Nachrichten zu Zahlungen, Vertragslaufzeit und Ihrem Konto senden wir unabhängig davon immer.
+      </p>
+      <Button onClick={save} disabled={saving} data-testid="save-notifications">
+        {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Speichern
+      </Button>
+    </div>
+  );
+}
+
 function OrgEmailTemplates() {
   const [templates, setTemplates] = useState(null);
   const [saving, setSaving] = useState(null);
@@ -169,6 +220,7 @@ export default function Settings() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="profile" data-testid="tab-profile">Profil</TabsTrigger>
+          <TabsTrigger value="notifications" data-testid="tab-notifications">Benachrichtigungen</TabsTrigger>
           <TabsTrigger value="password">Passwort</TabsTrigger>
           {isLandlord && <TabsTrigger value="org" data-testid="tab-org">Organisation</TabsTrigger>}
           {isLandlord && <TabsTrigger value="billing" data-testid="tab-billing">Abo & Zahlungen</TabsTrigger>}
@@ -185,6 +237,10 @@ export default function Settings() {
             <div><Label>Telefon</Label><Input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} className="mt-1.5" /></div>
             <Button onClick={saveProfile} disabled={saving} data-testid="save-profile">{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Speichern</Button>
           </div>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="mt-6">
+          <NotificationSettings />
         </TabsContent>
 
         <TabsContent value="password" className="mt-6">

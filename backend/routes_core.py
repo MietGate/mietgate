@@ -130,6 +130,26 @@ class ProfileUpdate(BaseModel):
     notification_settings: Optional[Dict[str, bool]] = None
 
 
+@router.get("/me/notification-settings")
+async def get_notification_settings(user: dict = Depends(get_current_user)):
+    from helpers import NOTIFICATION_CATEGORIES
+    saved = user.get("notification_settings") or {}
+    return {"categories": [{"key": k, "label": v, "enabled": saved.get(k, True)}
+                           for k, v in NOTIFICATION_CATEGORIES.items()]}
+
+
+class NotificationSettingsUpdate(BaseModel):
+    settings: Dict[str, bool]
+
+
+@router.put("/me/notification-settings")
+async def update_notification_settings(body: NotificationSettingsUpdate, user: dict = Depends(get_current_user)):
+    from helpers import NOTIFICATION_CATEGORIES
+    clean = {k: bool(v) for k, v in body.settings.items() if k in NOTIFICATION_CATEGORIES}
+    await db.users.update_one({"id": user["id"]}, {"$set": {"notification_settings": clean}})
+    return {"ok": True, "settings": clean}
+
+
 @router.put("/me/profile")
 async def update_profile(body: ProfileUpdate, user: dict = Depends(get_current_user)):
     upd = {k: v for k, v in body.model_dump().items() if v is not None}

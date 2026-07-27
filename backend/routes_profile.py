@@ -86,7 +86,8 @@ async def express_interest(token: str, req: InterestRequest):
     body += ("<p>Loggen Sie sich ein, um die Anfrage zu beantworten und bei Bedarf Ihre "
              "hinterlegten Dokumente freizugeben.</p>")
     await email_user(owner["id"], "Neue Anfrage von einem Vermieter",
-                      "Ein Vermieter interessiert sich für Ihr Profil", body)
+                      "Ein Vermieter interessiert sich für Ihr Profil", body,
+                      category="inquiries")
     return {"ok": True}
 
 

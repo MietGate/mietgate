@@ -4,9 +4,35 @@ from database import db, NO_ID
 from email_service import send_email
 
 
-async def email_user(user_id, subject, title, body_html):
-    """Look up a user's email by id and send a transactional email (best-effort)."""
+# Categories a user may switch off. Anything contract-critical (Zahlung, Testzeitraum,
+# Kündigung, Team-Einladung, Kontoaktivierung) is deliberately absent here — those must
+# always reach the user, so their senders simply pass no category.
+NOTIFICATION_CATEGORIES = {
+    "applications": "Neue Bewerbungen & Statusänderungen",
+    "messages": "Nachrichten",
+    "viewings": "Besichtigungen & Erinnerungen",
+    "documents": "Dokumente",
+    "inquiries": "Anfragen zu Ihrem Profil",
+}
+
+
+async def email_enabled(user_id, category):
+    """Whether this user still wants e-mails of that category. Default is on."""
+    if not category or not user_id:
+        return True
+    u = await db.users.find_one({"id": user_id}, {"notification_settings": 1, "_id": 0})
+    return ((u or {}).get("notification_settings") or {}).get(category, True)
+
+
+async def email_user(user_id, subject, title, body_html, category=None):
+    """Look up a user's email by id and send a transactional email (best-effort).
+
+    Pass `category` for anything the user is allowed to mute; leave it out for
+    contract-critical mail, which is then always sent.
+    """
     if not user_id:
+        return
+    if not await email_enabled(user_id, category):
         return
     u = await db.users.find_one({"id": user_id}, {"email": 1, "_id": 0})
     if u and u.get("email"):
@@ -39,7 +65,8 @@ async def notify(user_id, ntype, title, body, link=None):
     })
 
 
-async def notify_org_team(org_id, ntype, title, body, link=None, email_subject=None, email_title=None, email_body_html=None):
+async def notify_org_team(org_id, ntype, title, body, link=None, email_subject=None, email_title=None,
+                          email_body_html=None, category=None):
     """Notify every active team member (owner/admin/employee — assistants are read-only)
     instead of just the org's original created_by user, so nothing gets missed when
     multiple people manage the same properties."""
@@ -50,7 +77,8 @@ async def notify_org_team(org_id, ntype, title, body, link=None, email_subject=N
     for m in members:
         await notify(m["user_id"], ntype, title, body, link)
         if email_subject:
-            await email_user(m["user_id"], email_subject, email_title or title, email_body_html or body)
+            await email_user(m["user_id"], email_subject, email_title or title, email_body_html or body,
+                             category=category)
 
 
 async def get_user_org(user):

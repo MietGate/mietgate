@@ -150,7 +150,8 @@ async def submit_application(req: ApplyRequest):
                  f"Neue Bewerbung für „{prop['title']}“", f"/objekte/{prop['id']}")
     await email_user(prop.get("created_by"), "Neue Bewerbung eingegangen", "Neue Bewerbung",
                      f"<p>Für Ihr Objekt <b>{prop['title']}</b> ist eine neue Bewerbung eingegangen.</p>"
-                     f"<p>Öffnen Sie Ihr MietGate-Dashboard, um die Bewerbung zu prüfen.</p>")
+                     f"<p>Öffnen Sie Ihr MietGate-Dashboard, um die Bewerbung zu prüfen.</p>",
+                     category="applications")
     # emails
     if activation_link:
         origin = (req.origin_url or "").rstrip("/")
@@ -243,7 +244,8 @@ async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(ge
                      "Es gibt ein Update zu Ihrer Bewerbung",
                      f"<p>Der Status Ihrer Bewerbung für <b>{ptitle}</b> wurde aktualisiert:</p>"
                      f"<p style='font-size:17px;font-weight:700;color:#0a2540'>{status_label}</p>"
-                     f"<p>Details finden Sie in Ihrem MietGate-Konto.</p>")
+                     f"<p>Details finden Sie in Ihrem MietGate-Konto.</p>",
+                     category="applications")
     return {"ok": True, "status": body.status}
 
 

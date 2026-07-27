@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from database import db, NO_ID
 from security import get_current_user
-from helpers import new_id, now_iso, notify, notify_org_team
+from helpers import new_id, now_iso, notify, notify_org_team, email_user
 
 router = APIRouter(prefix="/api", tags=["messages"])
 
@@ -106,15 +106,25 @@ async def send_message(payload: MessagePayload, user: dict = Depends(get_current
         "read": False, "created_at": now_iso(),
     }
     await db.messages.insert_one(msg)
-    link = "/bewerber" if is_landlord else f"/objekte/{app['property_id']}"
+    preview = payload.body[:60]
+    email_html = (f"<p><b>{user.get('name')}</b> hat Ihnen eine Nachricht geschrieben:</p>"
+                  f"<blockquote style='margin:12px 0;padding-left:12px;border-left:3px solid #e2e8f0;color:#334155'>"
+                  f"{payload.body[:400]}</blockquote>"
+                  f"<p>Antworten können Sie direkt in Ihrem MietGate-Konto.</p>")
     if is_landlord:
-        await notify(recipient_id, "message", "Neue Nachricht",
-                     f"{user.get('name')}: {payload.body[:60]}", link)
+        link = f"/bewerber/nachrichten?application_id={payload.application_id}"
+        await notify(recipient_id, "message", "Neue Nachricht", f"{user.get('name')}: {preview}", link)
+        # Without this, an applicant who isn't logged in never learns a landlord replied.
+        await email_user(recipient_id, "Neue Nachricht zu Ihrer Bewerbung",
+                         "Sie haben eine neue Nachricht", email_html, category="messages")
     else:
         # An applicant's message should reach every team member managing this property,
         # not just whoever originally created it.
         await notify_org_team(app["org_id"], "message", "Neue Nachricht",
-                              f"{user.get('name')}: {payload.body[:60]}", link)
+                              f"{user.get('name')}: {preview}", f"/nachrichten",
+                              email_subject="Neue Nachricht von einem Bewerber",
+                              email_title="Sie haben eine neue Nachricht",
+                              email_body_html=email_html, category="messages")
     msg.pop("_id", None)
     return msg
 

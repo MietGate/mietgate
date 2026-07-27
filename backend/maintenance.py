@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from starlette.concurrency import run_in_threadpool
 from database import db, NO_ID
-from helpers import notify, log_activity
+from helpers import notify, log_activity, email_enabled
 from email_service import send_email
 from email_templates import render_and_send
 from storage import delete_object
@@ -37,7 +37,7 @@ async def send_viewing_reminders():
         for p in v.get("participants", []):
             await notify(p["applicant_user_id"], "viewing_reminder", "Erinnerung: Besichtigung morgen",
                          f'Ihre Besichtigung "{v["title"]}" findet am {when} statt.', "/bewerber/termine")
-            if p.get("applicant_email"):
+            if p.get("applicant_email") and await email_enabled(p["applicant_user_id"], "viewings"):
                 await render_and_send("viewing_reminder", p["applicant_email"], v.get("org_id"),
                                       {"viewing_title": v["title"], "when": when})
             if p.get("status") == "invited":

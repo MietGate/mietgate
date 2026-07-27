@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from database import db, NO_ID
 from security import get_current_user
-from helpers import new_id, now_iso, log_activity, notify, email_user, notify_org_team
+from helpers import new_id, now_iso, log_activity, notify, email_user, notify_org_team, email_enabled
 from email_templates import render_and_send
 
 router = APIRouter(prefix="/api", tags=["viewings"])
@@ -78,7 +78,7 @@ async def invite_participants(vid: str, payload: InvitePayload, user: dict = Dep
                      f"Sie wurden zu einer Besichtigung eingeladen: {viewing['title']}", "/bewerber/termine")
         when = viewing.get("datetime") or payload.slot_time
         when_block = f"<p>Termin: <b>{when}</b></p>" if when else ""
-        if app.get("applicant_email"):
+        if app.get("applicant_email") and await email_enabled(app["applicant_user_id"], "viewings"):
             await render_and_send("viewing_invite", app["applicant_email"], viewing.get("org_id"),
                                   {"viewing_title": viewing["title"], "when_block": when_block})
         await db.applications.update_one({"id": app_id}, {"$set": {"status": "besichtigung"}})
@@ -95,7 +95,7 @@ async def delete_viewing(vid: str, user: dict = Depends(get_current_user)):
     for p in viewing.get("participants", []):
         await notify(p["applicant_user_id"], "viewing_cancel", "Besichtigung abgesagt",
                      f"Die Besichtigung „{viewing['title']}“ wurde abgesagt.", "/bewerber/termine")
-        if p.get("applicant_email"):
+        if p.get("applicant_email") and await email_enabled(p["applicant_user_id"], "viewings"):
             await render_and_send("viewing_cancelled", p["applicant_email"], viewing.get("org_id"),
                                   {"viewing_title": viewing["title"]})
     # Soft-cancel instead of hard delete, so an applicant who missed the email still sees
@@ -161,8 +161,9 @@ async def book_slot(vid: str, payload: BookSlotPayload, user: dict = Depends(get
                           f"/objekte/{viewing['property_id']}",
                           email_subject="Zeitfenster gebucht", email_title="Ein Bewerber hat ein Zeitfenster gebucht",
                           email_body_html=f"<p><b>{user.get('name')}</b> hat für die Besichtigung <b>{viewing['title']}</b> "
-                                         f"das Zeitfenster <b>{payload.slot_time}</b> gebucht.</p>")
-    if mine.get("applicant_email"):
+                                         f"das Zeitfenster <b>{payload.slot_time}</b> gebucht.</p>",
+                          category="viewings")
+    if mine.get("applicant_email") and await email_enabled(mine["applicant_user_id"], "viewings"):
         await render_and_send("viewing_slot_confirmed", mine["applicant_email"], viewing.get("org_id"),
                               {"viewing_title": viewing["title"], "slot_time": payload.slot_time})
     return {"ok": True, "slot": payload.slot_time}
@@ -203,5 +204,6 @@ async def respond_viewing(vid: str, payload: RespondPayload, user: dict = Depend
                           email_subject=f"Besichtigung: {label}", email_title="Rückmeldung zu Ihrer Besichtigung",
                           email_body_html=f"<p><b>{user.get('name')}</b> hat den Termin <b>{viewing['title']}</b> "
                                          f"<b>{label}</b>.</p>{msg_html}"
-                                         f"<p>Sehen Sie sich die Details in Ihrem MietGate-Dashboard an.</p>")
+                                         f"<p>Sehen Sie sich die Details in Ihrem MietGate-Dashboard an.</p>",
+                          category="viewings")
     return {"ok": True}
