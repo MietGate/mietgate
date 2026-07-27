@@ -175,6 +175,10 @@ class PlanPayload(BaseModel):
     supports_team: bool = False
     monthly_lookup: Optional[str] = None
     yearly_lookup: Optional[str] = None
+    billing_mode: str = "subscription"  # "subscription" | "one_time"
+    one_time_price: Optional[float] = None
+    one_time_lookup: Optional[str] = None
+    one_time_duration_days: Optional[int] = None
 
 
 @router.get("/plans")
@@ -197,6 +201,7 @@ class PromoPayload(BaseModel):
     end: str
     discount_percent: Optional[float] = None
     fixed_price: Optional[float] = None
+    fixed_price_yearly: Optional[float] = None
     active: bool = True
     show_on_landing: bool = True
 

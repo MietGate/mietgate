@@ -280,7 +280,9 @@ async def activate_link(pid: str, body: ActivateLinkRequest, request: Request, u
     plan = await db.plans.find_one({"key": body.plan_key}, NO_ID)
     if not plan:
         raise HTTPException(status_code=404, detail="Paket nicht gefunden")
-    lookup_key = plan["yearly_lookup"] if body.interval == "yearly" else plan["monthly_lookup"]
+    is_one_time = plan.get("billing_mode") == "one_time"
+    lookup_key = plan.get("one_time_lookup") if is_one_time else (
+        plan["yearly_lookup"] if body.interval == "yearly" else plan["monthly_lookup"])
 
     # Guard against double-click / repeated requests creating multiple parallel checkout
     # sessions: atomically claim a short-lived lock on the property before calling Stripe.
@@ -292,18 +294,21 @@ async def activate_link(pid: str, body: ActivateLinkRequest, request: Request, u
     )
     if not locked:
         raise HTTPException(status_code=429, detail="Checkout wird bereits verarbeitet. Bitte einen Moment warten.")
+    purpose = "link_activation_onetime" if is_one_time else "link_activation"
     try:
         session, price = stripe_service.create_checkout_session(
             lookup_key, body.origin_url, user["id"], org_id,
-            purpose="link_activation", trial_days=3, property_id=pid)
+            purpose=purpose, trial_days=None if is_one_time else 3, property_id=pid,
+            one_time=is_one_time)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Checkout fehlgeschlagen: {e}")
     await db.payment_transactions.insert_one({
         "id": new_id(), "session_id": session.id, "user_id": user["id"],
-        "org_id": org_id, "plan_key": body.plan_key, "interval": body.interval,
+        "org_id": org_id, "plan_key": body.plan_key, "interval": "one_time" if is_one_time else body.interval,
         "lookup_key": lookup_key, "amount": (price.unit_amount or 0) / 100,
         "currency": price.currency, "status": "initiated", "payment_status": "pending",
-        "purpose": "link_activation", "property_id": pid,
+        "purpose": purpose, "property_id": pid,
+        "one_time_duration_days": plan.get("one_time_duration_days") if is_one_time else None,
         "created_at": now_iso(), "updated_at": now_iso(),
         "withdrawal_consent_at": now_iso(),
         "withdrawal_consent_ip": request.client.host if request.client else None,

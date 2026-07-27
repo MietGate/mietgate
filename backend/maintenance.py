@@ -110,11 +110,40 @@ async def send_lead_task_reminders():
     return count
 
 
+async def expire_one_time_subscriptions():
+    """Deactivate Starter one-time link access once its paid-for window has passed."""
+    now = datetime.now(timezone.utc)
+    cursor = db.subscriptions.find({"kind": "one_time", "status": "active", "expires_at": {"$lte": now.isoformat()}})
+    count = 0
+    async for sub in cursor:
+        await db.subscriptions.update_one({"_id": sub["_id"]}, {"$set": {"status": "expired"}})
+        await db.properties.update_many(
+            {"org_id": sub["org_id"], "link_active": True},
+            {"$set": {"link_active": False, "link_deactivated_by_payment": True}})
+        owner = await db.org_members.find_one({"org_id": sub["org_id"], "role": "owner"}, NO_ID)
+        if owner:
+            await notify(owner["user_id"], "one_time_link_expired", "Bewerbungslink abgelaufen",
+                         "Ihr 90-Tage-Zeitraum ist abgelaufen. Kaufen Sie erneut, um weiter Bewerbungen zu erhalten.",
+                         "/objekte")
+            user = await db.users.find_one({"id": owner["user_id"]}, NO_ID)
+            if user and user.get("email"):
+                await send_email(user["email"], "Ihr Bewerbungslink ist abgelaufen",
+                                 "Zeitraum abgelaufen",
+                                 "<p>Ihr 90-tägiger Zeitraum für den Bewerbungslink ist abgelaufen und "
+                                 "die Bewerbungsseite wurde deaktiviert.</p>"
+                                 "<p>Suchen Sie noch einen Mieter? Aktivieren Sie den Link einfach erneut.</p>")
+        count += 1
+    if count:
+        logger.info(f"Expired {count} one-time link subscriptions")
+    return count
+
+
 async def run_once():
     r = await send_viewing_reminders()
     d = await run_gdpr_cleanup()
     lt = await send_lead_task_reminders()
-    return {"reminders": r, "deleted_applications": d, "lead_task_reminders": lt}
+    ot = await expire_one_time_subscriptions()
+    return {"reminders": r, "deleted_applications": d, "lead_task_reminders": lt, "expired_one_time": ot}
 
 
 async def maintenance_loop():

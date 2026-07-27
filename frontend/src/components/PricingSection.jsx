@@ -6,18 +6,69 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Check, Flame } from "lucide-react";
+
+function useCountdown(target) {
+  const [left, setLeft] = useState(null);
+  useEffect(() => {
+    if (!target) return;
+    const end = new Date(target).getTime();
+    const tick = () => {
+      const diff = end - Date.now();
+      if (diff <= 0) { setLeft({ days: 0, hours: 0, minutes: 0, expired: true }); return; }
+      setLeft({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        expired: false,
+      });
+    };
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, [target]);
+  return left;
+}
+
+function PromoBanner({ endDate }) {
+  const left = useCountdown(endDate);
+  if (!left || left.expired) return null;
+  return (
+    <div className="max-w-2xl mx-auto mb-8 rounded-2xl bg-gradient-to-r from-amber-300 to-orange-300 px-6 py-4 flex flex-wrap items-center justify-center gap-3 text-center shadow-lg shadow-amber-500/20" data-testid="promo-banner">
+      <Flame className="h-5 w-5 text-orange-900 shrink-0 animate-pulse" />
+      <p className="text-sm font-semibold text-orange-950">
+        Sommeraktion – reduzierte Preise enden in{" "}
+        <span className="font-mono font-extrabold tabular-nums">
+          {left.days > 0 ? `${left.days} Tg. ` : ""}{left.hours} Std. {left.minutes} Min.
+        </span>
+      </p>
+    </div>
+  );
+}
 
 export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = false, requireWithdrawalConsent = true }) {
   const [plans, setPlans] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | ready | error
   const [yearly, setYearly] = useState(false);
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
-  const consentOk = !requireWithdrawalConsent || withdrawalConsent;
+  // The consent belongs at the moment of commitment, so it lives in a confirm step
+  // rather than above the plan list where it has no context yet.
+  const [pending, setPending] = useState(null); // { plan, interval }
 
   const select = (plan, interval) => {
-    if (plan.key !== "enterprise" && !consentOk) return;
-    onSelect?.(plan, interval, withdrawalConsent);
+    if (plan.key === "enterprise" || !requireWithdrawalConsent) {
+      onSelect?.(plan, interval, false);
+      return;
+    }
+    setWithdrawalConsent(false);
+    setPending({ plan, interval });
+  };
+
+  const confirmPurchase = () => {
+    if (!withdrawalConsent || !pending) return;
+    onSelect?.(pending.plan, pending.interval, true);
+    setPending(null);
   };
 
   const loadPlans = () => {
@@ -30,32 +81,39 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
   useEffect(loadPlans, []);
   const main = plans.filter((p) => !p.is_addon);
   const addon = plans.find((p) => p.is_addon);
+  const promoEnd = main.find((p) => p.promo?.end)?.promo?.end;
 
   const priceOf = (p) => {
+    if (p.billing_mode === "one_time") {
+      if (p.promo?.fixed_price != null) return p.promo.fixed_price;
+      return p.one_time_price;
+    }
     const base = yearly ? p.price_yearly : p.price_monthly;
     if (p.promo) {
-      if (p.promo.fixed_price != null) return p.promo.fixed_price;
+      const fixed = yearly ? p.promo.fixed_price_yearly : p.promo.fixed_price;
+      if (fixed != null) return fixed;
       if (p.promo.discount_percent) return +(base * (1 - p.promo.discount_percent / 100)).toFixed(2);
     }
     return base;
   };
 
+  // Percent off, computed from the real numbers rather than hardcoded — stays correct if prices change.
+  const percentOff = (p) => {
+    if (!p.promo) return null;
+    const anchor = p.billing_mode === "one_time" ? p.one_time_price : (yearly ? p.price_yearly : p.price_monthly);
+    const action = priceOf(p);
+    if (!anchor) return null;
+    return Math.round((1 - action / anchor) * 100);
+  };
+
   return (
     <div>
+      {promoEnd && <PromoBanner endDate={promoEnd} />}
       <div className="flex items-center justify-center gap-3 mb-10">
         <span className={`text-sm ${!yearly ? "font-semibold text-foreground" : "text-muted-foreground"}`}>Monatlich</span>
         <Switch checked={yearly} onCheckedChange={setYearly} data-testid="pricing-toggle" />
         <span className={`text-sm ${yearly ? "font-semibold text-foreground" : "text-muted-foreground"}`}>Jährlich <Badge variant="secondary" className="ml-1 text-success">−20%</Badge></span>
       </div>
-      {requireWithdrawalConsent && status === "ready" && (
-        <label className="flex items-start gap-2.5 max-w-xl mx-auto mb-8 text-sm text-muted-foreground cursor-pointer" data-testid="withdrawal-consent-label">
-          <Checkbox checked={withdrawalConsent} onCheckedChange={setWithdrawalConsent} className="mt-0.5" data-testid="withdrawal-consent-checkbox" />
-          <span>
-            Ich stimme ausdrücklich zu, dass MietGate mit der Ausführung der kostenpflichtigen Leistung vor Ablauf der Widerrufsfrist beginnt, und nehme zur Kenntnis, dass ich dadurch mein{" "}
-            <Link to="/widerruf" target="_blank" rel="noreferrer" className="text-primary hover:underline">Widerrufsrecht</Link> mit vollständiger Vertragserfüllung verliere.
-          </span>
-        </label>
-      )}
       {status === "loading" && (
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto" data-testid="plans-loading">
           {[0, 1, 2].map((i) => (
@@ -88,22 +146,52 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }}
             className={`relative rounded-2xl border p-7 bg-card flex flex-col hover:-translate-y-1.5 hover:shadow-xl transition-all ${p.highlight ? "border-primary shadow-lg shadow-primary/10 ring-1 ring-primary/20" : "border-border hover:border-primary/40"}`}>
             {p.highlight && <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 animate-glow-pulse">Beliebt</Badge>}
+            {p.promo && (
+              <Badge className="absolute -top-3 right-4 bg-gradient-to-r from-amber-300 to-orange-300 text-orange-950 border-0 shadow-sm font-semibold">
+                −{percentOff(p)}% bis {new Date(p.promo.end).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+              </Badge>
+            )}
             <h3 className="font-display text-xl font-bold">{p.name}</h3>
             <div className="mt-4 flex items-baseline gap-1">
-              {p.promo && <span className="text-lg text-muted-foreground line-through font-mono">{(yearly ? p.price_yearly : p.price_monthly).toFixed(2)}€</span>}
+              {p.promo && (
+                <span className="text-lg text-muted-foreground line-through font-mono">
+                  {(p.billing_mode === "one_time" ? p.one_time_price : (yearly ? p.price_yearly : p.price_monthly)).toFixed(2)}€
+                </span>
+              )}
               <AnimatePresence mode="wait">
                 <motion.span key={yearly ? "yearly" : "monthly"} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.22, ease: "easeOut" }} className="font-mono text-4xl font-extrabold text-foreground">
+                  transition={{ duration: 0.22, ease: "easeOut" }} className={`font-mono text-4xl font-extrabold ${p.promo ? "text-amber-700" : "text-foreground"}`}>
                   {priceOf(p).toFixed(2)}€
                 </motion.span>
               </AnimatePresence>
-              <span className="text-muted-foreground text-sm">/ {yearly ? "Jahr" : "Monat"}</span>
+              <span className="text-muted-foreground text-sm">{p.billing_mode === "one_time" ? "einmalig" : `/ ${yearly ? "Jahr" : "Monat"}`}</span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">bis zu {p.max_properties} aktive{p.max_properties === 1 ? "s" : ""} Objekt{p.max_properties === 1 ? "" : "e"}</p>
-            {yearly && !p.promo && p.price_monthly > 0 && (p.price_monthly * 12 - p.price_yearly) > 0 && (
-              <p className="text-sm font-semibold text-success mt-1" data-testid={`savings-${p.key}`}>
-                Sie sparen {(p.price_monthly * 12 - p.price_yearly).toFixed(2)}€ pro Jahr
+            <p className="text-sm text-muted-foreground mt-1">
+              {p.billing_mode === "one_time"
+                ? `Bewerbungslink ${p.one_time_duration_days} Tage aktiv · 1 Objekt`
+                : `bis zu ${p.max_properties} aktive${p.max_properties === 1 ? "s" : ""} Objekt${p.max_properties === 1 ? "" : "e"}`}
+            </p>
+            {p.billing_mode !== "one_time" && p.promo && !yearly && (
+              <p className="text-sm font-semibold text-amber-700 mt-1" data-testid={`savings-monthly-${p.key}`}>
+                Sie sparen {(p.price_monthly - priceOf(p)).toFixed(2)}€ im Monat
               </p>
+            )}
+            {p.billing_mode === "one_time" && p.promo && (
+              <p className="text-sm font-semibold text-amber-700 mt-1" data-testid={`savings-${p.key}`}>
+                Sie sparen {(p.one_time_price - priceOf(p)).toFixed(2)}€
+              </p>
+            )}
+            {p.billing_mode !== "one_time" && yearly && (() => {
+              const monthlyNow = p.promo?.fixed_price ?? p.price_monthly;
+              const saved = monthlyNow * 12 - priceOf(p);
+              return saved > 0 ? (
+                <p className={`text-sm font-semibold mt-1 ${p.promo ? "text-amber-700" : "text-success"}`} data-testid={`savings-${p.key}`}>
+                  Sie sparen {saved.toFixed(2)}€ pro Jahr
+                </p>
+              ) : null;
+            })()}
+            {p.billing_mode === "one_time" && !p.promo && (
+              <p className="text-sm text-muted-foreground mt-1">Genug Zeit, um in Ruhe den passenden Mieter zu finden</p>
             )}
             <ul className="mt-6 space-y-2.5 flex-1">
               {p.features?.map((f, i) => (
@@ -116,9 +204,9 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
                 )
               ))}
             </ul>
-            <Button className="mt-7 w-full" variant={p.highlight ? "default" : "outline"} disabled={disabled || !consentOk}
-              onClick={() => select(p, yearly ? "yearly" : "monthly")} data-testid={`select-${p.key}`}>
-              {ctaLabel}
+            <Button className="mt-7 w-full" variant={p.highlight ? "default" : "outline"} disabled={disabled}
+              onClick={() => select(p, p.billing_mode === "one_time" ? "one_time" : (yearly ? "yearly" : "monthly"))} data-testid={`select-${p.key}`}>
+              {p.billing_mode === "one_time" ? "Einmalig kaufen" : ctaLabel}
             </Button>
           </motion.div>
         ))}
@@ -130,7 +218,7 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
               <h4 className="font-display font-bold flex items-center gap-2">{addon.name}</h4>
               <p className="text-sm text-muted-foreground mt-1">Eigenes Branding, Logo & Farben, eigene Domain (in Vorbereitung) · <span className="font-mono">{priceOf(addon).toFixed(2)}€/{yearly ? "Jahr" : "Monat"}</span></p>
             </div>
-            <Button variant="outline" disabled={!consentOk} onClick={() => select(addon, yearly ? "yearly" : "monthly")} data-testid="select-whitelabel">Hinzubuchen</Button>
+            <Button variant="outline"  onClick={() => select(addon, yearly ? "yearly" : "monthly")} data-testid="select-whitelabel">Hinzubuchen</Button>
           </div>
         )}
         <div className="rounded-2xl border border-border p-6 bg-brand-dark text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -141,6 +229,54 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
           <Button variant="secondary" onClick={() => onSelect?.({ key: "enterprise" })} data-testid="select-enterprise">Angebot anfordern</Button>
         </div>
       </div>
+
+      {/* Confirm step: plan summary plus the withdrawal consent, right where the purchase happens. */}
+      <Dialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Buchung bestätigen</DialogTitle></DialogHeader>
+          {pending && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border divide-y divide-border text-sm">
+                <div className="flex justify-between px-3 py-2.5">
+                  <span className="text-muted-foreground">Paket</span>
+                  <span className="font-medium">{pending.plan.name}</span>
+                </div>
+                <div className="flex justify-between px-3 py-2.5">
+                  <span className="text-muted-foreground">Abrechnung</span>
+                  <span className="font-medium">
+                    {pending.interval === "one_time" ? "Einmalig" : pending.interval === "yearly" ? "Jährlich" : "Monatlich"}
+                  </span>
+                </div>
+                <div className="flex justify-between px-3 py-2.5">
+                  <span className="text-muted-foreground">Preis</span>
+                  <span className="font-mono font-bold">
+                    {priceOf(pending.plan).toFixed(2)}€
+                    {pending.interval !== "one_time" && ` / ${pending.interval === "yearly" ? "Jahr" : "Monat"}`}
+                  </span>
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2.5 text-sm text-muted-foreground cursor-pointer" data-testid="withdrawal-consent-label">
+                <Checkbox checked={withdrawalConsent} onCheckedChange={setWithdrawalConsent} className="mt-0.5" data-testid="withdrawal-consent-checkbox" />
+                <span>
+                  Ich stimme ausdrücklich zu, dass MietGate mit der Ausführung der kostenpflichtigen Leistung vor Ablauf der Widerrufsfrist beginnt, und nehme zur Kenntnis, dass ich dadurch mein{" "}
+                  <Link to="/widerruf" target="_blank" rel="noreferrer" className="text-primary hover:underline">Widerrufsrecht</Link> mit vollständiger Vertragserfüllung verliere.
+                </span>
+              </label>
+
+              <p className="text-xs text-muted-foreground">
+                Im nächsten Schritt werden Sie zur gesicherten Zahlung weitergeleitet. Erst dort wird der Kauf verbindlich abgeschlossen.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPending(null)}>Abbrechen</Button>
+            <Button onClick={confirmPurchase} disabled={!withdrawalConsent || disabled} data-testid="confirm-purchase">
+              Weiter zur Zahlung
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

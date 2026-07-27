@@ -27,6 +27,8 @@ async def get_plans():
                 "name": promo["name"],
                 "discount_percent": promo.get("discount_percent"),
                 "fixed_price": promo.get("fixed_price"),
+                "fixed_price_yearly": promo.get("fixed_price_yearly"),
+                "end": promo.get("end"),
             }
     return plans
 

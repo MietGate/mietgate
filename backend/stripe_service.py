@@ -1,7 +1,7 @@
 import os
 import logging
 import stripe
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from database import db, NO_ID
 from email_service import send_email
 from helpers import notify
@@ -11,21 +11,25 @@ stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
 # EUR, cents. Germany -> SMP eligible (tax_mode "full")
+# NOTE — Aktion bis 2026-09-01: starter_onetime, plus_monthly/plus_yearly und
+# makler_monthly/makler_yearly stehen unten auf dem AKTIONSPREIS. Nach Ablauf der Aktion
+# muss hier manuell auf den regulaeren Anker-Preis umgestellt werden (siehe
+# project_mietgate_session_2026-07-26_part3_handoff Memory fuer die genauen Zielwerte:
+# Starter 29,90€ einmalig, Plus 39,90€/Jahr 383€, Makler 99,90€/Jahr 959€).
 CATALOG = [
     {"mietgate_product_id": "mietgate_starter", "name": "MietGate Starter", "tax_code": "txcd_10103001",
      "prices": [
-         {"lookup_key": "starter_monthly", "amount": 1499, "currency": "eur", "interval": "month"},
-         {"lookup_key": "starter_yearly", "amount": 14390, "currency": "eur", "interval": "year"},
+         {"lookup_key": "starter_onetime", "amount": 1990, "currency": "eur", "interval": None},
      ]},
     {"mietgate_product_id": "mietgate_plus", "name": "MietGate Plus", "tax_code": "txcd_10103001",
      "prices": [
-         {"lookup_key": "plus_monthly", "amount": 2999, "currency": "eur", "interval": "month"},
-         {"lookup_key": "plus_yearly", "amount": 26990, "currency": "eur", "interval": "year"},
+         {"lookup_key": "plus_monthly", "amount": 2990, "currency": "eur", "interval": "month"},
+         {"lookup_key": "plus_yearly", "amount": 28700, "currency": "eur", "interval": "year"},
      ]},
     {"mietgate_product_id": "mietgate_makler", "name": "MietGate Makler", "tax_code": "txcd_10103001",
      "prices": [
-         {"lookup_key": "makler_monthly", "amount": 9900, "currency": "eur", "interval": "month"},
-         {"lookup_key": "makler_yearly", "amount": 89100, "currency": "eur", "interval": "year"},
+         {"lookup_key": "makler_monthly", "amount": 7990, "currency": "eur", "interval": "month"},
+         {"lookup_key": "makler_yearly", "amount": 76700, "currency": "eur", "interval": "year"},
      ]},
     {"mietgate_product_id": "mietgate_whitelabel", "name": "MietGate White-Label", "tax_code": "txcd_10103001",
      "prices": [
@@ -59,18 +63,21 @@ def setup_catalog():
                     stripe.Price.modify(existing[0].id, active=False)
                     existing = []
                 if not existing:
-                    stripe.Price.create(
+                    kwargs = dict(
                         product=product.id, unit_amount=p["amount"], currency=p["currency"],
                         lookup_key=p["lookup_key"], transfer_lookup_key=True,
-                        recurring={"interval": p["interval"]},
                     )
+                    if p.get("interval"):
+                        kwargs["recurring"] = {"interval": p["interval"]}
+                    stripe.Price.create(**kwargs)
         logger.info("Stripe catalog ready")
     except Exception as e:
         logger.error(f"Stripe catalog setup failed: {e}")
 
 
 def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_id: str,
-                            purpose: str = "subscription", trial_days: int = None, property_id: str = None):
+                            purpose: str = "subscription", trial_days: int = None, property_id: str = None,
+                            one_time: bool = False):
     prices = stripe.Price.list(lookup_keys=[lookup_key], active=True, limit=1).data
     if not prices:
         raise ValueError(f"Price not found: {lookup_key}")
@@ -80,12 +87,14 @@ def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_
         metadata["property_id"] = property_id
     kwargs = dict(
         line_items=[{"price": price.id, "quantity": 1}],
-        mode="subscription",
+        mode="payment" if one_time else "subscription",
         success_url=f"{origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{origin_url}/payment/cancel",
         metadata=metadata,
     )
-    if trial_days:
+    if one_time:
+        kwargs["payment_intent_data"] = {"metadata": metadata}
+    elif trial_days:
         kwargs["subscription_data"] = {"trial_period_days": trial_days, "metadata": metadata}
         kwargs["payment_method_collection"] = "always"
     try:
@@ -130,6 +139,31 @@ async def _mark_paid(session_id, subscription, payment_intent):
                   "stripe_payment_intent_id": payment_intent,
                   "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    # One-time Starter link activation: no Stripe subscription, just a timed access window.
+    if tx.get("purpose") == "link_activation_onetime":
+        if tx.get("org_id"):
+            days = tx.get("one_time_duration_days") or 90
+            expires_at = datetime.now(timezone.utc) + timedelta(days=days)
+            await db.subscriptions.update_one(
+                {"org_id": tx["org_id"]},
+                {"$set": {
+                    "org_id": tx["org_id"], "plan_key": tx.get("plan_key"), "kind": "one_time",
+                    "status": "active", "interval": "one_time",
+                    "expires_at": expires_at.isoformat(),
+                    "stripe_payment_intent_id": payment_intent,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }}, upsert=True,
+            )
+            if tx.get("property_id"):
+                await db.properties.update_one(
+                    {"id": tx["property_id"]},
+                    {"$set": {"link_active": True, "link_deactivated_by_payment": False}})
+            await _email_user(tx.get("user_id"), "Ihr Bewerbungslink ist aktiv",
+                              "Zahlung erfolgreich – Link aktiviert",
+                              f"<p>Vielen Dank! Ihr Bewerbungslink ist ab sofort für "
+                              f"<b>{days} Tage</b> aktiv (bis {expires_at.strftime('%d.%m.%Y')}).</p>"
+                              f"<p>Sie können jetzt alle Funktionen des Starter-Pakets nutzen.</p>")
+        return
     # Bewerber-Premium: activate flag on the user, track the subscription so cancellation
     # and failed-payment webhooks can find and downgrade it later
     if tx.get("purpose") == "premium":

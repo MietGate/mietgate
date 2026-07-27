@@ -21,7 +21,7 @@ export default function AdminPlans() {
   const [promoOpen, setPromoOpen] = useState(false);
   const [newPlanOpen, setNewPlanOpen] = useState(false);
   const [newPlan, setNewPlan] = useState(EMPTY_PLAN);
-  const [promo, setPromo] = useState({ name: "", plan_key: "all", start: "", end: "", discount_percent: "", fixed_price: "" });
+  const [promo, setPromo] = useState({ name: "", plan_key: "all", start: "", end: "", discount_percent: "", fixed_price: "", fixed_price_yearly: "" });
   const [error, setError] = useState(false);
 
   const load = () => {
@@ -40,6 +40,9 @@ export default function AdminPlans() {
         features: typeof p.features === "string" ? p.features.split("\n").map((s) => s.trim()).filter(Boolean) : (p.features || []),
         is_active: p.is_active, supports_team: p.supports_team,
         sort_order: p.sort_order, monthly_lookup: p.monthly_lookup, yearly_lookup: p.yearly_lookup,
+        billing_mode: p.billing_mode || "subscription",
+        one_time_price: p.one_time_price != null ? Number(p.one_time_price) : null,
+        one_time_lookup: p.one_time_lookup, one_time_duration_days: p.one_time_duration_days != null ? Number(p.one_time_duration_days) : null,
       });
       toast.success("Paket gespeichert");
       load();
@@ -63,7 +66,9 @@ export default function AdminPlans() {
       await api.post("/admin/promotions", {
         name: promo.name, plan_key: promo.plan_key, start: new Date(promo.start).toISOString(), end: new Date(promo.end).toISOString(),
         discount_percent: promo.discount_percent ? Number(promo.discount_percent) : null,
-        fixed_price: promo.fixed_price ? Number(promo.fixed_price) : null, active: true, show_on_landing: true,
+        fixed_price: promo.fixed_price ? Number(promo.fixed_price) : null,
+        fixed_price_yearly: promo.fixed_price_yearly ? Number(promo.fixed_price_yearly) : null,
+        active: true, show_on_landing: true,
       });
       toast.success("Aktion erstellt"); setPromoOpen(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
@@ -122,8 +127,19 @@ export default function AdminPlans() {
               <div className="w-24"><Label>Max. Objekte</Label><Input type="number" value={p.max_properties} onChange={(e) => setPlanField(i, "max_properties", e.target.value)} className="mt-1.5" /></div>
               <label className="flex items-center gap-2 text-sm pb-2"><input type="checkbox" checked={!!p.supports_team} onChange={(e) => setPlanField(i, "supports_team", e.target.checked)} /> Team-Funktion</label>
               <label className="flex items-center gap-2 text-sm pb-2"><input type="checkbox" checked={p.is_active !== false} onChange={(e) => setPlanField(i, "is_active", e.target.checked)} /> Aktiv</label>
+              <label className="flex items-center gap-2 text-sm pb-2">
+                <input type="checkbox" checked={p.billing_mode === "one_time"}
+                  onChange={(e) => setPlanField(i, "billing_mode", e.target.checked ? "one_time" : "subscription")} /> Einmalzahlung
+              </label>
               <Button onClick={() => savePlan(p)} data-testid={`save-plan-${p.key}`}><Save className="h-4 w-4 mr-1" /> Speichern</Button>
             </div>
+            {p.billing_mode === "one_time" && (
+              <div className="mt-3 flex flex-wrap gap-3 rounded-lg bg-secondary/40 p-3">
+                <div className="w-28"><Label>Preis €</Label><Input type="number" value={p.one_time_price ?? ""} onChange={(e) => setPlanField(i, "one_time_price", e.target.value)} className="mt-1.5" /></div>
+                <div className="w-32"><Label>Laufzeit (Tage)</Label><Input type="number" value={p.one_time_duration_days ?? ""} onChange={(e) => setPlanField(i, "one_time_duration_days", e.target.value)} className="mt-1.5" /></div>
+                <div className="w-48"><Label>Stripe Lookup-Key</Label><Input value={p.one_time_lookup ?? ""} onChange={(e) => setPlanField(i, "one_time_lookup", e.target.value)} className="mt-1.5" /></div>
+              </div>
+            )}
             <div className="mt-3">
               <Label>Features (eine Zeile pro Punkt, öffentlich sichtbar auf Preis-/Abo-Seite)</Label>
               <Textarea rows={3} value={Array.isArray(p.features) ? p.features.join("\n") : (p.features || "")}
@@ -148,8 +164,9 @@ export default function AdminPlans() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Rabatt %</Label><Input type="number" value={promo.discount_percent} onChange={(e) => setPromo({ ...promo, discount_percent: e.target.value })} className="mt-1.5" /></div>
-                  <div><Label>oder Festpreis €</Label><Input type="number" value={promo.fixed_price} onChange={(e) => setPromo({ ...promo, fixed_price: e.target.value })} className="mt-1.5" /></div>
+                  <div><Label>oder Festpreis € (monatlich)</Label><Input type="number" value={promo.fixed_price} onChange={(e) => setPromo({ ...promo, fixed_price: e.target.value })} className="mt-1.5" /></div>
                 </div>
+                <div><Label>Festpreis € (jährlich, optional)</Label><Input type="number" value={promo.fixed_price_yearly} onChange={(e) => setPromo({ ...promo, fixed_price_yearly: e.target.value })} className="mt-1.5" placeholder="sonst regulärer Jahrespreis" /></div>
               </div>
               <DialogFooter><Button onClick={createPromo}>Erstellen</Button></DialogFooter>
             </DialogContent>
