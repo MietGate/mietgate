@@ -5,6 +5,7 @@ from starlette.concurrency import run_in_threadpool
 from database import db, NO_ID
 from helpers import notify, log_activity
 from email_service import send_email
+from email_templates import render_and_send
 from storage import delete_object
 
 logger = logging.getLogger("mietgate.maintenance")
@@ -37,9 +38,8 @@ async def send_viewing_reminders():
             await notify(p["applicant_user_id"], "viewing_reminder", "Erinnerung: Besichtigung morgen",
                          f'Ihre Besichtigung "{v["title"]}" findet am {when} statt.', "/bewerber/termine")
             if p.get("applicant_email"):
-                await send_email(p["applicant_email"], "Erinnerung: Ihre Besichtigung",
-                                 "Besichtigung morgen",
-                                 f"<p>Ihre Besichtigung <b>{v['title']}</b> findet am <b>{when}</b> statt.</p>")
+                await render_and_send("viewing_reminder", p["applicant_email"], v.get("org_id"),
+                                      {"viewing_title": v["title"], "when": when})
             if p.get("status") == "invited":
                 await notify(v.get("created_by"), "viewing_no_response", "Bewerber hat nicht reagiert",
                              f'Ein eingeladener Bewerber hat den Termin "{v["title"]}" noch nicht bestätigt.',

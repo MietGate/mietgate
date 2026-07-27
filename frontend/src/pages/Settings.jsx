@@ -10,8 +10,85 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save, RotateCcw, Mail } from "lucide-react";
 import Billing from "@/pages/landlord/Billing";
+
+function OrgEmailTemplates() {
+  const [templates, setTemplates] = useState(null);
+  const [saving, setSaving] = useState(null);
+
+  const load = () => {
+    api.get("/organization/email-templates").then((r) => setTemplates(r.data)).catch(() => toast.error("Vorlagen konnten nicht geladen werden"));
+  };
+  useEffect(load, []);
+
+  const draftOf = (t) => t.override || { subject: t.subject, title: t.title, body_html: t.body_html };
+  const setDraft = (key, patch) => setTemplates(templates.map((t) => (t.key === key
+    ? { ...t, override: { ...draftOf(t), ...patch } } : t)));
+
+  const save = async (t) => {
+    setSaving(t.key);
+    const draft = draftOf(t);
+    try {
+      await api.put(`/organization/email-templates/${t.key}`, draft);
+      toast.success("Vorlage gespeichert");
+    } catch (e) { toast.error(e.response?.data?.detail || "Fehler beim Speichern"); }
+    finally { setSaving(null); }
+  };
+
+  const reset = async (t) => {
+    setSaving(t.key);
+    try {
+      await api.delete(`/organization/email-templates/${t.key}`);
+      toast.success("Auf Standard zurückgesetzt");
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Fehler"); }
+    finally { setSaving(null); }
+  };
+
+  if (!templates) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 space-y-4 mt-6">
+      <div>
+        <h3 className="font-display font-bold flex items-center gap-2"><Mail className="h-4 w-4" /> E-Mail-Vorlagen</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Überschreiben Sie die Texte der E-Mails, die Bewerber im Namen Ihres Unternehmens erhalten. Ohne Anpassung gilt der MietGate-Standardtext.
+        </p>
+      </div>
+      {templates.map((t) => {
+        const draft = draftOf(t);
+        return (
+          <details key={t.key} className="rounded-lg border border-border overflow-hidden" data-testid={`org-template-${t.key}`}>
+            <summary className="px-4 py-3 cursor-pointer font-medium flex items-center justify-between list-none">
+              <span>{t.name}</span>
+              {t.override && <span className="text-xs text-primary font-normal">Angepasst</span>}
+            </summary>
+            <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+              <div><Label>Betreff</Label><Input value={draft.subject} onChange={(e) => setDraft(t.key, { subject: e.target.value })} className="mt-1.5" /></div>
+              <div><Label>Überschrift im E-Mail-Text</Label><Input value={draft.title} onChange={(e) => setDraft(t.key, { title: e.target.value })} className="mt-1.5" /></div>
+              <div>
+                <Label>Inhalt (HTML)</Label>
+                <Textarea rows={5} value={draft.body_html} onChange={(e) => setDraft(t.key, { body_html: e.target.value })} className="mt-1.5 font-mono text-sm" />
+                <p className="text-xs text-muted-foreground mt-1.5">Platzhalter: {t.placeholders?.map((p) => `{{${p}}}`).join(", ")}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => save(t)} disabled={saving === t.key} data-testid={`save-org-template-${t.key}`}>
+                  {saving === t.key ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Speichern
+                </Button>
+                {t.override && (
+                  <Button size="sm" variant="ghost" onClick={() => reset(t)} disabled={saving === t.key}>
+                    <RotateCcw className="h-4 w-4 mr-2" /> Zurücksetzen
+                  </Button>
+                )}
+              </div>
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Settings() {
   const { user, refresh, logout } = useAuth();
@@ -207,6 +284,7 @@ export default function Settings() {
               )}
               <Button onClick={saveOrg} disabled={!wlAddon}>Speichern</Button>
             </div>
+            {wlAddon && <OrgEmailTemplates />}
           </TabsContent>
         )}
       </Tabs>

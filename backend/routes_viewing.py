@@ -4,7 +4,7 @@ from typing import Optional, List
 from database import db, NO_ID
 from security import get_current_user
 from helpers import new_id, now_iso, log_activity, notify, email_user, notify_org_team
-from email_service import send_email
+from email_templates import render_and_send
 
 router = APIRouter(prefix="/api", tags=["viewings"])
 
@@ -76,12 +76,10 @@ async def invite_participants(vid: str, payload: InvitePayload, user: dict = Dep
         await notify(app["applicant_user_id"], "viewing_invite", "Einladung zur Besichtigung",
                      f"Sie wurden zu einer Besichtigung eingeladen: {viewing['title']}", "/bewerber/termine")
         when = viewing.get("datetime") or payload.slot_time
-        when_txt = f"<p>Termin: <b>{when}</b></p>" if when else ""
+        when_block = f"<p>Termin: <b>{when}</b></p>" if when else ""
         if app.get("applicant_email"):
-            await send_email(app["applicant_email"], "Einladung zur Besichtigung",
-                             "Sie sind zu einer Besichtigung eingeladen",
-                             f"<p>Sie wurden zur Besichtigung <b>{viewing['title']}</b> eingeladen.</p>{when_txt}"
-                             f"<p>Bitte bestätigen Sie den Termin in Ihrem MietGate-Konto.</p>")
+            await render_and_send("viewing_invite", app["applicant_email"], viewing.get("org_id"),
+                                  {"viewing_title": viewing["title"], "when_block": when_block})
         await db.applications.update_one({"id": app_id}, {"$set": {"status": "besichtigung"}})
     await db.viewings.update_one({"id": vid}, {"$set": {"participants": new_parts}})
     await log_activity(user["org_id"], user["id"], "invite", "viewing", vid)
@@ -97,10 +95,8 @@ async def delete_viewing(vid: str, user: dict = Depends(get_current_user)):
         await notify(p["applicant_user_id"], "viewing_cancel", "Besichtigung abgesagt",
                      f"Die Besichtigung „{viewing['title']}“ wurde abgesagt.", "/bewerber/termine")
         if p.get("applicant_email"):
-            await send_email(p["applicant_email"], "Besichtigung abgesagt",
-                             "Ihre Besichtigung wurde abgesagt",
-                             f"<p>Die Besichtigung <b>{viewing['title']}</b> wurde vom Vermieter abgesagt.</p>"
-                             f"<p>Bei Fragen wenden Sie sich bitte an den Vermieter.</p>")
+            await render_and_send("viewing_cancelled", p["applicant_email"], viewing.get("org_id"),
+                                  {"viewing_title": viewing["title"]})
     # Soft-cancel instead of hard delete, so an applicant who missed the email still sees
     # the cancellation in "Meine Termine" instead of the appointment just vanishing.
     await db.viewings.update_one({"id": vid}, {"$set": {"cancelled": True, "cancelled_at": now_iso()}})
@@ -166,10 +162,8 @@ async def book_slot(vid: str, payload: BookSlotPayload, user: dict = Depends(get
                           email_body_html=f"<p><b>{user.get('name')}</b> hat für die Besichtigung <b>{viewing['title']}</b> "
                                          f"das Zeitfenster <b>{payload.slot_time}</b> gebucht.</p>")
     if mine.get("applicant_email"):
-        await send_email(mine["applicant_email"], "Zeitfenster bestätigt", "Ihr Besichtigungstermin ist bestätigt",
-                         f"<p>Ihr Zeitfenster für die Besichtigung <b>{viewing['title']}</b> wurde erfolgreich gebucht:</p>"
-                         f"<p><b>{payload.slot_time}</b></p>"
-                         f"<p>Sie können den Termin jederzeit in Ihrem MietGate-Konto unter \"Meine Termine\" einsehen.</p>")
+        await render_and_send("viewing_slot_confirmed", mine["applicant_email"], viewing.get("org_id"),
+                              {"viewing_title": viewing["title"], "slot_time": payload.slot_time})
     return {"ok": True, "slot": payload.slot_time}
 
 

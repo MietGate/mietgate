@@ -68,16 +68,56 @@ async def contact(payload: ContactPayload):
 
 class NewsletterPayload(BaseModel):
     email: str
+    origin_url: Optional[str] = None
 
 
 @router.post("/newsletter")
 async def newsletter_signup(payload: NewsletterPayload):
     email = payload.email.lower().strip()
     existing = await db.newsletter_subscribers.find_one({"email": email})
-    if not existing:
+    if existing and existing.get("status") == "confirmed":
+        return {"ok": True, "already_confirmed": True}
+    confirm_token = secrets.token_urlsafe(32)
+    unsubscribe_token = (existing or {}).get("unsubscribe_token") or secrets.token_urlsafe(32)
+    if existing:
+        await db.newsletter_subscribers.update_one({"email": email}, {"$set": {
+            "status": "pending", "confirm_token": confirm_token,
+            "unsubscribe_token": unsubscribe_token, "updated_at": now_iso(),
+        }})
+    else:
         await db.newsletter_subscribers.insert_one({
-            "id": new_id(), "email": email, "created_at": now_iso(),
+            "id": new_id(), "email": email, "status": "pending",
+            "confirm_token": confirm_token, "unsubscribe_token": unsubscribe_token,
+            "created_at": now_iso(),
         })
+    origin = (payload.origin_url or "").rstrip("/")
+    link = f"{origin}/newsletter-bestaetigen?token={confirm_token}"
+    await send_email(email, "Bitte bestätigen Sie Ihre Newsletter-Anmeldung", "Newsletter bestätigen",
+                     f"<p>Vielen Dank für Ihr Interesse an MietGate!</p>"
+                     f"<p>Bitte bestätigen Sie Ihre Anmeldung, damit wir Ihnen den Newsletter zusenden dürfen:</p>"
+                     f"<p><a href='{link}' style='background:#0a2540;color:#fff;padding:10px 18px;"
+                     f"border-radius:6px;text-decoration:none;display:inline-block'>Anmeldung bestätigen</a></p>"
+                     f"<p style='color:#94a3b8;font-size:12px'>Falls Sie sich nicht angemeldet haben, ignorieren Sie diese E-Mail.</p>")
+    return {"ok": True, "requires_confirmation": True}
+
+
+@router.get("/newsletter/confirm")
+async def newsletter_confirm(token: str):
+    sub = await db.newsletter_subscribers.find_one({"confirm_token": token})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Ungültiger oder abgelaufener Bestätigungslink")
+    await db.newsletter_subscribers.update_one(
+        {"id": sub["id"]}, {"$set": {"status": "confirmed", "confirmed_at": now_iso()}})
+    return {"ok": True}
+
+
+@router.get("/newsletter/unsubscribe")
+async def newsletter_unsubscribe(token: str):
+    sub = await db.newsletter_subscribers.find_one({"unsubscribe_token": token})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Ungültiger Abmeldelink")
+    await db.newsletter_subscribers.update_one(
+        {"id": sub["id"]}, {"$set": {"status": "unsubscribed", "unsubscribed_at": now_iso()}})
     return {"ok": True}
 
 
@@ -185,6 +225,58 @@ async def update_organization(body: OrgUpdate, user: dict = Depends(get_current_
     if upd:
         await db.organizations.update_one({"id": user["org_id"]}, {"$set": upd})
     return await db.organizations.find_one({"id": user["org_id"]}, NO_ID)
+
+
+@router.get("/organization/email-templates")
+async def org_email_templates(user: dict = Depends(get_current_user)):
+    from email_templates import DEFAULT_TEMPLATES
+    if not user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Keine Organisation")
+    overrides = await db.org_email_templates.find({"org_id": user["org_id"]}, NO_ID).to_list(50)
+    by_key = {o["template_key"]: o for o in overrides}
+    return [
+        {"key": key, **tpl, "override": by_key.get(key)}
+        for key, tpl in DEFAULT_TEMPLATES.items()
+    ]
+
+
+class OrgEmailTemplatePayload(BaseModel):
+    subject: str
+    title: str
+    body_html: str
+
+
+@router.put("/organization/email-templates/{key}")
+async def update_org_email_template(key: str, body: OrgEmailTemplatePayload, user: dict = Depends(get_current_user)):
+    from email_templates import DEFAULT_TEMPLATES
+    if key not in DEFAULT_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Unbekannte Vorlage")
+    if not user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Keine Organisation")
+    member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
+    if not member or member["role"] not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    org = await db.organizations.find_one({"id": user["org_id"]}, NO_ID)
+    if not (org or {}).get("white_label_addon"):
+        raise HTTPException(status_code=402, detail="Eigene E-Mail-Vorlagen sind Teil des White-Label Add-ons.")
+    await db.org_email_templates.update_one(
+        {"org_id": user["org_id"], "template_key": key},
+        {"$set": {"org_id": user["org_id"], "template_key": key,
+                  "subject": body.subject, "title": body.title, "body_html": body.body_html}},
+        upsert=True,
+    )
+    return await db.org_email_templates.find_one({"org_id": user["org_id"], "template_key": key}, NO_ID)
+
+
+@router.delete("/organization/email-templates/{key}")
+async def reset_org_email_template(key: str, user: dict = Depends(get_current_user)):
+    if not user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Keine Organisation")
+    member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
+    if not member or member["role"] not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    await db.org_email_templates.delete_one({"org_id": user["org_id"], "template_key": key})
+    return {"ok": True}
 
 
 @router.get("/organization/members")

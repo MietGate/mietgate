@@ -17,14 +17,14 @@ function NewsletterForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/newsletter", { email });
+      await api.post("/newsletter", { email, origin_url: window.location.origin });
       setDone(true);
-      toast.success("Danke! Wir halten Sie auf dem Laufenden.");
+      toast.success("Fast geschafft! Bitte bestätigen Sie die E-Mail in Ihrem Postfach.");
     } catch {
       toast.error("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
     } finally { setLoading(false); }
   };
-  if (done) return <p className="text-sm text-white/70" data-testid="newsletter-done">✓ Sie sind eingetragen. Willkommen an Bord!</p>;
+  if (done) return <p className="text-sm text-white/70" data-testid="newsletter-done">✓ Bitte bestätigen Sie die E-Mail, die wir Ihnen gerade geschickt haben.</p>;
   return (
     <form onSubmit={submit} className="flex gap-2 max-w-sm" data-testid="newsletter-form">
       <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}

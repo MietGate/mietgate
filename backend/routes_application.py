@@ -7,7 +7,7 @@ from database import db, NO_ID
 from security import get_current_user, hash_password
 from helpers import new_id, now_iso, log_activity, notify, compute_matching_score, email_user
 from constants import FORM_FIELDS, STATUS_LABELS, PIPELINE_STATUSES
-from email_service import send_email
+from email_templates import render_and_send
 
 router = APIRouter(prefix="/api", tags=["applications"])
 
@@ -155,17 +155,17 @@ async def submit_application(req: ApplyRequest):
     if activation_link:
         origin = (req.origin_url or "").rstrip("/")
         link = f"{origin}/aktivieren?token={activation_link}" if origin else "#"
-        await send_email(email, "Ihre Bewerbung bei MietGate", "Bewerbung eingegangen",
-                         f"<p>Vielen Dank für Ihre Bewerbung für <b>{prop['title']}</b>.</p>"
-                         f"<p>Wir haben für Sie ein MietGate-Konto angelegt. Aktivieren Sie es und "
-                         f"vergeben Sie ein Passwort:</p>"
-                         f"<p><a href='{link}' style='background:#0a2540;color:#fff;padding:10px 18px;"
-                         f"border-radius:6px;text-decoration:none;display:inline-block'>Konto aktivieren</a></p>"
-                         f"<p style='color:#94a3b8;font-size:12px'>Oder Link kopieren: {link}</p>")
+        activation_block = (
+            "<p>Wir haben für Sie ein MietGate-Konto angelegt. Aktivieren Sie es und "
+            "vergeben Sie ein Passwort:</p>"
+            f"<p><a href='{link}' style='background:#0a2540;color:#fff;padding:10px 18px;"
+            f"border-radius:6px;text-decoration:none;display:inline-block'>Konto aktivieren</a></p>"
+            f"<p style='color:#94a3b8;font-size:12px'>Oder Link kopieren: {link}</p>"
+        )
     else:
-        await send_email(email, "Ihre Bewerbung bei MietGate", "Bewerbung eingegangen",
-                         f"<p>Vielen Dank für Ihre Bewerbung für <b>{prop['title']}</b>. "
-                         f"Sie können den Status in Ihrem MietGate-Konto verfolgen.</p>")
+        activation_block = "<p>Sie können den Status in Ihrem MietGate-Konto verfolgen.</p>"
+    await render_and_send("application_received", email, prop["org_id"],
+                          {"property_title": prop["title"], "activation_block": activation_block})
     return {"ok": True, "application_id": app_id, "activation_token": activation_link,
             "account_created": activation_link is not None}
 

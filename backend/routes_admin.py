@@ -598,3 +598,69 @@ async def due_lead_tasks(user: dict = Depends(admin)):
     for t in tasks:
         t["lead_name"] = lead_names.get(t["lead_id"], "—")
     return tasks
+
+
+# ---------- Newsletter ----------
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+
+
+@router.get("/newsletter/subscribers")
+async def newsletter_subscribers(user: dict = Depends(admin)):
+    subs = await db.newsletter_subscribers.find({}, NO_ID).sort("created_at", -1).to_list(5000)
+    counts = {
+        "confirmed": sum(1 for s in subs if s.get("status") == "confirmed"),
+        "pending": sum(1 for s in subs if s.get("status") == "pending"),
+        "unsubscribed": sum(1 for s in subs if s.get("status") == "unsubscribed"),
+    }
+    return {"subscribers": subs, "counts": counts}
+
+
+class NewsletterSendPayload(BaseModel):
+    subject: str
+    body_html: str
+
+
+@router.post("/newsletter/send")
+async def send_newsletter(body: NewsletterSendPayload, user: dict = Depends(admin)):
+    subs = await db.newsletter_subscribers.find({"status": "confirmed"}, NO_ID).to_list(10000)
+    sent = 0
+    for s in subs:
+        unsubscribe_link = f"{FRONTEND_URL}/newsletter-abmelden?token={s['unsubscribe_token']}"
+        html = (
+            f"{body.body_html}"
+            f"<p style='color:#94a3b8;font-size:12px;margin-top:24px'>"
+            f"<a href='{unsubscribe_link}' style='color:#94a3b8'>Newsletter abbestellen</a></p>"
+        )
+        await send_email(s["email"], body.subject, body.subject, html)
+        sent += 1
+    await log_activity(None, user["id"], "newsletter_send", "newsletter", None, {"subject": body.subject, "sent": sent})
+    return {"ok": True, "sent": sent}
+
+
+# ---------- E-Mail-Vorlagen (globale Defaults) ----------
+@router.get("/email-templates")
+async def list_email_templates(user: dict = Depends(admin)):
+    from email_templates import DEFAULT_TEMPLATES
+    templates = await db.email_templates.find({}, NO_ID).to_list(50)
+    by_key = {t["key"]: t for t in templates}
+    return [by_key.get(key, {"key": key, **tpl}) for key, tpl in DEFAULT_TEMPLATES.items()]
+
+
+class EmailTemplatePayload(BaseModel):
+    subject: str
+    title: str
+    body_html: str
+
+
+@router.put("/email-templates/{key}")
+async def update_email_template(key: str, body: EmailTemplatePayload, user: dict = Depends(admin)):
+    from email_templates import DEFAULT_TEMPLATES
+    if key not in DEFAULT_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Unbekannte Vorlage")
+    await db.email_templates.update_one(
+        {"key": key},
+        {"$set": {"key": key, "name": DEFAULT_TEMPLATES[key]["name"], "placeholders": DEFAULT_TEMPLATES[key]["placeholders"],
+                  "subject": body.subject, "title": body.title, "body_html": body.body_html}},
+        upsert=True,
+    )
+    return await db.email_templates.find_one({"key": key}, NO_ID)

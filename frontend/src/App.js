@@ -42,6 +42,10 @@ import AdminPlans from "@/pages/admin/AdminPlans";
 import AdminPartners from "@/pages/admin/AdminPartners";
 import AdminLeads from "@/pages/admin/AdminLeads";
 import AdminSupport from "@/pages/admin/AdminSupport";
+import AdminNewsletter from "@/pages/admin/AdminNewsletter";
+import AdminEmailTemplates from "@/pages/admin/AdminEmailTemplates";
+import NewsletterConfirm from "@/pages/NewsletterConfirm";
+import NewsletterUnsubscribe from "@/pages/NewsletterUnsubscribe";
 import NotFound from "@/pages/NotFound";
 
 function ScrollToTop() {
@@ -78,6 +82,8 @@ function AppRouter() {
       <Route path="/cookies" element={<Cookies />} />
       <Route path="/plattformregeln" element={<Plattformregeln />} />
       <Route path="/email-bestaetigen" element={<EmailVerify />} />
+      <Route path="/newsletter-bestaetigen" element={<NewsletterConfirm />} />
+      <Route path="/newsletter-abmelden" element={<NewsletterUnsubscribe />} />
       <Route path="/b/:code" element={<PublicApplication />} />
       <Route path="/p/:token" element={<PublicProfile />} />
       <Route path="/geteilt/:token" element={<SharedDocuments />} />
@@ -120,6 +126,8 @@ function AppRouter() {
         <Route path="/admin/partner" element={<AdminPartners />} />
         <Route path="/admin/leads" element={<AdminLeads />} />
         <Route path="/admin/support" element={<AdminSupport />} />
+        <Route path="/admin/newsletter" element={<AdminNewsletter />} />
+        <Route path="/admin/email-vorlagen" element={<AdminEmailTemplates />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

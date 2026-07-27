@@ -13,6 +13,7 @@ from seed import seed_all
 import storage
 import stripe_service
 import maintenance
+import email_templates
 
 import routes_auth
 import routes_core
@@ -70,6 +71,7 @@ async def security_headers(request, call_next):
 async def on_startup():
     await ensure_indexes()
     await seed_all()
+    await email_templates.seed_defaults()
     try:
         storage.init_storage()
         logger.info("Storage initialized")
