@@ -5,6 +5,7 @@ from database import db, NO_ID
 from security import get_current_user
 from helpers import new_id, now_iso, log_activity, notify, email_user, notify_org_team, email_enabled
 from email_templates import render_and_send
+from email_service import send_email
 
 router = APIRouter(prefix="/api", tags=["viewings"])
 
@@ -207,3 +208,58 @@ async def respond_viewing(vid: str, payload: RespondPayload, user: dict = Depend
                                          f"<p>Sehen Sie sich die Details in Ihrem MietGate-Dashboard an.</p>",
                           category="viewings")
     return {"ok": True}
+
+
+class RescheduleResponsePayload(BaseModel):
+    action: str  # reoffer | decline
+    message: Optional[str] = None
+
+
+@router.post("/viewings/{vid}/participants/{application_id}/reschedule-response")
+async def respond_to_reschedule(vid: str, application_id: str, payload: RescheduleResponsePayload,
+                                user: dict = Depends(get_current_user)):
+    """Close the loop on an applicant's reschedule request.
+
+    Without this the request was a dead end: the applicant asked, the landlord
+    saw a status label, and there was no way to answer.
+    """
+    viewing = await db.viewings.find_one({"id": vid})
+    if not viewing or viewing["org_id"] != user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+    parts = viewing.get("participants", [])
+    slots = viewing.get("slots", [])
+    target = next((p for p in parts if p.get("application_id") == application_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Teilnehmer nicht gefunden")
+    if target.get("status") != "reschedule_requested":
+        raise HTTPException(status_code=400, detail="Für diesen Teilnehmer liegt keine Umbuchungsanfrage vor")
+
+    # Either way the previously held slot is released — the applicant no longer wants it.
+    for s in slots:
+        if s.get("application_id") == application_id:
+            s["application_id"] = None
+    target["slot"] = None
+
+    if payload.action == "reoffer":
+        target["status"] = "invited"
+        title, body = "Neuer Termin möglich", "Der Vermieter hat Ihre Umbuchungsanfrage angenommen."
+        html = ("<p>Ihre Umbuchungsanfrage für die Besichtigung <b>%s</b> wurde angenommen.</p>"
+                "<p>Bitte wählen Sie in Ihrem MietGate-Konto einen neuen Termin.</p>" % viewing["title"])
+    elif payload.action == "decline":
+        target["status"] = "declined"
+        title, body = "Umbuchung nicht möglich", "Der Vermieter kann Ihre Umbuchungsanfrage nicht erfüllen."
+        html = ("<p>Ihre Umbuchungsanfrage für die Besichtigung <b>%s</b> konnte leider nicht erfüllt werden.</p>"
+                % viewing["title"])
+    else:
+        raise HTTPException(status_code=400, detail="Ungültige Aktion")
+
+    if payload.message:
+        html += f"<p>Nachricht vom Vermieter: {payload.message}</p>"
+
+    await db.viewings.update_one({"id": vid}, {"$set": {"participants": parts, "slots": slots}})
+    await notify(target["applicant_user_id"], "viewing_reschedule_response", title, body, "/bewerber/termine")
+    if target.get("applicant_email") and await email_enabled(target["applicant_user_id"], "viewings"):
+        await send_email(target["applicant_email"], title, title, html)
+    await log_activity(user["org_id"], user["id"], "reschedule_response", "viewing", vid,
+                       {"action": payload.action, "application_id": application_id})
+    return {"ok": True, "participants": parts}

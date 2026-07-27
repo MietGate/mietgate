@@ -117,6 +117,40 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
   );
 }
 
+function RescheduleRequest({ viewing, participant, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const respond = async (action) => {
+    setBusy(true);
+    try {
+      await api.post(`/viewings/${viewing.id}/participants/${participant.application_id}/reschedule-response`,
+        { action, message: message.trim() || null });
+      toast.success(action === "reoffer" ? "Bewerber kann neuen Termin wählen" : "Umbuchung abgelehnt");
+      onDone();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3" data-testid={`reschedule-${participant.application_id}`}>
+      <p className="text-sm font-medium text-amber-900">
+        ↻ {participant.applicant_email} bittet um einen anderen Termin
+      </p>
+      <Input value={message} onChange={(e) => setMessage(e.target.value)} className="mt-2 bg-white"
+        placeholder="Optionale Nachricht an den Bewerber" data-testid={`reschedule-msg-${participant.application_id}`} />
+      <div className="flex gap-2 mt-2">
+        <Button size="sm" disabled={busy} onClick={() => respond("reoffer")} data-testid={`reschedule-reoffer-${participant.application_id}`}>
+          {busy && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />} Neuen Termin anbieten
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => respond("decline")} data-testid={`reschedule-decline-${participant.application_id}`}>
+          Nicht möglich
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function InviteDialog({ viewing, propertyId, onDone }) {
   const [open, setOpen] = useState(false);
   const [apps, setApps] = useState([]);
@@ -206,11 +240,18 @@ export function Viewings({ propertyId, property }) {
                 </div>
               </div>
               {v.participants?.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-2">
-                  {v.participants.map((p, i) => (
-                    <Badge key={i} variant="outline" className="font-normal">
-                      {p.applicant_email} · {p.status === "confirmed" ? "✓ bestätigt" : p.status === "declined" ? "✗ abgesagt" : p.status === "reschedule_requested" ? "↻ Umbuchung" : "eingeladen"}
-                    </Badge>
+                <div className="mt-3 pt-3 border-t border-border space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {v.participants.filter((p) => p.status !== "reschedule_requested").map((p, i) => (
+                      <Badge key={i} variant="outline" className="font-normal">
+                        {p.applicant_email} · {p.status === "confirmed" ? "✓ bestätigt" : p.status === "declined" ? "✗ abgesagt" : "eingeladen"}
+                      </Badge>
+                    ))}
+                  </div>
+                  {/* A reschedule request needs an answer, so it gets its own row with actions
+                      instead of being just another status chip the landlord can't act on. */}
+                  {v.participants.filter((p) => p.status === "reschedule_requested").map((p) => (
+                    <RescheduleRequest key={p.application_id} viewing={v} participant={p} onDone={load} />
                   ))}
                 </div>
               )}
