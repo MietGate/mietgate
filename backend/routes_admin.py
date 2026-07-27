@@ -600,6 +600,58 @@ async def due_lead_tasks(user: dict = Depends(admin)):
     return tasks
 
 
+@router.get("/funnel")
+async def admin_funnel(days: int = 30, user: dict = Depends(admin)):
+    """Conversion funnel for landlord signups, optionally split by acquisition source.
+
+    Counted per organisation, not per user: a landlord *is* their org, and every
+    downstream step (property, checkout, payment) hangs off org_id.
+    """
+    from datetime import datetime, timezone, timedelta
+    since = None
+    if days > 0:
+        since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    uq = {"role": "landlord"}
+    if since:
+        uq["created_at"] = {"$gte": since}
+    landlords = await db.users.find(uq, {"_id": 0, "org_id": 1, "signup_source": 1}).to_list(20000)
+    org_source = {u["org_id"]: (u.get("signup_source") or "direkt") for u in landlords if u.get("org_id")}
+    org_ids = list(org_source.keys())
+
+    if not org_ids:
+        return {"days": days, "total": {"registered": 0, "with_property": 0, "checkout_started": 0, "paid": 0},
+                "by_source": []}
+
+    with_property = {p["org_id"] async for p in
+                     db.properties.find({"org_id": {"$in": org_ids}}, {"_id": 0, "org_id": 1})}
+    started = {t["org_id"] async for t in
+               db.payment_transactions.find({"org_id": {"$in": org_ids}}, {"_id": 0, "org_id": 1})}
+    paid = {t["org_id"] async for t in
+            db.payment_transactions.find({"org_id": {"$in": org_ids}, "payment_status": "paid"},
+                                         {"_id": 0, "org_id": 1})}
+
+    def tally(ids):
+        return {
+            "registered": len(ids),
+            "with_property": len([o for o in ids if o in with_property]),
+            "checkout_started": len([o for o in ids if o in started]),
+            "paid": len([o for o in ids if o in paid]),
+        }
+
+    sources = {}
+    for org_id, src in org_source.items():
+        sources.setdefault(src, []).append(org_id)
+
+    return {
+        "days": days,
+        "total": tally(org_ids),
+        "by_source": sorted(
+            [{"source": s, **tally(ids)} for s, ids in sources.items()],
+            key=lambda r: r["registered"], reverse=True),
+    }
+
+
 # ---------- Newsletter ----------
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 

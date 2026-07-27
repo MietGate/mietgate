@@ -41,7 +41,10 @@ export default function Register() {
     if (!agreed) { nudgeAgree(); return; }
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/register", { ...form, role, origin_url: window.location.origin, agreed_terms: agreed });
+      const { data } = await api.post("/auth/register", {
+        ...form, role, origin_url: window.location.origin, agreed_terms: agreed,
+        signup_source: localStorage.getItem("mg_signup_source") || null,
+      });
       if (data.requires_verification) { setSentTo(data.email); toast.success("Bestätigungs-E-Mail versendet"); return; }
       login(data.token, data.user);
       navigate(role === "applicant" ? "/bewerber" : "/dashboard");

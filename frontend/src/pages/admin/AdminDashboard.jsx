@@ -12,6 +12,102 @@ const Card = ({ icon: Icon, label, value, accent }) => (
   </div>
 );
 
+const RANGES = [{ days: 7, label: "7 Tage" }, { days: 30, label: "30 Tage" }, { days: 90, label: "90 Tage" }, { days: 0, label: "Gesamt" }];
+
+function Funnel() {
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    setData(null);
+    api.get(`/admin/funnel?days=${days}`).then((r) => setData(r.data)).catch(() => setData(false));
+  }, [days]);
+
+  const steps = (t) => [
+    { label: "Registriert", value: t.registered },
+    { label: "Objekt angelegt", value: t.with_property },
+    { label: "Checkout gestartet", value: t.checkout_started },
+    { label: "Bezahlt", value: t.paid },
+  ];
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4" data-testid="admin-funnel">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display font-bold text-lg">Vermieter-Trichter</h2>
+          <p className="text-sm text-muted-foreground">Von der Registrierung bis zur Zahlung.</p>
+        </div>
+        <div className="flex gap-1">
+          {RANGES.map((r) => (
+            <button key={r.days} onClick={() => setDays(r.days)} data-testid={`funnel-range-${r.days}`}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                days === r.days ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {data === false && <p className="text-sm text-destructive">Trichter konnte nicht geladen werden.</p>}
+      {data === null && <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
+      {data && (
+        <>
+          <div className="space-y-2">
+            {steps(data.total).map((st, i) => {
+              const base = data.total.registered || 1;
+              const pct = Math.round((st.value / base) * 100);
+              return (
+                <div key={st.label}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>{st.label}</span>
+                    <span className="text-muted-foreground"><span className="font-mono font-bold text-foreground">{st.value}</span> · {pct}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                    <div className={`h-full rounded-full ${i === 3 ? "bg-success" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {data.by_source.length > 0 && (
+            <div className="pt-2">
+              <p className="text-sm font-medium mb-2">Nach Herkunft</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                      <th className="pb-2 pr-4 font-medium">Quelle</th>
+                      <th className="pb-2 px-2 font-medium text-right">Registriert</th>
+                      <th className="pb-2 px-2 font-medium text-right">Objekt</th>
+                      <th className="pb-2 px-2 font-medium text-right">Checkout</th>
+                      <th className="pb-2 pl-2 font-medium text-right">Bezahlt</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {data.by_source.map((r) => (
+                      <tr key={r.source} data-testid={`funnel-source-${r.source}`}>
+                        <td className="py-2 pr-4 font-medium">{r.source}</td>
+                        <td className="py-2 px-2 text-right tabular-nums">{r.registered}</td>
+                        <td className="py-2 px-2 text-right tabular-nums">{r.with_property}</td>
+                        <td className="py-2 px-2 text-right tabular-nums">{r.checkout_started}</td>
+                        <td className="py-2 pl-2 text-right tabular-nums font-semibold text-success">{r.paid}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Herkunft kommt aus dem <code>?ref=</code>-Parameter im Link. Ohne Parameter zählt „direkt".
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [s, setS] = useState(null);
   const [error, setError] = useState(false);
@@ -35,6 +131,7 @@ export default function AdminDashboard() {
         <Card icon={TrendingUp} label="Monatl. Umsatz (€)" value={s.monthly_revenue} accent="bg-success/15 text-success" />
         <Card icon={XCircle} label="Gekündigte Abos" value={s.cancelled_subscriptions} />
       </div>
+      <Funnel />
       <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-3 max-w-sm">
         <LifeBuoy className="h-5 w-5 text-primary" />
         <div><p className="text-sm text-muted-foreground">Offene Supportfälle</p><p className="font-mono text-2xl font-bold">{s.open_tickets}</p></div>

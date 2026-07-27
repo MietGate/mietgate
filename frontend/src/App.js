@@ -59,6 +59,17 @@ function ScrollToTop() {
   return null;
 }
 
+/* Remembers where a visitor came from (?ref=…) so the signup can be attributed later.
+   Kept in localStorage because registration usually happens on a later page view. */
+function CaptureSource() {
+  const { search } = useLocation();
+  useEffect(() => {
+    const ref = new URLSearchParams(search).get("ref");
+    if (ref) localStorage.setItem("mg_signup_source", ref.slice(0, 40));
+  }, [search]);
+  return null;
+}
+
 function AppRouter() {
   const location = useLocation();
   if (location.hash?.includes("token=")) return <AuthCallback />;
@@ -144,6 +155,7 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <ScrollToTop />
+        <CaptureSource />
         <AppRouter />
         <CookieConsent />
       </BrowserRouter>

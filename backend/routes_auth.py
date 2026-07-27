@@ -59,6 +59,7 @@ class RegisterRequest(BaseModel):
     org_type: Optional[str] = "private"  # private | makler | hausverwaltung
     origin_url: Optional[str] = None
     agreed_terms: bool = False
+    signup_source: Optional[str] = None
 
 
 class VerifyEmailRequest(BaseModel):
@@ -165,6 +166,7 @@ async def register(req: RegisterRequest, request: Request):
         "premium": False, "auth_provider": "password", "agreed_terms_at": now_iso(),
         "agreed_terms_ip": request.client.host if request.client else None,
         "agreed_terms_source": "register_form",
+        "signup_source": (req.signup_source or "").strip()[:40] or None,
         "created_at": now_iso(),
     }
     await db.users.insert_one(doc)
