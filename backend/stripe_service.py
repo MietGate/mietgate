@@ -97,44 +97,39 @@ def create_checkout_session(lookup_key: str, origin_url: str, user_id: str, org_
         success_url=f"{origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{origin_url}/payment/cancel",
         metadata=metadata,
+        # We are the seller of record: Stripe Tax only calculates the VAT, we invoice, file
+        # and remit it ourselves. Managed Payments (Stripe as merchant of record) was
+        # deliberately dropped — our customers are domestic, so it bought nothing while
+        # putting a third party on the invoice, which conflicts with the AGB naming
+        # MietGate as the contracting party and complicates Vorsteuer for B2B customers.
+        automatic_tax={"enabled": True},
+        # Required for automatic_tax: the VAT rate depends on where the customer is.
+        billing_address_collection="required",
+        # Lets business customers enter their USt-IdNr so it lands on the invoice.
+        tax_id_collection={"enabled": True},
     )
     if one_time:
         kwargs["payment_intent_data"] = {"metadata": metadata}
+        # Subscriptions get a Stripe invoice automatically, one-off payments do not. Without
+        # this the Starter customer would only receive a payment confirmation and no
+        # document their accountant can book.
+        kwargs["invoice_creation"] = {"enabled": True, "invoice_data": {"metadata": metadata}}
     elif trial_days:
         kwargs["subscription_data"] = {"trial_period_days": trial_days, "metadata": metadata}
         kwargs["payment_method_collection"] = "always"
-    try:
-        session = stripe.checkout.Session.create(**kwargs, managed_payments={"enabled": True})
-    except stripe.error.InvalidRequestError as e:
-        msg = (getattr(e, "user_message", "") or "").lower()
-        if "managed payments" in msg or "ineligible" in msg:
-            # This fallback is not cosmetic: it moves the VAT liability from Stripe to us
-            # for this one checkout (see tax_facts below). It must never pass unnoticed —
-            # the resulting transaction is recorded with a different tax_mode, and this is
-            # logged at ERROR level so it surfaces in the platform logs.
-            logger.error(
-                "Managed Payments ineligible for lookup_key=%s (user=%s, org=%s) — falling back "
-                "to automatic_tax. VAT liability for this checkout moves from Stripe to us. %s",
-                lookup_key, user_id, org_id, e)
-            session = stripe.checkout.Session.create(
-                **kwargs, automatic_tax={"enabled": True}, billing_address_collection="required")
-        else:
-            raise
-    return session, price
+    return stripe.checkout.Session.create(**kwargs), price
 
 
 def tax_facts(session) -> dict:
     """Which VAT regime a checkout ran under, for the books.
 
-    Two mutually exclusive regimes can apply, and they differ in *who owes the VAT*:
+    Checkouts are created with automatic_tax, which should always yield
+    liability.type == "self": Stripe Tax calculates the VAT, we owe and remit it.
 
-      managed_payments -> Stripe is merchant of record and remits the VAT itself
-                          (automatic_tax.liability.type == "stripe")
-      automatic_tax    -> we are the seller; Stripe Tax only calculates, we file and remit
-                          (automatic_tax.liability.type == "self")
-
-    Which one applied cannot be reconstructed from our own records afterwards, so it is
-    stored on every payment transaction at creation time.
+    This is still recorded per transaction rather than assumed, because the value is what
+    Stripe actually applied. Sessions created before 2026-07-28 ran under Managed Payments
+    and carry liability.type == "stripe", meaning Stripe was merchant of record and owed
+    the VAT — those must stay distinguishable in the books.
     """
     at = getattr(session, "automatic_tax", None) or {}
     mp = getattr(session, "managed_payments", None) or {}
