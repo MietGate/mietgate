@@ -4,7 +4,7 @@ import { validateFile } from "@/lib/validateFile";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Upload, FileText, Trash2, Download, Link2 } from "lucide-react";
+import { Loader2, Upload, FileText, Trash2, Download, Link2, ShieldCheck, ExternalLink } from "lucide-react";
 
 const DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
 const ALLOWED_EXT = ["pdf", "jpg", "jpeg", "png"];
@@ -17,11 +17,16 @@ export default function ApplicantDocuments() {
   const [attaching, setAttaching] = useState(null);
   const fileRef = useRef();
 
+  const [partners, setPartners] = useState(null);
+
   const load = () => api.get("/documents").then((r) => setDocs(r.data)).catch(() => setDocs([]));
   useEffect(() => {
     load();
     api.get("/my/applications").then((r) => setApps(r.data)).catch(() => setApps([]));
+    api.get("/partners").then((r) => setPartners(r.data)).catch(() => {});
   }, []);
+
+  const hasSchufa = docs?.some((d) => d.doc_type === "SCHUFA");
 
   const upload = async (e) => {
     const file = e.target.files?.[0];
@@ -72,6 +77,32 @@ export default function ApplicantDocuments() {
         </div>
         <p className="text-xs text-muted-foreground mt-2">PDF, JPG oder PNG · max. 15 MB · sicher & verschlüsselt gespeichert.</p>
       </div>
+
+      {/* Only surfaced when the applicant doesn't have a SCHUFA report yet — otherwise it's
+          just noise. Marked as advertising because it's an affiliate link. */}
+      {partners?.schufa_url && !hasSchufa && (
+        <div className="rounded-xl border border-border bg-accent/30 p-5" data-testid="schufa-offer">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-lg bg-card flex items-center justify-center text-primary shrink-0"><ShieldCheck className="h-5 w-5" /></div>
+              <div>
+                <p className="font-semibold">Noch keine Bonitätsauskunft?</p>
+                <p className="text-sm text-muted-foreground mt-0.5 max-w-lg">
+                  {partners.schufa_text || "Viele Vermieter fragen im Laufe des Verfahrens eine aktuelle Bonitätsauskunft an. Sie entscheiden selbst, wann und wem Sie diese zeigen."}
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" asChild data-testid="schufa-link">
+              <a href={partners.schufa_url} target="_blank" rel="noreferrer nofollow sponsored">
+                Auskunft anfordern <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+              </a>
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-3">
+            Anzeige · Partnerangebot. MietGate erhält ggf. eine Vermittlungsprovision.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         {docs.length === 0 && <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">Noch keine Dokumente hochgeladen.</div>}
