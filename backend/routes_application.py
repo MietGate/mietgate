@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from database import db, NO_ID
 from security import get_current_user, hash_password
-from helpers import new_id, now_iso, log_activity, notify, compute_matching_score, email_user
+from helpers import new_id, now_iso, log_activity, notify, compute_matching_score, email_user, notify_org_team
 from constants import FORM_FIELDS, STATUS_LABELS, PIPELINE_STATUSES
 from email_templates import render_and_send
 
@@ -275,3 +275,41 @@ async def my_applications(user: dict = Depends(get_current_user)):
         a["status_label"] = STATUS_LABELS.get(a["status"], a["status"])
         a["document_count"] = await db.documents.count_documents({"application_id": a["id"], "is_deleted": False})
     return apps
+
+
+@router.post("/my/applications/{app_id}/withdraw")
+async def withdraw_application(app_id: str, user: dict = Depends(get_current_user)):
+    """Applicant pulls out of a running application (e.g. found a flat elsewhere)."""
+    app = await db.applications.find_one({"id": app_id})
+    if not app or app["applicant_user_id"] != user["id"]:
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    if app["status"] == "zurueckgezogen":
+        return {"ok": True, "status": "zurueckgezogen"}
+
+    await db.applications.update_one({"id": app_id}, {"$set": {
+        "status": "zurueckgezogen", "withdrawn_at": now_iso()}})
+
+    # Give up any viewing slot still held, otherwise it stays blocked for everyone else.
+    async for v in db.viewings.find({"participants.application_id": app_id, "cancelled": {"$ne": True}}):
+        parts, slots = v.get("participants", []), v.get("slots", [])
+        for p in parts:
+            if p.get("application_id") == app_id:
+                p["status"] = "declined"
+                p["slot"] = None
+        for s in slots:
+            if s.get("application_id") == app_id:
+                s["application_id"] = None
+        await db.viewings.update_one({"id": v["id"]}, {"$set": {"participants": parts, "slots": slots}})
+
+    prop = await db.properties.find_one({"id": app["property_id"]}, NO_ID)
+    ptitle = (prop or {}).get("title", "Ihr Objekt")
+    name = user.get("name") or app.get("applicant_email")
+    await notify_org_team(app["org_id"], "application_withdrawn", "Bewerbung zurückgezogen",
+                          f"{name} hat die Bewerbung für „{ptitle}“ zurückgezogen.",
+                          f"/objekte/{app['property_id']}",
+                          email_subject="Bewerbung zurückgezogen",
+                          email_title="Ein Bewerber hat sich zurückgezogen",
+                          email_body_html=f"<p><b>{name}</b> hat die Bewerbung für <b>{ptitle}</b> zurückgezogen.</p>",
+                          category="applications")
+    await log_activity(app["org_id"], user["id"], "withdraw", "application", app_id)
+    return {"ok": True, "status": "zurueckgezogen"}

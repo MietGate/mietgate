@@ -4,9 +4,9 @@ import api from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, FileText, MessageSquare, Building2 } from "lucide-react";
+import { Loader2, ArrowLeft, FileText, MessageSquare, Building2, XCircle } from "lucide-react";
 
-const STATUS_COLOR = { neu: "secondary", zusage: "default", absage: "destructive", favorit: "default" };
+const STATUS_COLOR = { neu: "secondary", zusage: "default", absage: "destructive", favorit: "default", zurueckgezogen: "secondary" };
 
 export default function ApplicantApplicationDetail() {
   const { id } = useParams();
@@ -15,6 +15,18 @@ export default function ApplicantApplicationDetail() {
   const [fieldDefs, setFieldDefs] = useState([]);
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  const withdraw = async () => {
+    if (!window.confirm("Bewerbung wirklich zurückziehen? Der Vermieter wird darüber informiert und Sie scheiden aus dem Auswahlverfahren aus.")) return;
+    setWithdrawing(true);
+    try {
+      await api.post(`/my/applications/${id}/withdraw`);
+      setApp((a) => ({ ...a, status: "zurueckgezogen", status_label: "Zurückgezogen" }));
+      toast.success("Bewerbung zurückgezogen");
+    } catch (e) { toast.error(e.response?.data?.detail || "Fehler beim Zurückziehen"); }
+    finally { setWithdrawing(false); }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -105,11 +117,24 @@ export default function ApplicantApplicationDetail() {
         )}
       </div>
 
-      <Button asChild data-testid="application-to-messages">
-        <Link to={`/bewerber/nachrichten?application_id=${app.id}`}>
-          <MessageSquare className="h-4 w-4 mr-2" /> Nachricht an den Vermieter
-        </Link>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild data-testid="application-to-messages">
+          <Link to={`/bewerber/nachrichten?application_id=${app.id}`}>
+            <MessageSquare className="h-4 w-4 mr-2" /> Nachricht an den Vermieter
+          </Link>
+        </Button>
+        {app.status !== "zurueckgezogen" && (
+          <Button variant="outline" onClick={withdraw} disabled={withdrawing} data-testid="withdraw-application">
+            {withdrawing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
+            Bewerbung zurückziehen
+          </Button>
+        )}
+      </div>
+      {app.status === "zurueckgezogen" && (
+        <p className="text-sm text-muted-foreground">
+          Sie haben diese Bewerbung zurückgezogen. Der Vermieter wurde informiert.
+        </p>
+      )}
     </div>
   );
 }

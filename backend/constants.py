@@ -57,4 +57,7 @@ STATUS_LABELS = {
     "neu": "Neu", "pruefung": "Prüfung", "interessant": "Interessant",
     "besichtigung": "Besichtigung", "favorit": "Favorit", "zusage": "Zusage",
     "absage": "Absage", "archiv": "Archiv",
+    # Deliberately not in PIPELINE_STATUSES: only the applicant can set this,
+    # the landlord must not be able to withdraw someone on their behalf.
+    "zurueckgezogen": "Zurückgezogen",
 }

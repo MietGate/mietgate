@@ -18,6 +18,7 @@ const STATUS = {
   zusage: { label: "Zusage", dot: "bg-success" },
   absage: { label: "Absage", dot: "bg-destructive" },
   archiv: { label: "Archiv", dot: "bg-muted-foreground" },
+  zurueckgezogen: { label: "Zurückgezogen", dot: "bg-muted-foreground" },
 };
 
 const SORTS = {
