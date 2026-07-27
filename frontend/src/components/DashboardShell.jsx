@@ -27,6 +27,7 @@ const landlordNav = [
 
 const applicantNav = [
   { to: "/bewerber", label: "Übersicht", icon: LayoutDashboard },
+  { to: "/bewerber/nachrichten", label: "Nachrichten", icon: MessageSquare },
   { to: "/bewerber/dokumente", label: "Dokumente", icon: FileText },
   { to: "/bewerber/termine", label: "Termine", icon: CalendarDays },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },

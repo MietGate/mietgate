@@ -34,6 +34,7 @@ import Team from "@/pages/landlord/Team";
 import Settings from "@/pages/Settings";
 import ApplicantDashboard from "@/pages/applicant/ApplicantDashboard";
 import ApplicantDocuments from "@/pages/applicant/ApplicantDocuments";
+import ApplicantMessages from "@/pages/applicant/ApplicantMessages";
 import ApplicantViewings from "@/pages/applicant/ApplicantViewings";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
@@ -107,6 +108,7 @@ function AppRouter() {
       {/* Applicant */}
       <Route element={<ProtectedRoute roles={["applicant"]}><DashboardShell /></ProtectedRoute>}>
         <Route path="/bewerber" element={<ApplicantDashboard />} />
+        <Route path="/bewerber/nachrichten" element={<ApplicantMessages />} />
         <Route path="/bewerber/dokumente" element={<ApplicantDocuments />} />
         <Route path="/bewerber/termine" element={<ApplicantViewings />} />
       </Route>
