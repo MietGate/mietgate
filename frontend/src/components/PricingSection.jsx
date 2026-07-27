@@ -166,6 +166,9 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
               </AnimatePresence>
               <span className="text-muted-foreground text-sm">{p.billing_mode === "one_time" ? "einmalig" : `/ ${yearly ? "Jahr" : "Monat"}`}</span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {p.billing_mode === "one_time" ? "inkl. MwSt." : "zzgl. MwSt."}
+            </p>
             <p className="text-sm text-muted-foreground mt-1">
               {p.billing_mode === "one_time"
                 ? `Bewerbungslink ${p.one_time_duration_days} Tage aktiv · 1 Objekt`
@@ -249,9 +252,14 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
                 </div>
                 <div className="flex justify-between px-3 py-2.5">
                   <span className="text-muted-foreground">Preis</span>
-                  <span className="font-mono font-bold">
-                    {priceOf(pending.plan).toFixed(2)}€
-                    {pending.interval !== "one_time" && ` / ${pending.interval === "yearly" ? "Jahr" : "Monat"}`}
+                  <span className="text-right">
+                    <span className="font-mono font-bold block">
+                      {priceOf(pending.plan).toFixed(2)}€
+                      {pending.interval !== "one_time" && ` / ${pending.interval === "yearly" ? "Jahr" : "Monat"}`}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {pending.plan.billing_mode === "one_time" ? "inkl. MwSt." : "zzgl. MwSt., wird im Checkout addiert"}
+                    </span>
                   </span>
                 </div>
               </div>

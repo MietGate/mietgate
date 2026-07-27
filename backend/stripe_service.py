@@ -16,20 +16,22 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 # muss hier manuell auf den regulaeren Anker-Preis umgestellt werden (siehe
 # project_mietgate_session_2026-07-26_part3_handoff Memory fuer die genauen Zielwerte:
 # Starter 29,90€ einmalig, Plus 39,90€/Jahr 383€, Makler 99,90€/Jahr 959€).
+# tax_behavior: "inclusive" = Preis ist bereits Bruttopreis (Endkunden/Verbraucher, Starter).
+# "exclusive" = Preis ist Nettopreis, MwSt wird beim Checkout addiert (B2B, Plus/Makler).
 CATALOG = [
     {"mietgate_product_id": "mietgate_starter", "name": "MietGate Starter", "tax_code": "txcd_10103001",
      "prices": [
-         {"lookup_key": "starter_onetime", "amount": 1990, "currency": "eur", "interval": None},
+         {"lookup_key": "starter_onetime", "amount": 1990, "currency": "eur", "interval": None, "tax_behavior": "inclusive"},
      ]},
     {"mietgate_product_id": "mietgate_plus", "name": "MietGate Plus", "tax_code": "txcd_10103001",
      "prices": [
-         {"lookup_key": "plus_monthly", "amount": 2990, "currency": "eur", "interval": "month"},
-         {"lookup_key": "plus_yearly", "amount": 28700, "currency": "eur", "interval": "year"},
+         {"lookup_key": "plus_monthly", "amount": 2990, "currency": "eur", "interval": "month", "tax_behavior": "exclusive"},
+         {"lookup_key": "plus_yearly", "amount": 28700, "currency": "eur", "interval": "year", "tax_behavior": "exclusive"},
      ]},
     {"mietgate_product_id": "mietgate_makler", "name": "MietGate Makler", "tax_code": "txcd_10103001",
      "prices": [
-         {"lookup_key": "makler_monthly", "amount": 7990, "currency": "eur", "interval": "month"},
-         {"lookup_key": "makler_yearly", "amount": 76700, "currency": "eur", "interval": "year"},
+         {"lookup_key": "makler_monthly", "amount": 7990, "currency": "eur", "interval": "month", "tax_behavior": "exclusive"},
+         {"lookup_key": "makler_yearly", "amount": 76700, "currency": "eur", "interval": "year", "tax_behavior": "exclusive"},
      ]},
     {"mietgate_product_id": "mietgate_whitelabel", "name": "MietGate White-Label", "tax_code": "txcd_10103001",
      "prices": [
@@ -59,13 +61,15 @@ def setup_catalog():
             product = get_or_create_product(entry)
             for p in entry["prices"]:
                 existing = stripe.Price.list(lookup_keys=[p["lookup_key"]], active=True, limit=1).data
-                if existing and (existing[0].unit_amount != p["amount"] or existing[0].currency != p["currency"]):
+                tax_behavior = p.get("tax_behavior", "exclusive")
+                if existing and (existing[0].unit_amount != p["amount"] or existing[0].currency != p["currency"]
+                                 or existing[0].tax_behavior != tax_behavior):
                     stripe.Price.modify(existing[0].id, active=False)
                     existing = []
                 if not existing:
                     kwargs = dict(
                         product=product.id, unit_amount=p["amount"], currency=p["currency"],
-                        lookup_key=p["lookup_key"], transfer_lookup_key=True,
+                        lookup_key=p["lookup_key"], transfer_lookup_key=True, tax_behavior=tax_behavior,
                     )
                     if p.get("interval"):
                         kwargs["recurring"] = {"interval": p["interval"]}
