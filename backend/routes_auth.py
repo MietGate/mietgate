@@ -54,7 +54,7 @@ class RegisterRequest(BaseModel):
     first_name: str
     last_name: str
     role: str = "landlord"  # landlord | applicant
-    phone: Optional[str] = None
+    phone: str = Field(min_length=6)
     org_name: Optional[str] = None
     org_type: Optional[str] = "private"  # private | makler | hausverwaltung
     origin_url: Optional[str] = None
@@ -176,7 +176,20 @@ async def register(req: RegisterRequest, request: Request):
         await db.org_invites.update_one({"id": pending_invite["id"]}, {"$set": {"used": True}})
     await log_activity(org_id, user_id, "register", "user", user_id)
     await _send_verification_email(user_id, email, doc["name"], req.origin_url)
+    if role == "landlord":
+        await _notify_admin_new_landlord(doc)
     return {"ok": True, "requires_verification": True, "email": email}
+
+
+async def _notify_admin_new_landlord(user_doc: dict):
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@mietgate.de")
+    await send_email(admin_email, "Neuer Vermieter registriert", "Neue Registrierung",
+                     f"<p>Ein neuer Vermieter hat sich registriert:</p>"
+                     f"<ul>"
+                     f"<li><b>Name:</b> {user_doc['name']}</li>"
+                     f"<li><b>E-Mail:</b> {user_doc['email']}</li>"
+                     f"<li><b>Telefon:</b> {user_doc.get('phone') or '—'}</li>"
+                     f"</ul>")
 
 
 @router.post("/verify-email")
@@ -400,6 +413,8 @@ async def google_callback(code: Optional[str] = None, state: Optional[str] = Non
             "created_at": now_iso(),
         }
         await db.users.insert_one(user)
+        if role == "landlord":
+            await _notify_admin_new_landlord(user)
 
     await log_activity(user.get("org_id"), user["id"], "login", "user", user["id"])
     jwt_token = create_access_token(user["id"], user["email"])

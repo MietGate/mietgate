@@ -16,7 +16,7 @@ export default function Register() {
   const [params] = useSearchParams();
   const planIntent = params.get("plan");
   const [role, setRole] = useState(params.get("role") === "applicant" ? "applicant" : "landlord");
-  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "", org_name: "", org_type: "private" });
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", password: "", org_name: "", org_type: "private" });
   const [loading, setLoading] = useState(false);
   const [sentTo, setSentTo] = useState(null);
   const [agreed, setAgreed] = useState(false);
@@ -129,6 +129,7 @@ export default function Register() {
               <div><Label>Nachname</Label><Input required value={form.last_name} onChange={set("last_name")} className="mt-1.5" data-testid="reg-lastname" /></div>
             </div>
             <div><Label>E-Mail</Label><Input type="email" required value={form.email} onChange={set("email")} className="mt-1.5" data-testid="reg-email" /></div>
+            <div><Label>Telefonnummer</Label><Input type="tel" required value={form.phone} onChange={set("phone")} className="mt-1.5" placeholder="+49 151 23456789" data-testid="reg-phone" /></div>
             <div>
               <Label>Passwort</Label>
               <div className="relative mt-1.5">

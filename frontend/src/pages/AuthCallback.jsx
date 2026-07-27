@@ -22,6 +22,7 @@ export function AuthCallback() {
         const { data: user } = await api.get("/auth/me");
         login(token, user);
         window.history.replaceState(null, "", "/");
+        if (!user.phone) { navigate("/telefonnummer-ergaenzen", { replace: true }); return; }
         navigate(user.role === "applicant" ? "/bewerber" : user.role === "admin" ? "/admin" : "/dashboard", { replace: true });
       } catch {
         localStorage.removeItem("mg_token");

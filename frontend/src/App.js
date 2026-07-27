@@ -22,6 +22,7 @@ import SharedDocuments from "@/pages/SharedDocuments";
 import PaymentResult from "@/pages/PaymentResult";
 import AuthReset from "@/pages/AuthReset";
 import ForgotPassword from "@/pages/ForgotPassword";
+import CompletePhone from "@/pages/CompletePhone";
 import LandlordDashboard from "@/pages/landlord/Dashboard";
 import Applications from "@/pages/landlord/Applications";
 import Messages from "@/pages/landlord/Messages";
@@ -108,6 +109,7 @@ function AppRouter() {
       <Route element={<ProtectedRoute roles={["landlord", "applicant", "admin"]}><DashboardShell /></ProtectedRoute>}>
         <Route path="/einstellungen" element={<Settings />} />
       </Route>
+      <Route path="/telefonnummer-ergaenzen" element={<ProtectedRoute roles={["landlord", "applicant", "admin"]}><CompletePhone /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route element={<ProtectedRoute roles={["admin"]}><DashboardShell /></ProtectedRoute>}>
