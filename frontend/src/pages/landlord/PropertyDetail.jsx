@@ -142,12 +142,12 @@ export default function PropertyDetail() {
       )}
 
       <Tabs key={prop.id} value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="pipeline" data-testid="tab-pipeline">Bewerber ({prop.application_count})</TabsTrigger>
-          <TabsTrigger value="link" data-testid="tab-link">Bewerbungslink</TabsTrigger>
-          <TabsTrigger value="viewings" data-testid="tab-viewings">Besichtigungen</TabsTrigger>
-          <TabsTrigger value="images" data-testid="tab-images">Bilder</TabsTrigger>
-          <TabsTrigger value="overview" data-testid="tab-overview">Details</TabsTrigger>
+        <TabsList className="w-full h-auto justify-start gap-1 p-1.5">
+          <TabsTrigger value="pipeline" data-testid="tab-pipeline" className="px-5 py-2 text-base">Bewerber ({prop.application_count})</TabsTrigger>
+          <TabsTrigger value="link" data-testid="tab-link" className="px-5 py-2 text-base">Bewerbungslink</TabsTrigger>
+          <TabsTrigger value="viewings" data-testid="tab-viewings" className="px-5 py-2 text-base">Besichtigungen</TabsTrigger>
+          <TabsTrigger value="images" data-testid="tab-images" className="px-5 py-2 text-base">Bilder</TabsTrigger>
+          <TabsTrigger value="overview" data-testid="tab-overview" className="px-5 py-2 text-base">Details</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pipeline" className="mt-6 relative">

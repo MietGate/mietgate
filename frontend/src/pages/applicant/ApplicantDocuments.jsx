@@ -291,9 +291,10 @@ export default function ApplicantDocuments() {
             <p className="font-display font-bold">Ihre Dokumente dauerhaft griffbereit</p>
           </div>
           <p className="text-sm text-white/70 mt-2">
-            Mit einem verifizierten Mieterprofil bewerben Sie sich mit einem Klick — Ihre Unterlagen
-            sind hinterlegt und Sie müssen sie nie wieder einzeln hochladen. Auch bei Wohnungen
-            außerhalb von MietGate.
+            Ihre Angaben und Dokumente werden einmal gespeichert und bei jeder weiteren Bewerbung
+            auf MietGate automatisch übernommen — nichts wird erneut hochgeladen. Zusätzlich können
+            Sie Ihr Profil auch Vermietern außerhalb von MietGate schicken und zeigen, dass Ihre
+            Unterlagen bereits vollständig vorliegen.
           </p>
           <a href="/fuer-mieter" data-testid="documents-premium-cta"
             className="inline-flex items-center gap-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity mt-4">

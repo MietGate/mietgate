@@ -15,10 +15,10 @@ const STATUS_COLOR = {
 const OFFER_ICON = { Strom: Zap, Internet: Wifi, Umzug: Truck, Reinigung: Sparkles, Versicherung: ShieldCheck };
 
 const PREMIUM_PERKS = [
-  "Premium-Profil hebt Ihre Bewerbung hervor",
-  "Bevorzugte Sichtbarkeit bei Vermietern",
-  "Verifiziertes Bewerber-Badge",
-  "Alle Dokumente an einem Ort teilen",
+  "Angaben & Dokumente einmal hinterlegen, nie wieder neu hochladen",
+  "Automatisch übernommen bei jeder weiteren MietGate-Bewerbung",
+  "Profil-Link auch für Vermieter außerhalb von MietGate",
+  "Zeigen Sie: Ihre Unterlagen liegen bereits vollständig vor",
 ];
 
 function PremiumCard() {
@@ -76,7 +76,7 @@ function PremiumCard() {
             <div>
               <h2 className="font-display text-xl font-bold">Premium aktiv 👑</h2>
               <p className="text-muted-foreground text-sm mt-0.5">
-                {cancelScheduled ? "Gekündigt — bleibt bis zum Periodenende aktiv." : "Ihr Bewerber-Profil wird bevorzugt angezeigt. Danke für Ihre Unterstützung!"}
+                {cancelScheduled ? "Gekündigt — bleibt bis zum Periodenende aktiv." : "Ihre Angaben sind gespeichert und werden bei jeder weiteren MietGate-Bewerbung automatisch übernommen."}
               </p>
             </div>
           </div>
@@ -96,34 +96,37 @@ function PremiumCard() {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6" data-testid="premium-upsell">
+    <div className="rounded-xl bg-brand-dark text-white p-6" data-testid="premium-upsell">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-xl bg-premium/15 text-premium flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
-          <div>
-            <h2 className="font-display text-xl font-bold">Bewerber-Premium</h2>
-            <p className="text-muted-foreground text-sm mt-0.5">Erhöhen Sie Ihre Chancen auf die Wunschwohnung – für nur <span className="font-semibold text-foreground">4,99 €/Monat</span>.</p>
-          </div>
+        <div className="flex items-center gap-2">
+          <Crown className="h-5 w-5 text-primary" />
+          <p className="font-display font-bold">Ihr Profil, einmal ausgefüllt</p>
         </div>
-        <Button onClick={buyPremium} disabled={loading || !withdrawalConsent} data-testid="buy-premium-btn" className="bg-premium hover:bg-premium/90 text-premium-foreground">
-          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Crown className="h-4 w-4 mr-2" />} Premium holen
+        <Button onClick={buyPremium} disabled={loading || !withdrawalConsent} data-testid="buy-premium-btn" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Crown className="h-4 w-4 mr-2" />} Profil aktivieren – 4,99 €/Monat
         </Button>
       </div>
+      <p className="text-sm text-white/70 mt-2">
+        Ihre Angaben und Dokumente werden einmal gespeichert und bei jeder weiteren Bewerbung auf
+        MietGate automatisch übernommen — nichts wird erneut hochgeladen. Zusätzlich können Sie Ihr
+        Profil auch Vermietern außerhalb von MietGate schicken und zeigen, dass Ihre Unterlagen
+        bereits vollständig vorliegen.
+      </p>
       <div className="grid sm:grid-cols-2 gap-2 mt-5">
         {PREMIUM_PERKS.map((p, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Check className="h-4 w-4 text-premium shrink-0" /> {p}
+          <div key={i} className="flex items-center gap-2 text-sm text-white/70">
+            <Check className="h-4 w-4 text-primary shrink-0" /> {p}
           </div>
         ))}
       </div>
-      <label className="flex items-start gap-2 mt-4 text-xs text-muted-foreground cursor-pointer" data-testid="premium-withdrawal-consent-label">
+      <label className="flex items-start gap-2 mt-4 text-xs text-white/60 cursor-pointer" data-testid="premium-withdrawal-consent-label">
         <Checkbox checked={withdrawalConsent} onCheckedChange={setWithdrawalConsent} className="mt-0.5" data-testid="premium-withdrawal-consent-checkbox" />
         <span>
           Ich stimme zu, dass die Leistung sofort beginnt, und nehme zur Kenntnis, dass ich dadurch mein{" "}
-          <Link to="/widerruf" target="_blank" rel="noreferrer" className="text-primary hover:underline">Widerrufsrecht</Link> mit vollständiger Vertragserfüllung verliere.
+          <Link to="/widerruf" target="_blank" rel="noreferrer" className="underline hover:text-white">Widerrufsrecht</Link> mit vollständiger Vertragserfüllung verliere.
         </span>
       </label>
-      <p className="text-[11px] text-muted-foreground mt-3">Preis inkl. MwSt. Monatlich kündbar. Wird sicher über Stripe abgewickelt.</p>
+      <p className="text-[11px] text-white/50 mt-3">Preis inkl. MwSt. Monatlich kündbar. Wird sicher über Stripe abgewickelt.</p>
     </div>
   );
 }

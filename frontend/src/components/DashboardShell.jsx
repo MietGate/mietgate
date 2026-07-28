@@ -97,11 +97,11 @@ function HeaderSearch({ role }) {
   return (
     <>
       {/* Desktop: persistent input */}
-      <div className="hidden md:block relative w-full max-w-md">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="hidden md:block relative w-full">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <input value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
           placeholder={cfg.placeholder} data-testid="header-search"
-          className="w-full pl-8 pr-3 py-1.5 text-sm rounded-md border border-border bg-secondary/40 focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors" />
+          className="w-full pl-10 pr-3 py-2.5 text-base rounded-md border border-border bg-secondary/40 focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors" />
         {dropdown}
       </div>
 
@@ -221,38 +221,44 @@ export function DashboardShell() {
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-[248px] bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      {/* lg:sticky + lg:h-screen (not lg:static) pins the sidebar to the viewport height on
+          desktop — with plain `static` its box stretched to match the main column's full
+          (often scrollable, taller-than-viewport) height, pushing "Hilfe & Support" and
+          "Zur Website"/"Abmelden" below the fold on any page longer than one screen. */}
+      <aside className={`fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="h-16 flex items-center px-5 border-b border-white/10">
           <Link to="/" className="flex items-center gap-2">
             <img src="/mietgate-logo.png" alt="MietGate" className="h-8 bg-white rounded-md p-0.5" />
             <span className="font-display font-extrabold text-lg">MietGate</span>
           </Link>
         </div>
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {nav.map((item) => {
-            const active = location.pathname === item.to || (item.to !== "/dashboard" && item.to !== "/admin" && item.to !== "/bewerber" && location.pathname.startsWith(item.to));
-            const Icon = item.icon;
-            return (
-              <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
-                data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-base font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
-                <Icon className="h-4.5 w-4.5" style={{ width: 20, height: 20 }} />
-                <span className="flex-1">{item.label}</span>
-                {item.badge && badges[item.badge] > 0 && (
-                  <span data-testid={`nav-badge-${item.badge}`}
-                    className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center tabular-nums ${
-                      active ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>
-                    {badges[item.badge] > 99 ? "99+" : badges[item.badge]}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-          {/* Sits at the end of the nav, above the divider: reachable from every screen
-              without competing with the workflow items above it. */}
+        <nav className="flex-1 flex flex-col p-3 overflow-y-auto">
+          <div className="space-y-1">
+            {nav.map((item) => {
+              const active = location.pathname === item.to || (item.to !== "/dashboard" && item.to !== "/admin" && item.to !== "/bewerber" && location.pathname.startsWith(item.to));
+              const Icon = item.icon;
+              return (
+                <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
+                  data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-base font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
+                  <Icon className="h-4.5 w-4.5" style={{ width: 20, height: 20 }} />
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge && badges[item.badge] > 0 && (
+                    <span data-testid={`nav-badge-${item.badge}`}
+                      className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center tabular-nums ${
+                        active ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>
+                      {badges[item.badge] > 99 ? "99+" : badges[item.badge]}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+          {/* Pushed to the bottom of the nav column via mt-auto, so it sits right above the
+              divider instead of trailing directly after the workflow items above it. */}
           {user?.role !== "admin" && (
             <Link to="/hilfe" onClick={() => setOpen(false)} data-testid="nav-hilfe"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-base font-medium transition-colors ${
+              className={`mt-auto flex items-center gap-3 px-3 py-2.5 rounded-md text-base font-medium transition-colors ${
                 location.pathname === "/hilfe" ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
               <LifeBuoy style={{ width: 20, height: 20 }} />
               Hilfe & Support
@@ -284,7 +290,7 @@ export function DashboardShell() {
           {/* Search sits centred in the header, the position users know from Pipedrive & co.
               HeaderSearch renders the desktop input and the mobile icon itself, so mount it once. */}
           {SEARCH_CONFIG[user?.role] && (
-            <div className="flex justify-center md:flex-1 md:max-w-md">
+            <div className="flex justify-center md:flex-1 md:max-w-4xl">
               <HeaderSearch role={user.role} />
             </div>
           )}
