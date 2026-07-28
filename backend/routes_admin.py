@@ -734,6 +734,9 @@ async def reset_outreach_template(key: str, user: dict = Depends(admin)):
 
 # ---------- Newsletter ----------
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+# The one-click unsubscribe header must point at the API, not the frontend — the mailbox
+# provider POSTs to it directly and never renders a page.
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000").rstrip("/")
 
 
 @router.get("/newsletter/subscribers")
@@ -755,7 +758,7 @@ class NewsletterSendPayload(BaseModel):
 @router.post("/newsletter/send")
 async def send_newsletter(body: NewsletterSendPayload, user: dict = Depends(admin)):
     subs = await db.newsletter_subscribers.find({"status": "confirmed"}, NO_ID).to_list(10000)
-    sent = 0
+    sent, failed = 0, 0
     for s in subs:
         unsubscribe_link = f"{FRONTEND_URL}/newsletter-abmelden?token={s['unsubscribe_token']}"
         html = (
@@ -763,10 +766,22 @@ async def send_newsletter(body: NewsletterSendPayload, user: dict = Depends(admi
             f"<p style='color:#94a3b8;font-size:12px;margin-top:24px'>"
             f"<a href='{unsubscribe_link}' style='color:#94a3b8'>Newsletter abbestellen</a></p>"
         )
-        await send_email(s["email"], body.subject, body.subject, html)
-        sent += 1
-    await log_activity(None, user["id"], "newsletter_send", "newsletter", None, {"subject": body.subject, "sent": sent})
-    return {"ok": True, "sent": sent}
+        # Gmail and Yahoo require bulk senders to offer one-click unsubscribe via headers,
+        # not just a link in the body. Without these, bulk mail gets throttled or binned.
+        ok = await send_email(
+            s["email"], body.subject, body.subject, html,
+            headers={
+                "List-Unsubscribe": f"<{BACKEND_URL}/api/newsletter/unsubscribe?token={s['unsubscribe_token']}>, <{unsubscribe_link}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
+        )
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+    await log_activity(None, user["id"], "newsletter_send", "newsletter", None,
+                       {"subject": body.subject, "sent": sent, "failed": failed})
+    return {"ok": True, "sent": sent, "failed": failed}
 
 
 # ---------- E-Mail-Vorlagen (globale Defaults) ----------

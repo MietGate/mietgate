@@ -39,6 +39,8 @@ services:
         value: "support@mietgate.de"
       - key: FRONTEND_URL
         value: "https://mietgate.de"
+      - key: BACKEND_URL
+        value: "https://api.mietgate.de"
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET

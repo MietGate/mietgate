@@ -120,14 +120,29 @@ async def newsletter_confirm(token: str):
     return {"ok": True}
 
 
-@router.get("/newsletter/unsubscribe")
-async def newsletter_unsubscribe(token: str):
+async def _do_unsubscribe(token: str):
     sub = await db.newsletter_subscribers.find_one({"unsubscribe_token": token})
     if not sub:
         raise HTTPException(status_code=404, detail="Ungültiger Abmeldelink")
     await db.newsletter_subscribers.update_one(
         {"id": sub["id"]}, {"$set": {"status": "unsubscribed", "unsubscribed_at": now_iso()}})
     return {"ok": True}
+
+
+@router.get("/newsletter/unsubscribe")
+async def newsletter_unsubscribe(token: str):
+    return await _do_unsubscribe(token)
+
+
+@router.post("/newsletter/unsubscribe")
+async def newsletter_unsubscribe_one_click(token: str):
+    """RFC 8058 one-click unsubscribe.
+
+    Gmail and Yahoo require bulk senders to honour an unsubscribe the recipient triggers
+    from the mail client itself. The provider POSTs here directly — no confirmation page,
+    no login — so this must succeed without any session.
+    """
+    return await _do_unsubscribe(token)
 
 
 # ---------- Profile ----------
