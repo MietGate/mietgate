@@ -15,7 +15,8 @@ FORM_FIELDS = [
      "options": ["Nichtraucher", "Raucher"]},
 
     {"key": "beschaeftigungsstatus", "label": "Beschäftigungsstatus", "category": "Beruf & Einkommen", "type": "select",
-     "options": ["Angestellt", "Selbstständig", "Beamter", "Student", "Rentner", "Arbeitssuchend"]},
+     "options": ["Angestellt", "Selbstständig", "Beamter", "Student", "Auszubildende:r", "Elternzeit",
+                 "Rentner", "Arbeitssuchend", "Sonstiges"]},
     {"key": "arbeitgeber", "label": "Arbeitgeber", "category": "Beruf & Einkommen", "type": "text"},
     {"key": "beruf", "label": "Beruf", "category": "Beruf & Einkommen", "type": "text"},
     {"key": "nettoeinkommen", "label": "Monatliches Nettoeinkommen", "category": "Beruf & Einkommen", "type": "select",
@@ -26,7 +27,12 @@ FORM_FIELDS = [
     {"key": "aktuelle_wohnsituation", "label": "Aktuelle Wohnsituation", "category": "Wohnsituation", "type": "select",
      "options": ["Zur Miete", "Im Eigentum", "Bei Familie", "WG", "Sonstiges"]},
     {"key": "aktueller_vermieter", "label": "Aktueller Vermieter (Kontakt)", "category": "Wohnsituation", "type": "text"},
-    {"key": "kuendigungsgrund", "label": "Grund des Umzugs", "category": "Wohnsituation", "type": "textarea"},
+    # Select rather than free text: almost every answer is one of these, and typing a
+    # sentence for it was a needless hurdle. "Sonstiges" keeps the long tail answerable.
+    {"key": "kuendigungsgrund", "label": "Grund des Umzugs", "category": "Wohnsituation", "type": "select",
+     "options": ["Beruflicher Wechsel", "Umzug in eine größere Wohnung", "Umzug in eine kleinere Wohnung",
+                 "Eigenbedarfskündigung", "Trennung / Veränderung im Haushalt", "Erstes eigenes Zuhause",
+                 "Näher zu Familie oder Arbeit", "Sonstiges"]},
     {"key": "gewuenschter_einzugstermin", "label": "Gewünschter Einzugstermin", "category": "Wohnsituation", "type": "date"},
 
     {"key": "nachricht", "label": "Nachricht an den Vermieter", "category": "Sonstiges", "type": "textarea"},

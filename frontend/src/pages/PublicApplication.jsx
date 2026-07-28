@@ -138,7 +138,12 @@ export default function PublicApplication() {
     const common = { id: f.key, required, "data-testid": `field-${f.key}` };
     return (
       <div key={f.key}>
-        <Label htmlFor={f.key}>{f.label}{required && " *"}</Label>
+        <Label htmlFor={f.key}>
+          {f.label}
+          {required
+            ? <span className="text-primary ml-0.5">*</span>
+            : <span className="text-muted-foreground font-normal ml-1.5 text-xs">(optional)</span>}
+        </Label>
         <div className="mt-1.5">
           {f.type === "textarea" ? (
             <Textarea {...common} rows={3} value={val} onChange={(e) => set(f.key, e.target.value)} />

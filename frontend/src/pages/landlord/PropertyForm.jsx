@@ -87,6 +87,7 @@ export default function PropertyForm() {
   const [step, setStep] = useState(0);
   const [imageFiles, setImageFiles] = useState([]); // { file, previewUrl } — uploaded only after the property exists
   const imageInputRef = useRef(null);
+  const [warmRentTouched, setWarmRentTouched] = useState(false);
   const [form, setForm] = useState({
     title: "", internal_name: "", street: "", house_number: "", zip: "", city: "", district: "",
     area: "", rooms: "", bathrooms: "", floor: "", balcony: false, cellar: false, parking: false,
@@ -105,6 +106,9 @@ export default function PropertyForm() {
         const p = r.data;
         setForm({ ...p, area: p.area ?? "", rooms: p.rooms ?? "", bathrooms: p.bathrooms ?? "",
           cold_rent: p.cold_rent ?? "", extra_costs: p.extra_costs ?? "", warm_rent: p.warm_rent ?? "", deposit: p.deposit ?? "" });
+        // A stored Warmmiete is the landlord's own figure — editing Kaltmiete later must not
+        // silently recalculate over it.
+        if (p.warm_rent != null && p.warm_rent !== "") setWarmRentTouched(true);
         setLoading(false);
       }).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
     }
@@ -112,6 +116,22 @@ export default function PropertyForm() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const num = (v) => (v === "" || v == null ? null : Number(v));
+
+  /* Warmmiete is Kaltmiete + Nebenkosten in practice, so we fill it in instead of making the
+     landlord add it up. Once they type their own value we stop overwriting it. */
+  const setRentPart = (k) => (e) => {
+    const next = { ...form, [k]: e.target.value };
+    if (!warmRentTouched) {
+      const cold = parseFloat(k === "cold_rent" ? e.target.value : form.cold_rent);
+      const extra = parseFloat(k === "extra_costs" ? e.target.value : form.extra_costs);
+      if (!Number.isNaN(cold)) {
+        // Nebenkosten may legitimately be blank — a Kaltmiete alone is already a valid Warmmiete.
+        next.warm_rent = String(Math.round((cold + (Number.isNaN(extra) ? 0 : extra)) * 100) / 100);
+      }
+    }
+    setForm(next);
+  };
+  const setWarmRent = (e) => { setWarmRentTouched(true); setForm({ ...form, warm_rent: e.target.value }); };
 
   const addImages = (e) => {
     const picked = Array.from(e.target.files || []);
@@ -216,11 +236,18 @@ export default function PropertyForm() {
   const mietdatenSection = (
     <Section title="Mietdaten">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <NumberField label="Kaltmiete" unit="€" value={form.cold_rent} onChange={set("cold_rent")} min="0" step="0.01" />
-        <NumberField label="Nebenkosten" unit="€" value={form.extra_costs} onChange={set("extra_costs")} min="0" step="0.01" />
-        <NumberField label="Warmmiete" unit="€" value={form.warm_rent} onChange={set("warm_rent")} min="0" step="0.01" />
-        <NumberField label="Kaution" unit="€" value={form.deposit} onChange={set("deposit")} min="0" step="0.01" />
+        {/* step="any" keeps cents enterable while letting the spinner arrows move in whole
+            euros — at step="0.01" they crawled a cent at a time. */}
+        <NumberField label="Kaltmiete" unit="€" value={form.cold_rent} onChange={setRentPart("cold_rent")} min="0" step="any" />
+        <NumberField label="Nebenkosten" unit="€" value={form.extra_costs} onChange={setRentPart("extra_costs")} min="0" step="any" />
+        <NumberField label="Warmmiete" unit="€" value={form.warm_rent} onChange={setWarmRent} min="0" step="any" />
+        <NumberField label="Kaution" unit="€" value={form.deposit} onChange={set("deposit")} min="0" step="any" />
       </div>
+      {!warmRentTouched && form.warm_rent !== "" && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Warmmiete wird aus Kaltmiete + Nebenkosten berechnet. Sie können sie überschreiben.
+        </p>
+      )}
     </Section>
   );
 

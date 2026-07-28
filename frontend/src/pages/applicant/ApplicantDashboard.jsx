@@ -291,8 +291,6 @@ export default function ApplicantDashboard() {
     <div className="space-y-6 animate-fade-up">
       <div><h1 className="font-display text-3xl font-bold">Hallo, {user?.first_name || "Bewerber"}!</h1><p className="text-muted-foreground mt-1">Ihre laufenden Bewerbungen.</p></div>
 
-      <PremiumCard />
-
       {user?.premium && (
         <div className="grid md:grid-cols-2 gap-6">
           <ProfileLinkCard />
@@ -354,6 +352,10 @@ export default function ApplicantDashboard() {
           ))}
         </div>
       )}
+
+      {/* Below the applications on purpose: the upsell used to push the applicant's own
+          running applications — the reason they came here — below the fold. */}
+      <PremiumCard />
     </div>
   );
 }

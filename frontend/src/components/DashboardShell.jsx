@@ -213,19 +213,19 @@ export function DashboardShell() {
             return (
               <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
                 data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
-                <Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-[15px] font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
+                <Icon className="h-4.5 w-4.5" style={{ width: 20, height: 20 }} />
                 {item.label}
               </Link>
             );
           })}
         </nav>
         <div className="p-3 border-t border-white/10">
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-            <Home style={{ width: 18, height: 18 }} /> Zur Website
+          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-md text-[15px] text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+            <Home style={{ width: 20, height: 20 }} /> Zur Website
           </Link>
-          <button onClick={doLogout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-            <LogOut style={{ width: 18, height: 18 }} /> Abmelden
+          <button onClick={doLogout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[15px] text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+            <LogOut style={{ width: 20, height: 20 }} /> Abmelden
           </button>
         </div>
       </aside>

@@ -1,3 +1,4 @@
+import os
 import secrets
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Depends, Request
@@ -9,6 +10,8 @@ from helpers import new_id, now_iso, log_activity, notify, compute_matching_scor
 from constants import (FORM_FIELDS, STATUS_LABELS, PIPELINE_STATUSES,
                        redact_doc_for_landlord)
 from email_templates import render_and_send
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 
 router = APIRouter(prefix="/api", tags=["applications"])
 
@@ -151,11 +154,16 @@ async def submit_application(req: ApplyRequest):
     await db.applications.insert_one(application)
     await log_activity(prop["org_id"], user["id"], "apply", "application", app_id, {"property": prop["title"]})
     # notify landlord
+    # Deep-link straight to this application instead of the property page — otherwise the
+    # landlord still has to hunt for the applicant that the notification is about.
+    app_link = f"/objekte/{prop['id']}?tab=pipeline&open={app_id}"
     await notify(prop.get("created_by"), "new_application", "Neue Bewerbung",
-                 f"Neue Bewerbung für „{prop['title']}“", f"/objekte/{prop['id']}")
+                 f"Neue Bewerbung für „{prop['title']}“", app_link)
     await email_user(prop.get("created_by"), "Neue Bewerbung eingegangen", "Neue Bewerbung",
                      f"<p>Für Ihr Objekt <b>{prop['title']}</b> ist eine neue Bewerbung eingegangen.</p>"
-                     f"<p>Öffnen Sie Ihr MietGate-Dashboard, um die Bewerbung zu prüfen.</p>",
+                     f"<p style='margin:24px 0'><a href='{FRONTEND_URL}{app_link}' "
+                     f"style='background:#0a2540;color:#ffffff;padding:12px 22px;border-radius:6px;"
+                     f"text-decoration:none;display:inline-block;font-weight:600'>Bewerbung ansehen</a></p>",
                      category="applications")
     # emails
     if activation_link:

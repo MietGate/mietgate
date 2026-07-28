@@ -65,13 +65,17 @@ export default function LandlordDashboard() {
               </div>
             )}
             {data.recent_applications.map((a) => (
-              <div key={a.id} className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
+              /* The whole row is the target — it looked clickable (hover highlight) but wasn't,
+                 so the obvious next action from the dashboard was a dead end. */
+              <Link key={a.id} to={`/objekte/${a.property_id}?tab=pipeline&open=${a.id}`}
+                data-testid={`dashboard-application-${a.id}`}
+                className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
                 <div>
                   <p className="font-medium">{[a.form_data?.vorname, a.form_data?.nachname].filter(Boolean).join(" ") || a.applicant_email}</p>
                   <p className="text-sm text-muted-foreground">{a.property_title}</p>
                 </div>
                 <Badge variant="secondary">{a.status}</Badge>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

@@ -12,6 +12,9 @@ EMAIL_FROM = os.environ.get("EMAIL_FROM", "MietGate <onboarding@resend.dev>")
 # Sending from a noreply address that discards answers trains people to ignore our mail and
 # costs us the engagement signal mailbox providers score us on. Replies go to support.
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO", "support@mietgate.de")
+# Absolute URL — mail clients have no page context to resolve a relative path against.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://mietgate.de").rstrip("/")
+LOGO_URL = f"{FRONTEND_URL}/mietgate-logo.png"
 
 
 def _plain_text(html: str) -> str:
@@ -40,7 +43,9 @@ def _wrap(title: str, body_html: str) -> str:
       <tr><td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
           <tr><td style="background:#0a2540;padding:24px 32px;">
-            <span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">MietGate</span>
+            <img src="{LOGO_URL}" width="32" height="32" alt=""
+                 style="vertical-align:middle;border:0;display:inline-block;" />
+            <span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;vertical-align:middle;padding-left:10px;">MietGate</span>
           </td></tr>
           <tr><td style="padding:32px;">
             <h1 style="color:#0a2540;font-size:20px;margin:0 0 16px;">{title}</h1>

@@ -93,7 +93,6 @@ DEFAULT_PARTNERS = {
         {"category": "Internet", "name": "Internet & DSL", "url": "https://www.verivox.de/dsl/", "description": "Schnelles Internet zum Einzug sichern."},
         {"category": "Umzug", "name": "Umzugsunternehmen", "url": "https://www.movinga.de/", "description": "Umzugshelfer und Transporter buchen."},
         {"category": "Reinigung", "name": "Reinigungsservice", "url": "https://www.helpling.de/", "description": "Endreinigung der alten Wohnung organisieren."},
-        {"category": "Versicherung", "name": "Hausratversicherung", "url": "https://www.check24.de/hausratversicherung/", "description": "Ihr Hab und Gut im neuen Zuhause absichern."},
     ],
 }
 
@@ -102,6 +101,15 @@ async def seed_partners():
     existing = await db.settings.find_one({"key": "partners"})
     if existing is None:
         await db.settings.insert_one(dict(DEFAULT_PARTNERS))
+        return
+    # The insurance offer was dropped from the defaults, but existing installs keep the row
+    # they were seeded with. Remove it once — guarded by a flag so an admin who deliberately
+    # adds an insurance partner later doesn't lose it on the next restart.
+    if not existing.get("insurance_offer_removed"):
+        offers = [o for o in existing.get("offers", []) if o.get("category") != "Versicherung"]
+        await db.settings.update_one(
+            {"key": "partners"},
+            {"$set": {"offers": offers, "insurance_offer_removed": True}})
 
 
 DEFAULT_LEAD_STAGES = [

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { Pipeline } from "@/components/Pipeline";
 import { Viewings } from "@/components/Viewings";
@@ -25,6 +25,8 @@ export default function PropertyDetail() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [choosingPlan, setChoosingPlan] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(null); // null until prop loads, then defaulted below
 
   const load = () => api.get(`/properties/${id}`).then((r) => setProp(r.data)).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
   useEffect(() => {
@@ -123,7 +125,9 @@ export default function PropertyDetail() {
         </div>
       )}
 
-      <Tabs key={prop.id} defaultValue={prop.link_active ? "pipeline" : "link"}>
+      {/* ?tab= lets other screens deep-link a specific tab (e.g. the onboarding step that
+          points at the Inserat snippets, which live under "link"). */}
+      <Tabs key={prop.id} value={tab ?? searchParams.get("tab") ?? (prop.link_active ? "pipeline" : "link")} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="pipeline" data-testid="tab-pipeline">Bewerber ({prop.application_count})</TabsTrigger>
           <TabsTrigger value="link" data-testid="tab-link">Bewerbungslink</TabsTrigger>

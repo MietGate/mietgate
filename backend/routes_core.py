@@ -573,7 +573,9 @@ async def onboarding(user: dict = Depends(get_current_user)):
             "title": "Link ins Inserat einfügen",
             "description": "Fertigen Textbaustein kopieren und in Ihre Anzeige einfügen.",
             "done": bool(flags.get("inserat_kopiert")),
-            "link": f"/objekte/{first_id}" if first_id else "/objekte",
+            # The snippets live on the Bewerbungslink tab; without ?tab the page opens on
+            # the pipeline and the landlord lands nowhere near them.
+            "link": f"/objekte/{first_id}?tab=link" if first_id else "/objekte",
             "cta": "Textbaustein kopieren",
         },
         {

@@ -102,6 +102,10 @@ h1, h2, h3, h4, .font-display {
 
 html { scroll-behavior: smooth; }
 
+/* Nudged up from the 16px default: a good share of landlords are older, and every rem-based
+   size in the UI scales with this one value. Kept modest so no layout reflows badly. */
+html { font-size: 17px; }
+
 /* Dot matrix for dark hero backgrounds */
 .bg-dots-dark {
     background-image: radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1px);
