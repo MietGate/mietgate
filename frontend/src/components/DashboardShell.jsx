@@ -225,7 +225,7 @@ export function DashboardShell() {
           desktop — with plain `static` its box stretched to match the main column's full
           (often scrollable, taller-than-viewport) height, pushing "Hilfe & Support" and
           "Zur Website"/"Abmelden" below the fold on any page longer than one screen. */}
-      <aside className={`font-sidebar relative fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen text-white flex flex-col overflow-hidden transition-transform bg-[linear-gradient(165deg,hsl(214,60%,9%)_0%,hsl(220,55%,6%)_55%,hsl(224,45%,4%)_100%)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside className={`app-shell-sidebar font-sidebar relative fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen text-white flex flex-col overflow-hidden transition-transform bg-[linear-gradient(165deg,hsl(214,60%,9%)_0%,hsl(220,55%,6%)_55%,hsl(224,45%,4%)_100%)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         {/* Soft radial brand glow behind the nav — the onepage.io dark-panel signature.
             filter:blur on these self-contained shapes (not backdrop-filter on the panel
             itself, which read as a muddy smear with nothing but flat page background to
@@ -284,7 +284,7 @@ export function DashboardShell() {
       {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setOpen(false)} />}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="app-content-bg flex-1 flex flex-col min-w-0">
         <header className="glass-light h-16 border-b-0 flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button className="lg:hidden p-2" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>

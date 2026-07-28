@@ -42,6 +42,35 @@ h1, h2, h3, h4, .font-display {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* The content column: previously flat --background (a near-white cream) butted directly
+   against the dark sidebar with a hard seam — two disconnected zones instead of one system.
+   A faint radial wash carrying the same brand-teal hue as the sidebar glow, plus a barely-
+   there dot grid (reuses .bg-dots-dark's pattern, inverted for light), ties both sides
+   together and gives the flat page some onepage.io-style depth without hurting readability. */
+.app-content-bg {
+    background-color: hsl(var(--background));
+    background-image:
+        radial-gradient(ellipse 1100px 520px at 0% 0%, hsl(var(--primary) / 0.07), transparent 60%),
+        radial-gradient(ellipse 900px 600px at 100% 0%, hsl(38 92% 50% / 0.05), transparent 55%),
+        radial-gradient(circle, hsl(220 30% 20% / 0.05) 1px, transparent 1px);
+    background-size: auto, auto, 28px 28px;
+    background-position: 0 0, 0 0, 0 0;
+    background-repeat: no-repeat, no-repeat, repeat;
+}
+.dark .app-content-bg {
+    background-image:
+        radial-gradient(ellipse 1100px 520px at 0% 0%, hsl(var(--primary) / 0.12), transparent 60%),
+        radial-gradient(ellipse 900px 600px at 100% 0%, hsl(38 92% 54% / 0.08), transparent 55%),
+        radial-gradient(circle, hsl(0 0% 100% / 0.05) 1px, transparent 1px);
+    background-size: auto, auto, 28px 28px;
+}
+
+/* Soft light seam where the dark sidebar meets the content — bridges the two zones instead
+   of a hard vertical cut, echoing the ambient glow inside the sidebar itself. */
+.app-shell-sidebar {
+    box-shadow: 6px 0 32px -8px hsl(var(--primary) / 0.18), 1px 0 0 hsl(0 0% 100% / 0.06);
+}
+
 @layer base {
     :root {
         --background: 60 20% 98%;

@@ -9,11 +9,21 @@ import {
   Building2, Inbox, FileText, CalendarDays, MessageSquare, Plus, ArrowRight, Loader2, Zap, AlertTriangle
 } from "lucide-react";
 
-const StatCard = ({ icon: Icon, label, value, to }) => {
+/* A rotating accent palette per stat, instead of every icon in the same teal — small nod to
+   onepage.io's colourful partner/feature badges. Purely decorative (icon chip only), so the
+   WCAG-audited semantic tokens (primary/success/premium etc.) don't need new variants for it. */
+const STAT_TONES = [
+  "bg-accent text-primary",
+  "bg-[hsl(38,92%,94%)] text-[hsl(30,70%,38%)]",
+  "bg-[hsl(262,55%,95%)] text-[hsl(262,50%,45%)]",
+  "bg-[hsl(12,75%,95%)] text-[hsl(12,65%,42%)]",
+];
+
+const StatCard = ({ icon: Icon, label, value, to, tone = 0 }) => {
   const content = (
     <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 hover:border-primary/40 hover:shadow-soft-lg hover:-translate-y-0.5 transition-all" data-testid={`stat-${label.toLowerCase().replace(/[^a-z]/g, "")}`}>
       <div className="flex items-center justify-between">
-        <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary"><Icon className="h-5 w-5" /></div>
+        <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${STAT_TONES[tone % STAT_TONES.length]}`}><Icon className="h-5 w-5" /></div>
         <span className="font-mono text-3xl font-extrabold">{value}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-3">{label}</p>
@@ -46,10 +56,10 @@ export default function LandlordDashboard() {
       <OnboardingChecklist />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Building2} label="Aktive Objekte" value={data.active_properties} to="/objekte" />
-        <StatCard icon={Inbox} label="Neue Bewerbungen" value={data.new_applications} to="/objekte" />
-        <StatCard icon={FileText} label="Dokumente" value={data.open_documents} />
-        <StatCard icon={CalendarDays} label="Anstehende Besichtigungen" value={data.upcoming_viewings} />
+        <StatCard icon={Building2} label="Aktive Objekte" value={data.active_properties} to="/objekte" tone={0} />
+        <StatCard icon={Inbox} label="Neue Bewerbungen" value={data.new_applications} to="/objekte" tone={1} />
+        <StatCard icon={FileText} label="Dokumente" value={data.open_documents} tone={2} />
+        <StatCard icon={CalendarDays} label="Anstehende Besichtigungen" value={data.upcoming_viewings} tone={3} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
