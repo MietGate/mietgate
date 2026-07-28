@@ -110,22 +110,26 @@ export default function LandlordDashboard() {
             </div>
           </div>
         ) : (
-          /* Same dark-card upsell design as the "verifiziertes Mieterprofil" pitch on
-             ApplicantDocuments — one visual language for "here's a paid feature" everywhere. */
-          <div className="rounded-xl bg-brand-dark text-white p-6" data-testid="dashboard-premium-upsell">
-            <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
-              <p className="font-display font-bold">Mehr Objekte freischalten</p>
+          /* Same dark-card upsell language as the "verifiziertes Mieterprofil" pitch on
+             ApplicantDocuments — one visual system for "here's a paid feature" everywhere. */
+          <div className="hero-glow relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark to-[hsl(214,60%,7%)] text-white p-7 shadow-lg" data-testid="dashboard-premium-upsell">
+            <div className="relative flex items-start gap-4">
+              <div className="h-12 w-12 shrink-0 rounded-xl bg-primary/15 ring-1 ring-primary/30 text-primary flex items-center justify-center">
+                <Zap className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-display text-lg font-bold">Mehr Objekte freischalten</h2>
+                <p className="text-sm text-white/70 mt-1.5 leading-relaxed">
+                  Objekt anlegen und bearbeiten ist kostenlos. Veröffentlichen Sie Ihren Bewerbungslink
+                  mit einem Paket Ihrer Wahl — 3 Tage kostenlos testen, jederzeit kündbar.
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-white/70 mt-2">
-              Objekt anlegen und bearbeiten ist kostenlos. Veröffentlichen Sie Ihren Bewerbungslink
-              mit einem Paket Ihrer Wahl — 3 Tage kostenlos testen, jederzeit kündbar.
-            </p>
             <Link to="/einstellungen?tab=abo" data-testid="dashboard-premium-cta"
-              className="inline-flex items-center gap-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity mt-4">
+              className="relative inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 hover:shadow-primary/30 transition-all mt-5">
               Paket wählen
             </Link>
-            <div className="mt-5 pt-5 border-t border-white/15">
+            <div className="relative mt-6 pt-5 border-t border-white/10">
               <div className="flex items-center gap-2 text-sm text-white/70"><MessageSquare className="h-4 w-4" /> {data.unread_messages} ungelesene Nachrichten</div>
             </div>
           </div>

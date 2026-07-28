@@ -225,7 +225,7 @@ export function DashboardShell() {
           desktop — with plain `static` its box stretched to match the main column's full
           (often scrollable, taller-than-viewport) height, pushing "Hilfe & Support" and
           "Zur Website"/"Abmelden" below the fold on any page longer than one screen. */}
-      <aside className={`fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside className={`font-sidebar fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="h-16 flex items-center justify-center px-3 border-b border-white/10">
           <Link to="/" className="flex items-center justify-center w-full">
             <img src="/mietgate-logo-wide.png" alt="MietGate" className="h-10 w-auto" />

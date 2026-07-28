@@ -72,7 +72,7 @@ function PremiumCard() {
       <div className="rounded-2xl border-2 border-premium/40 bg-premium/10 p-6" data-testid="premium-active-banner">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-xl bg-premium text-premium-foreground flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
+            <div className="h-11 w-11 rounded-xl bg-premium text-premium-foreground flex items-center justify-center shrink-0 shadow-md shadow-premium/30"><Crown className="h-5 w-5" /></div>
             <div>
               <h2 className="font-display text-xl font-bold">Premium aktiv 👑</h2>
               <p className="text-muted-foreground text-sm mt-0.5">
@@ -96,37 +96,51 @@ function PremiumCard() {
   }
 
   return (
-    <div className="rounded-xl bg-brand-dark text-white p-6" data-testid="premium-upsell">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Crown className="h-5 w-5 text-primary" />
-          <p className="font-display font-bold">Ihr Profil, einmal ausgefüllt</p>
+    <div className="hero-glow relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark to-[hsl(214,60%,7%)] text-white p-7 shadow-lg" data-testid="premium-upsell">
+      <div className="relative flex items-start gap-4">
+        <div className="h-12 w-12 shrink-0 rounded-xl bg-premium/15 ring-1 ring-premium/30 text-premium flex items-center justify-center">
+          <Crown className="h-6 w-6" />
         </div>
-        <Button onClick={buyPremium} disabled={loading || !withdrawalConsent} data-testid="buy-premium-btn" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Crown className="h-4 w-4 mr-2" />} Profil aktivieren – 4,99 €/Monat
-        </Button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="font-display text-lg font-bold">Ihr Profil, einmal ausgefüllt</h2>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-premium bg-premium/15 ring-1 ring-premium/30 px-2 py-0.5 rounded-full">Premium</span>
+          </div>
+          <p className="text-sm text-white/70 mt-2 leading-relaxed">
+            Ihre Angaben und Dokumente werden einmal gespeichert und bei jeder weiteren Bewerbung auf
+            MietGate automatisch übernommen — nichts wird erneut hochgeladen. Zusätzlich können Sie Ihr
+            Profil auch Vermietern außerhalb von MietGate schicken und zeigen, dass Ihre Unterlagen
+            bereits vollständig vorliegen.
+          </p>
+        </div>
       </div>
-      <p className="text-sm text-white/70 mt-2">
-        Ihre Angaben und Dokumente werden einmal gespeichert und bei jeder weiteren Bewerbung auf
-        MietGate automatisch übernommen — nichts wird erneut hochgeladen. Zusätzlich können Sie Ihr
-        Profil auch Vermietern außerhalb von MietGate schicken und zeigen, dass Ihre Unterlagen
-        bereits vollständig vorliegen.
-      </p>
-      <div className="grid sm:grid-cols-2 gap-2 mt-5">
+
+      <div className="relative grid sm:grid-cols-2 gap-3 mt-5">
         {PREMIUM_PERKS.map((p, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm text-white/70">
-            <Check className="h-4 w-4 text-primary shrink-0" /> {p}
+          <div key={i} className="flex items-start gap-2.5 text-sm text-white/80">
+            <div className="h-5 w-5 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5">
+              <Check className="h-3 w-3" />
+            </div>
+            {p}
           </div>
         ))}
       </div>
-      <label className="flex items-start gap-2 mt-4 text-xs text-white/60 cursor-pointer" data-testid="premium-withdrawal-consent-label">
+
+      <div className="relative flex flex-wrap items-center gap-4 mt-6 pt-5 border-t border-white/10">
+        <Button onClick={buyPremium} disabled={loading || !withdrawalConsent} data-testid="buy-premium-btn"
+          className="bg-premium hover:bg-premium/90 text-premium-foreground shadow-md shadow-premium/20 hover:shadow-premium/30 transition-all">
+          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Crown className="h-4 w-4 mr-2" />} Profil aktivieren – 4,99 €/Monat
+        </Button>
+        <p className="text-[11px] text-white/50">Preis inkl. MwSt. Monatlich kündbar.</p>
+      </div>
+
+      <label className="relative flex items-start gap-2 mt-4 text-xs text-white/60 cursor-pointer" data-testid="premium-withdrawal-consent-label">
         <Checkbox checked={withdrawalConsent} onCheckedChange={setWithdrawalConsent} className="mt-0.5" data-testid="premium-withdrawal-consent-checkbox" />
         <span>
           Ich stimme zu, dass die Leistung sofort beginnt, und nehme zur Kenntnis, dass ich dadurch mein{" "}
           <Link to="/widerruf" target="_blank" rel="noreferrer" className="underline hover:text-white">Widerrufsrecht</Link> mit vollständiger Vertragserfüllung verliere.
         </span>
       </label>
-      <p className="text-[11px] text-white/50 mt-3">Preis inkl. MwSt. Monatlich kündbar. Wird sicher über Stripe abgewickelt.</p>
     </div>
   );
 }

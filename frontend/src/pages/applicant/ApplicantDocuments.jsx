@@ -285,19 +285,26 @@ export default function ApplicantDocuments() {
       {/* Shown once documents exist: the value of keeping them here only becomes obvious
           after the first upload, which is the moment to make the case. */}
       {docs.length > 0 && !user?.premium && (
-        <div className="rounded-xl bg-brand-dark text-white p-6" data-testid="documents-premium-upsell">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <p className="font-display font-bold">Ihre Dokumente dauerhaft griffbereit</p>
+        <div className="hero-glow relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark to-[hsl(214,60%,7%)] text-white p-7 shadow-lg" data-testid="documents-premium-upsell">
+          <div className="relative flex items-start gap-4">
+            <div className="h-12 w-12 shrink-0 rounded-xl bg-premium/15 ring-1 ring-premium/30 text-premium flex items-center justify-center">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-display text-lg font-bold">Ihre Dokumente dauerhaft griffbereit</h2>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-premium bg-premium/15 ring-1 ring-premium/30 px-2 py-0.5 rounded-full">Premium</span>
+              </div>
+              <p className="text-sm text-white/70 mt-2 leading-relaxed">
+                Ihre Angaben und Dokumente werden einmal gespeichert und bei jeder weiteren Bewerbung
+                auf MietGate automatisch übernommen — nichts wird erneut hochgeladen. Zusätzlich können
+                Sie Ihr Profil auch Vermietern außerhalb von MietGate schicken und zeigen, dass Ihre
+                Unterlagen bereits vollständig vorliegen.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-white/70 mt-2">
-            Ihre Angaben und Dokumente werden einmal gespeichert und bei jeder weiteren Bewerbung
-            auf MietGate automatisch übernommen — nichts wird erneut hochgeladen. Zusätzlich können
-            Sie Ihr Profil auch Vermietern außerhalb von MietGate schicken und zeigen, dass Ihre
-            Unterlagen bereits vollständig vorliegen.
-          </p>
           <a href="/fuer-mieter" data-testid="documents-premium-cta"
-            className="inline-flex items-center gap-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity mt-4">
+            className="relative inline-flex items-center gap-1.5 rounded-lg bg-premium px-5 py-2.5 text-sm font-semibold text-premium-foreground shadow-md shadow-premium/20 hover:bg-premium/90 hover:shadow-premium/30 transition-all mt-5">
             Profil aktivieren – 4,99 €/Monat
           </a>
         </div>
