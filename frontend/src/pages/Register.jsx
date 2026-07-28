@@ -72,11 +72,11 @@ export default function Register() {
           style={{ background: "radial-gradient(closest-side, hsl(var(--brand-teal) / 0.25), transparent 70%)", filter: "blur(36px)" }} aria-hidden="true" />
         <Link to="/" className="relative"><Logo textClass="text-white" className="h-9 bg-white rounded-md p-1" /></Link>
         <div className="relative">
-          <h2 className="font-display text-4xl font-extrabold leading-tight">In 2 Minuten startklar.</h2>
+          <h2 className="font-display text-4xl font-extrabold leading-tight">In wenigen Minuten startklar.</h2>
           <p className="mt-4 text-white/70 max-w-md">Erstellen Sie Ihr erstes Objekt, teilen Sie den Bewerbungslink und erhalten Sie strukturierte Bewerbungen.</p>
           <ul className="mt-8 space-y-3">
             {[
-              "Kostenlos starten – keine Kreditkarte nötig",
+              "Kostenlos registrieren – Zahlungsmethode erst bei Linkaktivierung nötig",
               "Zahlung erst bei Veröffentlichung Ihres Links",
               "DSGVO-konform · Hosting in der EU",
               "Jederzeit kündbar",
