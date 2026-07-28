@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,8 @@ export const TYPE_LABEL = { single: "Einzelbesichtigung", slots: "Zeitfenster", 
 
 /* Shared by the per-property tab and the global calendar.
    `properties` turns on the object picker; `defaultDate` (yyyy-mm-dd) pre-fills a clicked calendar day. */
-export function CreateViewingDialog({ propertyId, properties, defaultDate, onCreated, open: openProp, onOpenChange, hideTrigger }) {
+export function CreateViewingDialog({ propertyId, properties, defaultDate, preselectApplicants = [],
+                                     onCreated, open: openProp, onOpenChange, hideTrigger }) {
   const [openState, setOpenState] = useState(false);
   const controlled = openProp !== undefined;
   const open = controlled ? openProp : openState;
@@ -29,6 +31,8 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
   const [form, setForm] = useState({ title: "", datetime: "", max_participants: "", notes: "", duration_minutes: "30" });
   const [slots, setSlots] = useState([""]);
   const [saving, setSaving] = useState(false);
+  const [applicants, setApplicants] = useState([]);
+  const [invitees, setInvitees] = useState([]);
 
   // When a day is clicked in the calendar, start that day at 10:00.
   useEffect(() => {
@@ -42,6 +46,20 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
 
   const targetProperty = propertyId || propId;
 
+  /* Creating a date and inviting people were two separate trips before; whoever the caller
+     already has in mind (e.g. from the inbox quick action) starts out ticked. */
+  useEffect(() => {
+    if (!open || !targetProperty) { return; }
+    api.get(`/applications?property_id=${targetProperty}`)
+      .then((r) => setApplicants(r.data))
+      .catch(() => setApplicants([]));
+  }, [open, targetProperty]);
+
+  useEffect(() => { if (open) setInvitees(preselectApplicants); }, [open, preselectApplicants]);
+
+  const toggleInvitee = (id) =>
+    setInvitees((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id]);
+
   const submit = async () => {
     if (!targetProperty) { toast.error("Bitte wählen Sie ein Objekt aus."); return; }
     setSaving(true);
@@ -54,9 +72,21 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
       duration_minutes: form.duration_minutes ? Number(form.duration_minutes) : 30,
     };
     try {
-      await api.post("/viewings", payload);
-      toast.success("Termin erstellt"); setOpen(false); onCreated();
-      setForm({ title: "", datetime: "", max_participants: "", notes: "", duration_minutes: "30" }); setSlots([""]);
+      const { data } = await api.post("/viewings", payload);
+      if (invitees.length) {
+        // A failed invite must not read as a failed appointment — the date exists either way.
+        try {
+          await api.post(`/viewings/${data.id}/invite`, { application_ids: invitees });
+          toast.success(`Termin erstellt · ${invitees.length} Einladung(en) versendet`);
+        } catch {
+          toast.warning("Termin erstellt, Einladungen konnten nicht versendet werden");
+        }
+      } else {
+        toast.success("Termin erstellt");
+      }
+      setOpen(false); onCreated();
+      setForm({ title: "", datetime: "", max_participants: "", notes: "", duration_minutes: "30" });
+      setSlots([""]); setInvitees([]);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setSaving(false); }
   };
@@ -108,9 +138,28 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
           {type === "group" && <div><Label>Max. Teilnehmer</Label><Input type="number" value={form.max_participants} onChange={(e) => setForm({ ...form, max_participants: e.target.value })} className="mt-1.5" /></div>}
           <div><Label>Dauer (Minuten)</Label><Input type="number" min="5" step="5" value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} className="mt-1.5" data-testid="viewing-duration" /></div>
           <div><Label>Notizen</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1.5" /></div>
+          {applicants.length > 0 && (
+            <div>
+              <Label>Bewerber einladen <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+              <div className="mt-1.5 space-y-1 max-h-40 overflow-y-auto rounded-md border border-border p-1.5">
+                {applicants.map((a) => (
+                  <label key={a.id} className="flex items-center gap-2.5 rounded px-2 py-1.5 text-sm cursor-pointer hover:bg-secondary"
+                    data-testid={`create-invite-${a.id}`}>
+                    <Checkbox checked={invitees.includes(a.id)} onCheckedChange={() => toggleInvitee(a.id)} />
+                    <span className="truncate">
+                      {[a.form_data?.vorname, a.form_data?.nachname].filter(Boolean).join(" ") || a.applicant_email}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
-          <Button onClick={submit} disabled={saving} data-testid="save-viewing">{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Erstellen</Button>
+          <Button onClick={submit} disabled={saving} data-testid="save-viewing">
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {invitees.length ? `Erstellen & ${invitees.length} einladen` : "Erstellen"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -199,12 +248,26 @@ export function InviteDialog({ viewing, propertyId, onDone }) {
 export function Viewings({ propertyId, property }) {
   const [views, setViews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [preselect, setPreselect] = useState([]);
 
   const load = useCallback(async () => {
     const { data } = await api.get(`/viewings?property_id=${propertyId}`);
     setViews(data); setLoading(false);
   }, [propertyId]);
   useEffect(() => { load(); }, [load]);
+
+  /* ?invite=<applicationId> arrives from the inbox quick action: open the create dialog
+     with that applicant already ticked, then drop the param so a reload doesn't repeat it. */
+  useEffect(() => {
+    const invite = searchParams.get("invite");
+    if (!invite) return;
+    setPreselect([invite]);
+    setCreateOpen(true);
+    const next = new URLSearchParams(searchParams); next.delete("invite");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const del = async (id) => {
     if (!window.confirm("Termin wirklich löschen? Eingeladene Bewerber erhalten dadurch sofort eine Absage-E-Mail zum Termin.")) return;
@@ -222,7 +285,16 @@ export function Viewings({ propertyId, property }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><CreateViewingDialog propertyId={propertyId} onCreated={load} /></div>
+      <div className="flex justify-end">
+        <CreateViewingDialog propertyId={propertyId} onCreated={load}
+          open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setPreselect([]); }}
+          preselectApplicants={preselect} hideTrigger />
+        {!createOpen && (
+          <Button onClick={() => setCreateOpen(true)} data-testid="new-viewing-btn">
+            <Plus className="h-4 w-4 mr-1" /> Termin erstellen
+          </Button>
+        )}
+      </div>
       {views.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground">
           <CalendarDays className="h-10 w-10 mx-auto mb-3" />Noch keine Besichtigungen geplant.

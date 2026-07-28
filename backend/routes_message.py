@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from typing import Optional
 from database import db, NO_ID
 from security import get_current_user
 from helpers import new_id, now_iso, notify, notify_org_team, email_user
@@ -90,6 +91,7 @@ async def list_conversations(user: dict = Depends(get_current_user)):
 class MessagePayload(BaseModel):
     application_id: str
     body: str
+    reply_to: Optional[str] = None
 
 
 @router.post("/messages")
@@ -97,12 +99,20 @@ async def send_message(payload: MessagePayload, user: dict = Depends(get_current
     app, is_landlord = await _check_access(payload.application_id, user)
     prop = await db.properties.find_one({"id": app["property_id"]}, NO_ID)
     recipient_id = app["applicant_user_id"] if is_landlord else prop.get("created_by")
+    reply_to = None
+    if payload.reply_to:
+        # Scope the lookup to this conversation so a quote can't pull text out of another one.
+        quoted = await db.messages.find_one(
+            {"id": payload.reply_to, "application_id": payload.application_id}, NO_ID)
+        if quoted:
+            reply_to = payload.reply_to
     msg = {
         "id": new_id(), "application_id": payload.application_id,
         "property_id": app["property_id"], "org_id": app["org_id"],
         "sender_id": user["id"], "sender_name": user.get("name"),
         "sender_role": "landlord" if is_landlord else "applicant",
         "recipient_id": recipient_id, "body": payload.body,
+        "reply_to": reply_to, "retracted": False,
         "read": False, "created_at": now_iso(),
     }
     await db.messages.insert_one(msg)
@@ -127,6 +137,24 @@ async def send_message(payload: MessagePayload, user: dict = Depends(get_current
                               email_body_html=email_html, category="messages")
     msg.pop("_id", None)
     return msg
+
+
+@router.post("/messages/{mid}/retract")
+async def retract_message(mid: str, user: dict = Depends(get_current_user)):
+    """Withdraw one's own message.
+
+    The row stays as a tombstone rather than disappearing: the other side may already have
+    read it, and a message silently vanishing from a conversation is worse than one that
+    says it was withdrawn.
+    """
+    msg = await db.messages.find_one({"id": mid})
+    if not msg or msg.get("sender_id") != user["id"]:
+        raise HTTPException(status_code=404, detail="Nachricht nicht gefunden")
+    if msg.get("retracted"):
+        return {"ok": True}
+    await db.messages.update_one(
+        {"id": mid}, {"$set": {"retracted": True, "body": "", "retracted_at": now_iso()}})
+    return {"ok": True}
 
 
 @router.get("/notifications")

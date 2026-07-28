@@ -1,8 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import api, { openDocument, formatApiError } from "@/lib/api";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -10,48 +9,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChatThread } from "@/components/ChatThread";
+import { STATUS_COLUMNS as COLUMNS, ACTIVE_STAGES, confirmStatusChange } from "@/lib/applicationStatus";
 import { toast } from "sonner";
-import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus, Lock, Check, PartyPopper } from "lucide-react";
+import { Star, FileText, Download, Loader2, User, CalendarPlus, Lock, Check, PartyPopper } from "lucide-react";
 
-const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
-  "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
-/* Mirrors constants.DOC_RELEASE_STAGE — the stage an application must reach before these
+const DOC_TYPES = ["BonitÃ¤tsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
+  "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "BÃ¼rgschaft", "Sonstiges"];
+/* Mirrors constants.DOC_RELEASE_STAGE â the stage an application must reach before these
    may be demanded. The backend enforces it; this only keeps the UI honest. */
 const DOC_STAGE = {
-  "Bonitätsauskunft": 4, "Gehaltsnachweise": 4, "Arbeitsvertrag": 4,
-  "Mietschuldenfreiheitsbescheinigung": 4, "Bürgschaft": 4, "Ausweis": 5, "Aufenthaltstitel": 5,
+  "BonitÃ¤tsauskunft": 4, "Gehaltsnachweise": 4, "Arbeitsvertrag": 4,
+  "Mietschuldenfreiheitsbescheinigung": 4, "BÃ¼rgschaft": 4, "Ausweis": 5, "Aufenthaltstitel": 5,
 };
 const STAGE_ORDER = { neu: 0, pruefung: 1, interessant: 2, besichtigung: 3, favorit: 4, zusage: 5 };
 const docRequestable = (type, status) =>
   (STAGE_ORDER[status] ?? -1) >= (DOC_STAGE[type] ?? 0);
-
-/* Applicants still in the running — the ones a "someone else got it" mail would reach. */
-const ACTIVE_STAGES = ["neu", "pruefung", "interessant", "besichtigung", "favorit"];
-
-/* Both the drag handler and the detail sheet change status, and both must ask before
-   anything leaves the building. Returns null when the landlord backed out. */
-function confirmStatusChange(newStatus, otherActiveCount) {
-  if (newStatus === "absage") {
-    return window.confirm("Status auf „Absage\" setzen? Der Bewerber erhält dadurch sofort eine Absage-E-Mail.")
-      ? { reject_others: false } : null;
-  }
-  if (newStatus === "zusage") {
-    if (!window.confirm("Zusage erteilen? Der Bewerber erhält sofort eine Zusage-E-Mail.")) return null;
-    const rejectOthers = otherActiveCount > 0 && window.confirm(
-      `Sollen die übrigen ${otherActiveCount} Bewerber jetzt eine freundliche Absage erhalten?\n\n` +
-      `Sie werden auf „Absage\" gesetzt und erhalten eine E-Mail. Das lässt sich nicht rückgängig machen.\n\n` +
-      `Abbrechen: Zusage wird trotzdem erteilt, die anderen bleiben unverändert.`);
-    return { reject_others: rejectOthers };
-  }
-  return { reject_others: false };
-}
-
-const COLUMNS = [
-  { key: "neu", label: "Neu", dot: "bg-slate-400" }, { key: "pruefung", label: "Prüfung", dot: "bg-blue-500" },
-  { key: "interessant", label: "Interessant", dot: "bg-violet-500" }, { key: "besichtigung", label: "Besichtigung", dot: "bg-primary" },
-  { key: "favorit", label: "Favorit", dot: "bg-amber-500" }, { key: "zusage", label: "Zusage", dot: "bg-success" },
-  { key: "absage", label: "Absage", dot: "bg-destructive" }, { key: "archiv", label: "Archiv", dot: "bg-muted-foreground" },
-];
 
 let fieldsCache = null;
 async function loadFieldDefs() {
@@ -122,8 +95,6 @@ function RequestDocsDialog({ open, onOpenChange, status, alreadyRequested, onSub
 
 function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, onChanged }) {
   const [app, setApp] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [msg, setMsg] = useState("");
   const [notes, setNotes] = useState("");
   const [viewings, setViewings] = useState([]);
   const [selViewing, setSelViewing] = useState("");
@@ -131,14 +102,11 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
   const [docRequestOpen, setDocRequestOpen] = useState(false);
   const [property, setProperty] = useState(null);
   const [, setSearchParams] = useSearchParams();
-  const msgEndRef = useRef(null);
 
   const load = useCallback(async () => {
     if (!appId) return;
     const { data } = await api.get(`/applications/${appId}`);
     setApp(data); setNotes(data.internal_notes || "");
-    const m = await api.get(`/messages?application_id=${appId}`);
-    setMessages(m.data);
     if (propertyId) {
       const v = await api.get(`/viewings?property_id=${propertyId}`);
       setViewings(v.data);
@@ -149,7 +117,6 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
   useEffect(() => { loadFieldDefs().then(setFieldDefs); }, []);
 
   useEffect(() => { if (open) load(); }, [open, load]);
-  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   if (!open) return null;
 
@@ -166,11 +133,6 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
       ? `Zusage erteilt · ${data.rejected_others} Absage(n) versendet`
       : "Status aktualisiert");
     load(); onChanged?.();
-  };
-  const sendMsg = async () => {
-    if (!msg.trim()) return;
-    await api.post("/messages", { application_id: appId, body: msg });
-    setMsg(""); const m = await api.get(`/messages?application_id=${appId}`); setMessages(m.data);
   };
   const requestDocs = async (docTypes) => {
     try {
@@ -340,28 +302,11 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
 
               <div>
                 <Label2>Nachrichten</Label2>
-                <div className="mt-2 space-y-3 max-h-64 overflow-y-auto rounded-lg bg-secondary/40 p-3" data-testid="chat-messages">
-                  {messages.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Noch keine Nachrichten.</p>}
-                  {messages.map((m) => {
-                    const mine = m.sender_role === "landlord";
-                    return (
-                      <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-                        <div className={`text-sm rounded-2xl px-3.5 py-2 max-w-[80%] shadow-sm ${mine ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}>
-                          {m.body}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                          {!mine && m.sender_name ? `${m.sender_name} · ` : ""}
-                          {m.created_at ? new Date(m.created_at).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  <div ref={msgEndRef} />
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Nachricht…" data-testid="msg-input"
-                    onKeyDown={(e) => e.key === "Enter" && sendMsg()} />
-                  <Button size="icon" onClick={sendMsg} data-testid="msg-send"><Send className="h-4 w-4" /></Button>
+                {/* Same component as the inbox, so reply/retract/emoji behave identically
+                    wherever the landlord happens to be talking to this applicant. */}
+                <div className="mt-2 h-[420px] rounded-lg border border-border overflow-hidden">
+                  <ChatThread applicationId={appId} myRole="landlord" onSent={onChanged}
+                    testIdPrefix="sheet-message" />
                 </div>
               </div>
             </div>

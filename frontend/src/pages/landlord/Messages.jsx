@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import api, { formatApiError } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import api from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { ChatThread } from "@/components/ChatThread";
+import { ChatQuickActions } from "@/components/ChatQuickActions";
 import { toast } from "sonner";
 import {
-  MessageSquare, Loader2, Send, Building2, Search, ArrowLeft, Inbox,
+  MessageSquare, Loader2, Building2, Search, ArrowLeft, Inbox,
 } from "lucide-react";
 
 const relTime = (iso) => {
@@ -21,45 +21,6 @@ const relTime = (iso) => {
 };
 
 function Thread({ conversation, onSent }) {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
-  const endRef = useRef(null);
-
-  /* `silent` skips the spinner: a background refresh must not blank out a thread the
-     user is reading, which is what made sending feel slow. */
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const { data } = await api.get(`/messages?application_id=${conversation.application_id}`);
-      setMessages(data);
-    } catch { if (!silent) toast.error("Nachrichten konnten nicht geladen werden"); }
-    finally { if (!silent) setLoading(false); }
-  }, [conversation.application_id]);
-
-  useEffect(() => { load(); }, [load]);
-
-  // Without this, a reply only showed up after a full page reload.
-  useEffect(() => {
-    const t = setInterval(() => load(true), 15000);
-    return () => clearInterval(t);
-  }, [load]);
-
-  useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [messages]);
-
-  const send = async () => {
-    if (!body.trim()) return;
-    setSending(true);
-    try {
-      await api.post("/messages", { application_id: conversation.application_id, body: body.trim() });
-      setBody("");
-      await load(true);
-      onSent?.();
-    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
-    finally { setSending(false); }
-  };
-
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-border px-5 py-3 shrink-0">
@@ -72,39 +33,9 @@ function Thread({ conversation, onSent }) {
           )}
         </div>
       </div>
-
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-0" data-testid="message-thread">
-        {loading ? (
-          <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-        ) : messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-10">Noch keine Nachrichten.</p>
-        ) : messages.map((m) => {
-          const mine = m.sender_role === "landlord";
-          return (
-            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
-                <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                <p className={`text-[11px] mt-1 ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                  {m.sender_name} · {relTime(m.created_at)}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={endRef} />
-      </div>
-
-      <div className="border-t border-border p-3 shrink-0">
-        <div className="flex gap-2 items-end">
-          <Textarea rows={2} value={body} onChange={(e) => setBody(e.target.value)}
-            placeholder="Nachricht schreiben…" data-testid="message-input"
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            className="resize-none" />
-          <Button onClick={send} disabled={sending || !body.trim()} data-testid="message-send">
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
-        </div>
-        <p className="text-[11px] text-muted-foreground mt-1.5">Enter zum Senden · Umschalt + Enter für eine neue Zeile</p>
+      <div className="flex-1 min-h-0">
+        <ChatThread applicationId={conversation.application_id} myRole="landlord" onSent={onSent}
+          quickActions={<ChatQuickActions conversation={conversation} onChanged={onSent} />} />
       </div>
     </div>
   );
@@ -183,7 +114,8 @@ export default function Messages() {
                   {c.property_title && <p className="text-xs text-muted-foreground truncate mt-0.5">{c.property_title}</p>}
                   <div className="flex items-center gap-2 mt-1">
                     <p className={`text-xs truncate flex-1 ${c.unread ? "text-foreground" : "text-muted-foreground"}`}>
-                      {c.last_sender_role === "landlord" && "Sie: "}{c.last_body}
+                      {c.last_sender_role === "landlord" && "Sie: "}
+                      {c.last_body || <span className="italic">Nachricht zurückgezogen</span>}
                     </p>
                     {c.unread > 0 && (
                       <span className="shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
