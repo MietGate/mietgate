@@ -161,8 +161,18 @@ async def my_entitlements(user: dict = Depends(get_current_user)):
 async def list_properties(user: dict = Depends(get_current_user)):
     org_id = await _require_org(user)
     props = await db.properties.find({"org_id": org_id}, NO_ID).sort("created_at", -1).to_list(500)
+    # One aggregation instead of a count_documents() per property — this is the landlord's
+    # most-loaded page, no reason to pay for N round-trips on every visit.
+    counts = {}
+    prop_ids = [p["id"] for p in props]
+    if prop_ids:
+        async for row in db.applications.aggregate([
+            {"$match": {"property_id": {"$in": prop_ids}}},
+            {"$group": {"_id": "$property_id", "n": {"$sum": 1}}},
+        ]):
+            counts[row["_id"]] = row["n"]
     for p in props:
-        p["application_count"] = await db.applications.count_documents({"property_id": p["id"]})
+        p["application_count"] = counts.get(p["id"], 0)
     return props
 
 

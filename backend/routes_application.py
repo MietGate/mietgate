@@ -184,15 +184,14 @@ async def submit_application(req: ApplyRequest):
             "account_created": activation_link is not None}
 
 
-async def _enrich(app, prop=None):
+async def _enrich(app, prop=None, doc_count=None):
     prop = prop or await db.properties.find_one({"id": app["property_id"]}, NO_ID)
-    doc_count = await db.documents.count_documents(
-        {"application_id": app["id"], "is_deleted": False})
-    app["_doc_count"] = doc_count
+    if doc_count is None:
+        doc_count = await db.documents.count_documents(
+            {"application_id": app["id"], "is_deleted": False})
     app["document_count"] = doc_count
     app["matching_score"] = compute_matching_score(app, prop or {})
     app["property_title"] = (prop or {}).get("title")
-    app.pop("_doc_count", None)
     return app
 
 
@@ -205,11 +204,22 @@ async def list_applications(property_id: Optional[str] = None, user: dict = Depe
         q["property_id"] = property_id
     apps = await db.applications.find(q, NO_ID).sort("created_at", -1).to_list(1000)
     prop_cache = {}
+    # One aggregation for all document counts instead of a count_documents() call per
+    # application — with hundreds of applications that was hundreds of sequential
+    # round-trips just to render a badge.
+    app_ids = [a["id"] for a in apps]
+    doc_counts = {}
+    if app_ids:
+        async for row in db.documents.aggregate([
+            {"$match": {"application_id": {"$in": app_ids}, "is_deleted": False}},
+            {"$group": {"_id": "$application_id", "n": {"$sum": 1}}},
+        ]):
+            doc_counts[row["_id"]] = row["n"]
     for a in apps:
         pid = a["property_id"]
         if pid not in prop_cache:
             prop_cache[pid] = await db.properties.find_one({"id": pid}, NO_ID)
-        await _enrich(a, prop_cache[pid])
+        await _enrich(a, prop_cache[pid], doc_counts.get(a["id"], 0))
     return apps
 
 

@@ -133,7 +133,7 @@ function ExplainerVideoPlayer() {
       style={{ boxShadow: "0 40px 100px -20px rgba(0,0,0,0.5), 0 25px 60px -30px hsl(var(--brand-teal) / 0.4)" }}>
       <video
         ref={videoRef} controls={started} preload="metadata" playsInline
-        poster={`${VIDEO_CDN}/thumbnail.jpg`}
+        poster={`${VIDEO_CDN}/thumbnail.jpg`} fetchPriority="high"
         className={`w-full aspect-video block object-cover ${!playing ? "animate-ken-burns" : ""}`}
         onPlay={() => { setPlaying(true); setStarted(true); }} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
         data-testid="explainer-video"
