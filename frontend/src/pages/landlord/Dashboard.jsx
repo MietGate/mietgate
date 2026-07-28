@@ -9,14 +9,16 @@ import {
   Building2, Inbox, FileText, CalendarDays, MessageSquare, Plus, ArrowRight, Loader2, Zap, AlertTriangle
 } from "lucide-react";
 
-/* A rotating accent palette per stat, instead of every icon in the same teal — small nod to
-   onepage.io's colourful partner/feature badges. Purely decorative (icon chip only), so the
-   WCAG-audited semantic tokens (primary/success/premium etc.) don't need new variants for it. */
+/* A rotating accent per stat instead of one flat teal everywhere, but pulled from the
+   existing brand hue family (teal/gold/navy/green) only — this audience is landlords,
+   Hausverwalter and Makler, not a consumer app, so the earlier violet/coral mix read as
+   playful-startup rather than trustworthy real-estate software. Same tokens used for
+   premium and success elsewhere in the app, just tinted lighter for a chip background. */
 const STAT_TONES = [
   "bg-accent text-primary",
-  "bg-[hsl(38,92%,94%)] text-[hsl(30,70%,38%)]",
-  "bg-[hsl(262,55%,95%)] text-[hsl(262,50%,45%)]",
-  "bg-[hsl(12,75%,95%)] text-[hsl(12,65%,42%)]",
+  "bg-[hsl(38,70%,93%)] text-[hsl(32,55%,34%)]",
+  "bg-[hsl(214,45%,93%)] text-[hsl(214,55%,32%)]",
+  "bg-[hsl(142,40%,93%)] text-[hsl(142,45%,26%)]",
 ];
 
 const StatCard = ({ icon: Icon, label, value, to, tone = 0 }) => {
