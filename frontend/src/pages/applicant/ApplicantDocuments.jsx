@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Loader2, Upload, FileText, Trash2, Download, Link2, ShieldCheck, ExternalLink, Clock } from "lucide-react";
 
-const DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
+const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
 const ALLOWED_EXT = ["pdf", "jpg", "jpeg", "png"];
 
 /* One of the three routes through the bonity step. */
@@ -24,7 +24,7 @@ function ChoiceButton({ active, onClick, icon: Icon, label, hint, testId }) {
 export default function ApplicantDocuments() {
   const [docs, setDocs] = useState(null);
   const [apps, setApps] = useState([]);
-  const [docType, setDocType] = useState("SCHUFA");
+  const [docType, setDocType] = useState("Bonitätsauskunft");
   const [uploading, setUploading] = useState(false);
   const [attaching, setAttaching] = useState(null);
   const fileRef = useRef();
@@ -44,9 +44,9 @@ export default function ApplicantDocuments() {
     api.get("/partners").then((r) => setPartners(r.data)).catch(() => {});
   }, []);
 
-  const hasSchufa = docs?.some((d) => d.doc_type === "SCHUFA");
+  const hasSchufa = docs?.some((d) => d.doc_type === "Bonitätsauskunft");
   // "Später hochladen" is only offered when no landlord made the bonity report mandatory.
-  const schufaRequired = apps.some((a) => (a.required_documents || []).includes("SCHUFA"));
+  const schufaRequired = apps.some((a) => (a.required_documents || []).includes("Bonitätsauskunft"));
 
   const upload = async (e, forcedType) => {
     const input = e.target;
@@ -164,10 +164,10 @@ export default function ApplicantDocuments() {
                 </span>
               </label>
               <Button className="mt-4" disabled={!bonityConsent || uploading}
-                onClick={() => { setDocType("SCHUFA"); bonityFileRef.current?.click(); }} data-testid="bonity-upload-btn">
+                onClick={() => { setDocType("Bonitätsauskunft"); bonityFileRef.current?.click(); }} data-testid="bonity-upload-btn">
                 {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />} Bonitätsauskunft hochladen
               </Button>
-              <input ref={bonityFileRef} type="file" onChange={(e) => upload(e, "SCHUFA")} className="hidden" accept=".pdf,.jpg,.jpeg,.png" data-testid="bonity-file-input" />
+              <input ref={bonityFileRef} type="file" onChange={(e) => upload(e, "Bonitätsauskunft")} className="hidden" accept=".pdf,.jpg,.jpeg,.png" data-testid="bonity-file-input" />
             </div>
           )}
         </div>

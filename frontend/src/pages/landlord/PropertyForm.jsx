@@ -11,10 +11,10 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Loader2, ArrowLeft, ArrowRight, Save, AlertTriangle } from "lucide-react";
 
-const DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
+const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
 /* Mirrors constants.DOC_RELEASE_STAGE on the backend — documents the authorities only
    allow once the applicant is shortlisted. */
-const BONITY_DOC_TYPES = ["SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Ausweis", "Aufenthaltstitel"];
+const BONITY_DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Ausweis", "Aufenthaltstitel"];
 
 const STATE_OPTS = [
   { v: "required", l: "Pflicht" },

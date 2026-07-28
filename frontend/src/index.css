@@ -47,6 +47,12 @@ h1, h2, h3, h4, .font-display {
         --ring: 179 66% 36%;
         --brand-dark: 214 74% 12%;
         --brand-teal: 179 66% 36%;
+        /* Premium/upsell identity (Bewerber-Premium, Crown branding) — deliberately not
+           brand teal, so a paid perk reads as visually distinct from ordinary "active"
+           state. Was previously freehand amber-400/amber-500/amber-600 per usage site;
+           consolidated to one token so every premium touchpoint matches exactly. */
+        --premium: 38 92% 50%;
+        --premium-foreground: 0 0% 100%;
         --radius: 0.4rem;
     }
     .dark {
@@ -73,6 +79,8 @@ h1, h2, h3, h4, .font-display {
         --ring: 179 66% 42%;
         --brand-dark: 224 40% 4%;
         --brand-teal: 179 66% 42%;
+        --premium: 38 92% 54%;
+        --premium-foreground: 224 25% 6%;
         --radius: 0.4rem;
     }
 }

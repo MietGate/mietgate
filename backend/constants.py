@@ -47,7 +47,7 @@ DEFAULT_FORM_CONFIG = {
 }
 
 DOCUMENT_TYPES = [
-    "SCHUFA", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
+    "Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
     "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges",
 ]
 
@@ -85,7 +85,7 @@ PIPELINE_STAGE_ORDER = {
 # (e.g. "Sonstiges") are never withheld. "absage", "archiv" and "zurueckgezogen" are
 # absent from PIPELINE_STAGE_ORDER on purpose, so they never release anything.
 DOC_RELEASE_STAGE = {
-    "SCHUFA": 4,
+    "Bonitätsauskunft": 4,
     "Gehaltsnachweise": 4,
     "Arbeitsvertrag": 4,
     "Mietschuldenfreiheitsbescheinigung": 4,
@@ -94,8 +94,10 @@ DOC_RELEASE_STAGE = {
     "Aufenthaltstitel": 5,
 }
 
-# Types the applicant is offered a guided bonity flow for (bonify / existing SCHUFA).
-BONITY_DOC_TYPES = ["SCHUFA"]
+# Types the applicant is offered a guided bonity flow for (bonify / existing SCHUFA/
+# Boniversum/Creditreform report). Named generically rather than after one bureau, since
+# bonify, SCHUFA and Boniversum reports are all valid answers here.
+BONITY_DOC_TYPES = ["Bonitätsauskunft"]
 
 # Defaults for the guided bonity step on the applicant's documents page. Admins can
 # override all of these under /admin/partner — the defaults exist so the flow works

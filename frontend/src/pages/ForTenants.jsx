@@ -59,7 +59,7 @@ export default function ForTenants() {
       <section className="bg-secondary/40 border-y border-border">
         <div className="max-w-5xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-10 items-center">
           <motion.div {...fade}>
-            <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-400/15 px-3 py-1 rounded-full"><Crown className="h-3.5 w-3.5" /> Mieter-Premium</span>
+            <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-premium bg-premium/15 px-3 py-1 rounded-full"><Crown className="h-3.5 w-3.5" /> Mieter-Premium</span>
             <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-brand-dark mt-4">Alles drin für <span className="text-primary">4,99 €</span> / Monat</h2>
             <p className="text-muted-foreground mt-3">Ein kleiner Beitrag, große Wirkung: Ihr Profil überzeugt Vermieter auf den ersten Blick.</p>
             <Button size="lg" className="mt-7" asChild data-testid="tenant-premium-cta"><Link to="/registrieren?role=applicant">Jetzt Profil erstellen <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>

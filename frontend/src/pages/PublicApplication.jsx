@@ -50,7 +50,7 @@ export default function PublicApplication() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null); // { application_id }
   const [step, setStep] = useState(0);
-  const [docType, setDocType] = useState("SCHUFA");
+  const [docType, setDocType] = useState("Bonitätsauskunft");
   const [uploads, setUploads] = useState([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef();

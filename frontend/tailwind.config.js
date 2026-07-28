@@ -51,6 +51,10 @@ module.exports = {
           dark: 'hsl(var(--brand-dark))',
           teal: 'hsl(var(--brand-teal))'
         },
+        premium: {
+          DEFAULT: 'hsl(var(--premium))',
+          foreground: 'hsl(var(--premium-foreground))'
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

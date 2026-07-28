@@ -69,10 +69,10 @@ function PremiumCard() {
 
   if (user?.premium) {
     return (
-      <div className="rounded-2xl border-2 border-amber-400/40 bg-amber-50/60 p-6" data-testid="premium-active-banner">
+      <div className="rounded-2xl border-2 border-premium/40 bg-premium/10 p-6" data-testid="premium-active-banner">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-xl bg-amber-400 text-white flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
+            <div className="h-11 w-11 rounded-xl bg-premium text-premium-foreground flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
             <div>
               <h2 className="font-display text-xl font-bold">Premium aktiv 👑</h2>
               <p className="text-muted-foreground text-sm mt-0.5">
@@ -99,20 +99,20 @@ function PremiumCard() {
     <div className="rounded-2xl border border-border bg-card p-6" data-testid="premium-upsell">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-xl bg-amber-400/15 text-amber-500 flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
+          <div className="h-11 w-11 rounded-xl bg-premium/15 text-premium flex items-center justify-center shrink-0"><Crown className="h-5 w-5" /></div>
           <div>
             <h2 className="font-display text-xl font-bold">Bewerber-Premium</h2>
             <p className="text-muted-foreground text-sm mt-0.5">Erhöhen Sie Ihre Chancen auf die Wunschwohnung – für nur <span className="font-semibold text-foreground">4,99 €/Monat</span>.</p>
           </div>
         </div>
-        <Button onClick={buyPremium} disabled={loading || !withdrawalConsent} data-testid="buy-premium-btn" className="bg-amber-500 hover:bg-amber-600 text-white">
+        <Button onClick={buyPremium} disabled={loading || !withdrawalConsent} data-testid="buy-premium-btn" className="bg-premium hover:bg-premium/90 text-premium-foreground">
           {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Crown className="h-4 w-4 mr-2" />} Premium holen
         </Button>
       </div>
       <div className="grid sm:grid-cols-2 gap-2 mt-5">
         {PREMIUM_PERKS.map((p, i) => (
           <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Check className="h-4 w-4 text-amber-500 shrink-0" /> {p}
+            <Check className="h-4 w-4 text-premium shrink-0" /> {p}
           </div>
         ))}
       </div>
