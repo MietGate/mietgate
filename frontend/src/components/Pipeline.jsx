@@ -211,10 +211,18 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
 
               <div>
                 <Label2>Status</Label2>
-                <Select value={app.status} onValueChange={changeStatus}>
-                  <SelectTrigger className="mt-1.5" data-testid="app-status-select"><SelectValue /></SelectTrigger>
-                  <SelectContent>{STATUS_COLUMNS.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent>
-                </Select>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {STATUS_COLUMNS.map((c) => (
+                    <button key={c.key} type="button" onClick={() => changeStatus(c.key)} data-testid={`status-btn-${c.key}`}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+                        app.status === c.key
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border bg-card hover:bg-secondary text-muted-foreground"
+                      }`}>
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
