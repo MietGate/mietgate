@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,14 +6,17 @@
 
 body {
     margin: 0;
-    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* Rounded, geometric grotesk — closer to the onepage.io reference than the previous
+   Sora-only pairing. Kept on h1-h4/.font-display only, not body copy, so long-form text
+   stays on Plus Jakarta Sans for readability. */
 h1, h2, h3, h4, .font-display {
-    font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
-    letter-spacing: -0.02em;
+    font-family: 'Sora', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.025em;
 }
 
 .font-mono {
@@ -22,10 +25,8 @@ h1, h2, h3, h4, .font-display {
     letter-spacing: -0.01em;
 }
 
-/* A more neutral, professional grotesk for the sidebar nav — Hanken Grotesk's rounder
-   letterforms read a touch playful for older landlords navigating day-to-day workflow. */
 .font-sidebar {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 @layer base {
@@ -291,4 +292,20 @@ html { font-size: 17px; }
 }
 .dark .shadow-soft-lg {
     box-shadow: 0 2px 4px hsl(0 0% 0% / 0.2), 0 16px 40px -12px hsl(0 0% 0% / 0.6);
+}
+
+/* onepage.io-style glassmorphism: translucent panel + heavy blur + hairline light border,
+   for dark surfaces (sidebar, dark upsell cards, overlays) sitting on a gradient/photo backdrop. */
+.glass-dark {
+    background: linear-gradient(180deg, hsl(220 45% 10% / 0.72), hsl(220 55% 6% / 0.85));
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+}
+/* Same idea for light surfaces (popovers, floating panels on the light dashboard). */
+.glass-light {
+    background: hsl(var(--card) / 0.72);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid hsl(var(--border) / 0.6);
 }

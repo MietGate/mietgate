@@ -285,7 +285,7 @@ export default function ApplicantDocuments() {
       {/* Shown once documents exist: the value of keeping them here only becomes obvious
           after the first upload, which is the moment to make the case. */}
       {docs.length > 0 && !user?.premium && (
-        <div className="hero-glow animate-float relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark/85 to-[hsl(214,60%,7%)]/85 backdrop-blur-sm text-white p-7 shadow-xl" data-testid="documents-premium-upsell">
+        <div className="glass-dark hero-glow animate-float relative overflow-hidden rounded-2xl text-white p-7 shadow-soft-lg" data-testid="documents-premium-upsell">
           <div className="relative flex items-start gap-4">
             <div className="h-12 w-12 shrink-0 rounded-xl bg-premium/15 ring-1 ring-premium/30 text-premium flex items-center justify-center">
               <ShieldCheck className="h-6 w-6" />

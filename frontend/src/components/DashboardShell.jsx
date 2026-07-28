@@ -88,7 +88,7 @@ function HeaderSearch({ role }) {
   ));
 
   const dropdown = open && q.trim().length >= 2 && (
-    <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border/70 rounded-2xl shadow-soft-lg overflow-hidden z-30 max-h-80 overflow-y-auto" data-testid="search-results">
+    <div className="glass-light absolute top-full left-0 right-0 mt-1.5 rounded-2xl shadow-soft-lg overflow-hidden z-30 max-h-80 overflow-y-auto" data-testid="search-results">
       {!hasResults && <div className="px-3 py-4 text-sm text-muted-foreground text-center">Keine Treffer</div>}
       {renderGroups("w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors")}
     </div>
@@ -225,13 +225,17 @@ export function DashboardShell() {
           desktop — with plain `static` its box stretched to match the main column's full
           (often scrollable, taller-than-viewport) height, pushing "Hilfe & Support" and
           "Zur Website"/"Abmelden" below the fold on any page longer than one screen. */}
-      <aside className={`font-sidebar fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-        <div className="h-16 flex items-center justify-center px-3 border-b border-white/10">
+      <aside className={`font-sidebar glass-dark relative fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen text-white flex flex-col overflow-hidden transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        {/* Soft radial brand glow behind the nav — the onepage.io dark-panel signature —
+            sits under the content (z-0) so it reads as ambient light, not a shape. */}
+        <div className="pointer-events-none absolute -top-24 -left-16 h-64 w-64 rounded-full bg-primary/25 blur-[80px] z-0" />
+        <div className="pointer-events-none absolute bottom-0 -right-20 h-56 w-56 rounded-full bg-premium/10 blur-[90px] z-0" />
+        <div className="h-16 relative z-10 flex items-center justify-center px-3 border-b border-white/10">
           <Link to="/" className="flex items-center justify-center w-full">
             <img src="/mietgate-logo-wide.png" alt="MietGate" className="h-10 w-auto" />
           </Link>
         </div>
-        <nav className="flex-1 flex flex-col p-3 overflow-y-auto">
+        <nav className="relative z-10 flex-1 flex flex-col p-3 overflow-y-auto">
           <div className="space-y-1">
             {nav.map((item) => {
               const active = location.pathname === item.to || (item.to !== "/dashboard" && item.to !== "/admin" && item.to !== "/bewerber" && location.pathname.startsWith(item.to));
@@ -265,7 +269,7 @@ export function DashboardShell() {
             </Link>
           )}
         </nav>
-        <div className="p-3 border-t border-white/10">
+        <div className="relative z-10 p-3 border-t border-white/10">
           <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-xl text-base text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors">
             <Home style={{ width: 20, height: 20 }} /> Zur Website
           </Link>
@@ -278,7 +282,7 @@ export function DashboardShell() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-border/70 bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/70 flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
+        <header className="glass-light h-16 border-b-0 flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button className="lg:hidden p-2" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
             <div className="hidden sm:flex items-center text-sm text-muted-foreground truncate">
