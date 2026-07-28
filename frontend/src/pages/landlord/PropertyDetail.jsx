@@ -141,7 +141,7 @@ export default function PropertyDetail() {
           <TabsTrigger value="overview" data-testid="tab-overview">Details</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pipeline" className="mt-6 relative">
+        <TabsContent value="pipeline" className="-mx-6 -my-6 p-6 relative">
           {paymentLocked ? (
             <div className="relative">
               <div className="pointer-events-none select-none blur-sm opacity-60"><Pipeline propertyId={id} /></div>

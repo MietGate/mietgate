@@ -12,6 +12,8 @@ export const STATUS_COLUMNS = [
   { key: "archiv", label: "Archiv", dot: "bg-muted-foreground" },
 ];
 
+export const ACTIVE_COLUMNS = STATUS_COLUMNS.filter((c) => c.key !== "archiv");
+
 /* Applicants still in the running — the ones a "someone else got it" mail would reach. */
 export const ACTIVE_STAGES = ["neu", "pruefung", "interessant", "besichtigung", "favorit"];
 

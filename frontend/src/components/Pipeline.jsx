@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChatThread } from "@/components/ChatThread";
-import { STATUS_COLUMNS as COLUMNS, ACTIVE_STAGES, confirmStatusChange } from "@/lib/applicationStatus";
+import { STATUS_COLUMNS, ACTIVE_COLUMNS, ACTIVE_STAGES, confirmStatusChange } from "@/lib/applicationStatus";
 import { toast } from "sonner";
 import { Star, FileText, Download, Loader2, User, CalendarPlus, Lock, Check, PartyPopper, Maximize2, Minimize2 } from "lucide-react";
 
@@ -213,7 +213,7 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
                 <Label2>Status</Label2>
                 <Select value={app.status} onValueChange={changeStatus}>
                   <SelectTrigger className="mt-1.5" data-testid="app-status-select"><SelectValue /></SelectTrigger>
-                  <SelectContent>{COLUMNS.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{STATUS_COLUMNS.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
 
@@ -375,6 +375,7 @@ export function Pipeline({ propertyId }) {
   const [sortBy, setSortBy] = useState("new");
   const [viewingByApp, setViewingByApp] = useState({});
   const [searchParams, setSearchParams] = useSearchParams();
+  const [showArchive, setShowArchive] = useState(false);
 
   const load = useCallback(async () => {
     const [appsRes, viewRes] = await Promise.all([
@@ -452,7 +453,7 @@ export function Pipeline({ propertyId }) {
       <div className="sm:hidden space-y-2">
         {visible.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Keine Treffer.</p>}
         {[...visible].sort(sortFn).map((a) => {
-          const col = COLUMNS.find((c) => c.key === a.status);
+          const col = STATUS_COLUMNS.find((c) => c.key === a.status);
           return (
             <div key={a.id} onClick={() => setActiveId(a.id)} data-testid={`mobile-app-card-${a.id}`}
               role="button" tabIndex={0}
@@ -478,9 +479,16 @@ export function Pipeline({ propertyId }) {
       </div>
 
       {/* Desktop: drag-and-drop kanban */}
+      <div className="mb-4 flex items-center justify-between">
+        <div />
+        <Button variant={showArchive ? "default" : "outline"} size="sm" onClick={() => setShowArchive(!showArchive)} data-testid="toggle-archive">
+          {showArchive ? "Aktive anzeigen" : "Archiv anzeigen"}
+        </Button>
+      </div>
+
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="hidden sm:flex gap-4 overflow-x-auto pb-4 kanban-scroll">
-          {COLUMNS.map((col) => {
+          {(showArchive ? [STATUS_COLUMNS.find((c) => c.key === "archiv")] : ACTIVE_COLUMNS).map((col) => {
             const items = visible.filter((a) => a.status === col.key).sort(sortFn);
             return (
               <Droppable droppableId={col.key} key={col.key}>
