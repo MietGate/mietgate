@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useOutletContext, Link } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { Pipeline } from "@/components/Pipeline";
 import { Viewings } from "@/components/Viewings";
@@ -26,6 +26,7 @@ export default function PropertyDetail() {
   const [deleting, setDeleting] = useState(false);
   const [choosingPlan, setChoosingPlan] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { setFullWidth } = useOutletContext() || {};
 
   const load = () => api.get(`/properties/${id}`).then((r) => setProp(r.data)).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
   useEffect(() => {
@@ -33,11 +34,19 @@ export default function PropertyDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (!prop) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
-
   /* The URL is the single source of truth for the active tab, so deep links from elsewhere
      (onboarding, the handover block) still switch tabs after the landlord has clicked around. */
-  const tab = searchParams.get("tab") || (prop.link_active ? "pipeline" : "link");
+  const tab = prop ? (searchParams.get("tab") || (prop.link_active ? "pipeline" : "link")) : null;
+  // The pipeline board wants the room a 1400px-capped, centered page doesn't give it — every
+  // other tab here keeps the normal max-width. Must run before the loading early-return below
+  // so hook order stays stable across the loading -> loaded transition.
+  useEffect(() => {
+    setFullWidth?.(tab === "pipeline");
+    return () => setFullWidth?.(false);
+  }, [tab, setFullWidth]);
+
+  if (!prop) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
   const setTab = (v) => {
     const next = new URLSearchParams(searchParams); next.set("tab", v);
     setSearchParams(next, { replace: true });
@@ -141,7 +150,7 @@ export default function PropertyDetail() {
           <TabsTrigger value="overview" data-testid="tab-overview">Details</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pipeline" className="-mx-6 -my-6 p-6 relative">
+        <TabsContent value="pipeline" className="mt-6 relative">
           {paymentLocked ? (
             <div className="relative">
               <div className="pointer-events-none select-none blur-sm opacity-60"><Pipeline propertyId={id} /></div>

@@ -186,6 +186,10 @@ export function DashboardShell() {
   const [open, setOpen] = useState(false);
   const [supportsTeam, setSupportsTeam] = useState(true);
   const [badges, setBadges] = useState({});
+  // A page (currently only the Pipeline board) can opt out of the default max-width via
+  // useOutletContext — it's still bounded by this flex column, not the raw viewport, so it
+  // correctly stops short of the sidebar instead of running underneath it.
+  const [fullWidth, setFullWidth] = useState(false);
 
   useEffect(() => {
     if (user?.role === "landlord" || (user?.role !== "admin" && user?.role !== "applicant" && user?.org_id)) {
@@ -308,8 +312,8 @@ export function DashboardShell() {
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-8 max-w-[1400px] w-full mx-auto">
-          <Outlet />
+        <main className={`flex-1 p-4 lg:p-8 w-full mx-auto ${fullWidth ? "max-w-none" : "max-w-[1400px]"}`}>
+          <Outlet context={{ setFullWidth }} />
         </main>
       </div>
     </div>
