@@ -225,20 +225,13 @@ export function DashboardShell() {
           desktop — with plain `static` its box stretched to match the main column's full
           (often scrollable, taller-than-viewport) height, pushing "Hilfe & Support" and
           "Zur Website"/"Abmelden" below the fold on any page longer than one screen. */}
-      <aside className={`app-shell-sidebar font-sidebar relative fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen text-white flex flex-col overflow-hidden transition-transform bg-[linear-gradient(165deg,hsl(214,60%,9%)_0%,hsl(220,55%,6%)_55%,hsl(224,45%,4%)_100%)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-        {/* Soft radial brand glow behind the nav — the onepage.io dark-panel signature.
-            filter:blur on these self-contained shapes (not backdrop-filter on the panel
-            itself, which read as a muddy smear with nothing but flat page background to
-            sample) so the glow is always clean regardless of what's on the other side. */}
-        <div className="pointer-events-none absolute -top-20 -left-20 h-64 w-64 rounded-full bg-primary/30 blur-[70px] z-0" />
-        <div className="pointer-events-none absolute top-1/2 -right-24 h-72 w-72 rounded-full bg-premium/[0.08] blur-[90px] z-0" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_60%_at_50%_0%,rgba(255,255,255,0.05),transparent_60%)] z-0" />
-        <div className="h-16 relative z-10 flex items-center justify-center px-3 border-b border-white/10">
+      <aside className={`font-sidebar fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <div className="h-16 flex items-center justify-center px-3 border-b border-white/10">
           <Link to="/" className="flex items-center justify-center w-full">
             <img src="/mietgate-logo-wide.png" alt="MietGate" className="h-10 w-auto" />
           </Link>
         </div>
-        <nav className="relative z-10 flex-1 flex flex-col p-3 overflow-y-auto">
+        <nav className="flex-1 flex flex-col p-3 overflow-y-auto">
           <div className="space-y-1">
             {nav.map((item) => {
               const active = location.pathname === item.to || (item.to !== "/dashboard" && item.to !== "/admin" && item.to !== "/bewerber" && location.pathname.startsWith(item.to));
@@ -272,7 +265,7 @@ export function DashboardShell() {
             </Link>
           )}
         </nav>
-        <div className="relative z-10 p-3 border-t border-white/10">
+        <div className="p-3 border-t border-white/10">
           <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-xl text-base text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors">
             <Home style={{ width: 20, height: 20 }} /> Zur Website
           </Link>
@@ -284,8 +277,8 @@ export function DashboardShell() {
       {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setOpen(false)} />}
 
       {/* Main */}
-      <div className="app-content-bg flex-1 flex flex-col min-w-0">
-        <header className="glass-light h-16 border-b-0 flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
+      <div className="flex-1 flex flex-col min-w-0 bg-background">
+        <header className="h-16 border-b border-border bg-card flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button className="lg:hidden p-2" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
             <div className="hidden sm:flex items-center text-sm text-muted-foreground truncate">

@@ -96,7 +96,7 @@ function PremiumCard() {
   }
 
   return (
-    <div className="glass-dark hero-glow animate-float relative overflow-hidden rounded-2xl text-white p-7 shadow-soft-lg" data-testid="premium-upsell">
+    <div className="glass-dark hero-glow relative overflow-hidden rounded-2xl text-white p-7 shadow-soft-lg" data-testid="premium-upsell">
       <div className="relative flex items-start gap-4">
         <div className="h-12 w-12 shrink-0 rounded-xl bg-premium/15 ring-1 ring-premium/30 text-premium flex items-center justify-center">
           <Crown className="h-6 w-6" />
