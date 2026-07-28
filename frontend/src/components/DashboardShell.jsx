@@ -88,7 +88,7 @@ function HeaderSearch({ role }) {
   ));
 
   const dropdown = open && q.trim().length >= 2 && (
-    <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-30 max-h-80 overflow-y-auto" data-testid="search-results">
+    <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border/70 rounded-2xl shadow-soft-lg overflow-hidden z-30 max-h-80 overflow-y-auto" data-testid="search-results">
       {!hasResults && <div className="px-3 py-4 text-sm text-muted-foreground text-center">Keine Treffer</div>}
       {renderGroups("w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors")}
     </div>
@@ -101,7 +101,7 @@ function HeaderSearch({ role }) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <input value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
           placeholder={cfg.placeholder} data-testid="header-search"
-          className="w-full pl-10 pr-3 py-2.5 text-base rounded-md border border-border bg-secondary/40 focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors" />
+          className="w-full pl-10 pr-3 py-2.5 text-base rounded-full border border-border/70 bg-secondary/40 focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/25 transition-colors" />
         {dropdown}
       </div>
 
@@ -151,7 +151,7 @@ function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="relative p-2.5 rounded-md hover:bg-secondary transition-colors" data-testid="notification-bell">
+        <button className="relative p-2.5 rounded-full hover:bg-secondary transition-colors" data-testid="notification-bell">
           <Bell className="h-6 w-6 text-muted-foreground" />
           {count > 0 && (
             <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-xs font-bold h-5 min-w-5 px-1 rounded-full flex items-center justify-center">
@@ -239,13 +239,14 @@ export function DashboardShell() {
               return (
                 <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
                   data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-base font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
-                  <Icon className="h-4.5 w-4.5" style={{ width: 20, height: 20 }} />
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all ${active ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
+                  <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${active ? "bg-primary text-primary-foreground shadow-soft" : "bg-white/5 text-white/70"}`}>
+                    <Icon style={{ width: 17, height: 17 }} />
+                  </span>
                   <span className="flex-1">{item.label}</span>
                   {item.badge && badges[item.badge] > 0 && (
                     <span data-testid={`nav-badge-${item.badge}`}
-                      className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center tabular-nums ${
-                        active ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>
+                      className="min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center tabular-nums bg-primary text-primary-foreground">
                       {badges[item.badge] > 99 ? "99+" : badges[item.badge]}
                     </span>
                   )}
@@ -257,18 +258,18 @@ export function DashboardShell() {
               divider instead of trailing directly after the workflow items above it. */}
           {user?.role !== "admin" && (
             <Link to="/hilfe" onClick={() => setOpen(false)} data-testid="nav-hilfe"
-              className={`mt-auto flex items-center gap-3 px-3 py-2.5 rounded-md text-base font-medium transition-colors ${
-                location.pathname === "/hilfe" ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
+              className={`mt-auto flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-colors ${
+                location.pathname === "/hilfe" ? "bg-white/12 text-white" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
               <LifeBuoy style={{ width: 20, height: 20 }} />
               Hilfe & Support
             </Link>
           )}
         </nav>
         <div className="p-3 border-t border-white/10">
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-md text-base text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-xl text-base text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors">
             <Home style={{ width: 20, height: 20 }} /> Zur Website
           </Link>
-          <button onClick={doLogout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-base text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+          <button onClick={doLogout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-base text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors">
             <LogOut style={{ width: 20, height: 20 }} /> Abmelden
           </button>
         </div>
@@ -277,7 +278,7 @@ export function DashboardShell() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-border bg-card flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
+        <header className="h-16 border-b border-border/70 bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/70 flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button className="lg:hidden p-2" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
             <div className="hidden sm:flex items-center text-sm text-muted-foreground truncate">
@@ -297,8 +298,8 @@ export function DashboardShell() {
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2.5 pl-2.5 pr-2 py-1.5 rounded-md hover:bg-secondary transition-colors" data-testid="user-menu">
-                  <div className="h-10 w-10 rounded-full bg-primary/15 text-primary flex items-center justify-center font-semibold text-base">
+                <button className="flex items-center gap-2.5 pl-2.5 pr-2 py-1.5 rounded-full hover:bg-secondary transition-colors" data-testid="user-menu">
+                  <div className="h-10 w-10 rounded-full bg-primary/15 text-primary flex items-center justify-center font-semibold text-base ring-2 ring-primary/10">
                     {(user?.first_name?.[0] || user?.name?.[0] || "U").toUpperCase()}
                   </div>
                   <span className="hidden md:block text-base font-medium max-w-[160px] truncate">{user?.name}</span>

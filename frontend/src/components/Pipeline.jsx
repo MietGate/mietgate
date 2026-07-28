@@ -471,7 +471,7 @@ export function Pipeline({ propertyId }) {
             <div key={a.id} onClick={() => setActiveId(a.id)} data-testid={`mobile-app-card-${a.id}`}
               role="button" tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActiveId(a.id); } }}
-              className="rounded-lg border border-border bg-card p-3 cursor-pointer active:bg-secondary/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              className="rounded-xl border border-border/70 bg-card shadow-soft p-3 cursor-pointer active:bg-secondary/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">{getApplicantName(a)}</p>
@@ -507,8 +507,8 @@ export function Pipeline({ propertyId }) {
               <Droppable droppableId={col.key} key={col.key}>
                 {(provided, snapshot) => (
                   <div ref={provided.innerRef} {...provided.droppableProps} data-testid={`kanban-column-${col.key}`}
-                    className={`min-w-[270px] w-[270px] rounded-xl border border-border bg-secondary/30 flex flex-col ${snapshot.isDraggingOver ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}>
-                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-border sticky top-0 bg-secondary/60 backdrop-blur rounded-t-xl">
+                    className={`min-w-[270px] w-[270px] rounded-2xl border border-border/70 bg-secondary/30 flex flex-col ${snapshot.isDraggingOver ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}>
+                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/70 sticky top-0 bg-secondary/60 backdrop-blur rounded-t-2xl">
                       <span className="flex items-center gap-2 font-semibold text-sm"><span className={`h-2 w-2 rounded-full ${col.dot}`} />{col.label}</span>
                       <span className="text-xs font-semibold text-muted-foreground bg-card rounded-full px-2 py-0.5 min-w-[22px] text-center">{items.length}</span>
                     </div>
@@ -518,7 +518,7 @@ export function Pipeline({ propertyId }) {
                           {(prov) => (
                             <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps}
                               onClick={() => setActiveId(a.id)} data-testid={`app-card-${a.id}`}
-                              className="rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all">
+                              className="rounded-xl border border-border/70 bg-card shadow-soft p-3 cursor-pointer hover:border-primary/40 hover:shadow-soft-lg hover:-translate-y-0.5 transition-all">
                               <div className="flex items-start justify-between gap-2">
                                 <p className="font-medium text-sm truncate">{getApplicantName(a)}</p>
                                 <span className={`font-mono text-[11px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${scoreColor(a.matching_score)}`}

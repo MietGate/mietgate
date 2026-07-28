@@ -67,7 +67,7 @@ h1, h2, h3, h4, .font-display {
         /* White text here fails WCAG AA (2.1:1) — amber-500 is too light a background for
            white. Reusing the brand-dark hue gets 8.8:1. */
         --premium-foreground: 224 40% 8%;
-        --radius: 0.4rem;
+        --radius: 0.9rem;
     }
     .dark {
         --background: 224 25% 6%;
@@ -95,7 +95,7 @@ h1, h2, h3, h4, .font-display {
         --brand-teal: 179 66% 42%;
         --premium: 38 92% 54%;
         --premium-foreground: 224 40% 4%;
-        --radius: 0.4rem;
+        --radius: 0.9rem;
     }
 }
 
@@ -276,4 +276,19 @@ html { font-size: 17px; }
 
 @layer base {
     [data-debug-wrapper="true"] { display: contents !important; }
+}
+
+/* onepage.io-inspired soft elevation: a diffuse, low-opacity shadow instead of the sharp
+   default shadcn shadow — used on cards/panels throughout the app shell. */
+.shadow-soft {
+    box-shadow: 0 1px 2px hsl(220 40% 10% / 0.04), 0 8px 24px -8px hsl(220 40% 10% / 0.10);
+}
+.shadow-soft-lg {
+    box-shadow: 0 2px 4px hsl(220 40% 10% / 0.04), 0 16px 40px -12px hsl(220 40% 10% / 0.16);
+}
+.dark .shadow-soft {
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.2), 0 8px 24px -8px hsl(0 0% 0% / 0.5);
+}
+.dark .shadow-soft-lg {
+    box-shadow: 0 2px 4px hsl(0 0% 0% / 0.2), 0 16px 40px -12px hsl(0 0% 0% / 0.6);
 }

@@ -11,9 +11,9 @@ import {
 
 const StatCard = ({ icon: Icon, label, value, to }) => {
   const content = (
-    <div className="rounded-xl border border-border bg-card p-5 hover:border-primary/40 transition-colors" data-testid={`stat-${label.toLowerCase().replace(/[^a-z]/g, "")}`}>
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 hover:border-primary/40 hover:shadow-soft-lg hover:-translate-y-0.5 transition-all" data-testid={`stat-${label.toLowerCase().replace(/[^a-z]/g, "")}`}>
       <div className="flex items-center justify-between">
-        <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center text-primary"><Icon className="h-5 w-5" /></div>
+        <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary"><Icon className="h-5 w-5" /></div>
         <span className="font-mono text-3xl font-extrabold">{value}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-3">{label}</p>
@@ -53,7 +53,7 @@ export default function LandlordDashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card">
+        <div className="lg:col-span-2 rounded-2xl border border-border/70 bg-card shadow-soft">
           <div className="flex items-center justify-between p-5 border-b border-border">
             <h2 className="font-display font-bold text-lg">Neueste Bewerbungen</h2>
             <Link to="/objekte" className="text-sm text-primary hover:underline flex items-center gap-1">Alle <ArrowRight className="h-3.5 w-3.5" /></Link>
@@ -81,7 +81,7 @@ export default function LandlordDashboard() {
         </div>
 
         {["active", "trialing"].includes(data.subscription_status) ? (
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5">
             <h2 className="font-display font-bold text-lg mb-4">Abo-Status</h2>
             <div className="flex items-center gap-2">
               <Badge className="bg-success text-success-foreground">
@@ -94,7 +94,7 @@ export default function LandlordDashboard() {
             </div>
           </div>
         ) : data.subscription_status === "past_due" ? (
-          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-5">
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/5 shadow-soft p-5">
             <h2 className="font-display font-bold text-lg mb-4">Abo-Status</h2>
             <div className="flex items-center gap-2">
               <Badge className="bg-destructive text-destructive-foreground">Zahlung fehlgeschlagen</Badge>
