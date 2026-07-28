@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
 import { Logo } from "@/components/Logo";
-import { Loader2, FileText, Download, Mail, Home } from "lucide-react";
+import { Loader2, FileText, Download, Mail, Home, Clock } from "lucide-react";
 
 export default function SharedDocuments() {
   const { token } = useParams();
@@ -19,7 +19,8 @@ export default function SharedDocuments() {
       <div className="min-h-screen flex items-center justify-center bg-background text-center p-6">
         <div><Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h1 className="font-display text-2xl font-bold">Freigabe nicht verfügbar</h1>
-          <p className="text-muted-foreground mt-2">Dieser Link ist ungültig oder wurde noch nicht freigegeben.</p>
+          <p className="text-muted-foreground mt-2">Dieser Link ist ungültig, abgelaufen oder wurde vom Bewerber widerrufen.</p>
+          <p className="text-muted-foreground text-sm mt-2">Bitten Sie den Bewerber bei Bedarf um eine neue Freigabe.</p>
         </div>
       </div>
     );
@@ -36,6 +37,12 @@ export default function SharedDocuments() {
         <div className="rounded-2xl border border-border bg-card p-8">
           <h1 className="font-display text-2xl font-bold">Freigegebene Dokumente von {data.display_name}</h1>
           <p className="text-muted-foreground text-sm mt-1">Diese Dokumente wurden Ihnen persönlich freigegeben.</p>
+          {data.expires_at && (
+            <p className="text-muted-foreground text-sm mt-3 flex items-center gap-1.5" data-testid="share-expiry">
+              <Clock className="h-4 w-4 shrink-0" />
+              Gültig bis {new Date(data.expires_at).toLocaleDateString("de-DE")} — danach ist der Link automatisch nicht mehr abrufbar.
+            </p>
+          )}
 
           <div className="mt-6 space-y-2">
             {data.documents.length === 0 ? (

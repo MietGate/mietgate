@@ -23,6 +23,7 @@ rate-nicht-limitierte, erratbare ID braucht (alle internen IDs sind UUID4 bzw. `
 | 5 | `GET /payments/status/{session_id}` war komplett unauthentifiziert — Statuspreisgabe + jeder Aufruf löst einen Stripe-API-Call aus | Mittel | Niedrig | `routes_payment.py` |
 | 6 | Link-Neugenerierung und Titelbild-Setzen ohne Rollenprüfung → Nur-Lese-Rolle „Assistent" konnte einen Live-Link invalidieren | Niedrig | Niedrig | `routes_property.py` |
 | 7 | Admin-Nutzersuche gab die Sucheingabe ungeschützt als Regex an MongoDB weiter (ReDoS) | Niedrig | Niedrig | `routes_admin.py` |
+| 8 | Freigabe-Links für Bewerberdokumente liefen nie ab, waren nicht widerrufbar und gaben auch künftig hochgeladene Dokumente frei | Mittel (DSGVO) | Mittel | `routes_profile.py` |
 
 **Zu #1 — Handlungsbedarf außerhalb des Codes:** Die Token standen im Render-Logstream. Wer
 Zugriff auf die Logs hatte (oder hatte), konnte jedes Konto übernehmen. Der Code ist gefixt; ob
@@ -32,6 +33,19 @@ alte Logs noch existieren und rotiert werden müssen, ist eine Frage an das Rend
 *Frontend*-Origin liegt und nicht von der API-Origin gelesen werden kann. Bleibt: Phishing unter
 einer mietgate-Domain. Jetzt wird alles außer JPEG/PNG/GIF/WebP/PDF als `attachment` mit
 `application/octet-stream` ausgeliefert.
+
+**Zu #8 — drei Teile, alle behoben:**
+- **Ablauf:** Eine Freigabe gilt jetzt 14 Tage (`SHARE_TTL_DAYS`), danach liefert der Link 404.
+- **Widerruf:** `POST /my/profile-inquiries/{id}/revoke` entfernt das Share-Token, der Link in
+  der Mailbox des Vermieters läuft danach ins Leere. Rückgängig machbar über „Erneut freigeben",
+  das ein frisches Token mit neuem Fenster ausstellt — sonst wäre Widerruf eine Einbahnstraße.
+- **Snapshot:** Beim Freigeben werden die zu diesem Zeitpunkt vorhandenen Dokument-IDs
+  festgehalten (`shared_document_ids`). Später hochgeladene Dokumente sind nicht mehr
+  automatisch mit drin. Durchgesetzt in der Listenansicht **und** im Direkt-Download.
+
+Freigaben, die vor dieser Änderung erteilt wurden, haben kein Ablaufdatum und gelten damit als
+abgelaufen — genau das offene Zeitfenster war ja das Problem. Der Bewerber kann mit einem Klick
+neu freigeben. Abgedeckt durch `backend/tests/test_document_share.py`.
 
 ---
 
@@ -62,7 +76,6 @@ einer mietgate-Domain. Jetzt wird alles außer JPEG/PNG/GIF/WebP/PDF als `attach
 
 | Befund | Bewertung | Warum offen |
 |--------|-----------|-------------|
-| **Freigabe-Links für Bewerberdokumente (`/geteilt/{token}`) laufen nie ab und lassen sich nicht widerrufen.** Sie geben außerdem *alle* aktuellen und künftigen Dokumente des Bewerbers frei, nicht nur die zum Zeitpunkt der Freigabe vorhandenen. | Mittel, DSGVO-relevant (Art. 5 Abs. 1 lit. e) | Ist ein Produkt-Feature (Ablaufdatum + Widerruf-Button + Snapshot statt Live-Liste), kein Ein-Zeilen-Fix. Braucht eine Entscheidung, nicht nur Code. |
 | `POST /public/documents/upload` ist unauthentifiziert und hat kein Ratelimit — mit gültigem Objekt-Code und Bewerbungs-ID lassen sich bis zu 30 Dateien pro Bewerbung hochladen. | Niedrig | Beide Werte müssen bekannt sein (UUID4), Obergrenze greift. Ratelimit wäre sinnvoll, ist aber Missbrauchs-Härtung, kein Autorisierungsfehler. |
 | Kein Ratelimit auf `POST /public/apply` | Niedrig | Spam-Vektor auf Bewerbungslinks. Vor echtem Traffic nicht messbar. |
 | Keine Content-Security-Policy im Security-Header-Middleware | Niedrig | Die API liefert kein HTML mehr aus (siehe #4), damit stark entwertet. |

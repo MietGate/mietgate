@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Inbox, FileText, PartyPopper, ExternalLink, Zap, Wifi, Truck, Sparkles, ShieldCheck, Crown, Check, Copy, Link2, Mail, Phone, UserCheck, X } from "lucide-react";
+import { Loader2, Inbox, FileText, PartyPopper, ExternalLink, Zap, Wifi, Truck, Sparkles, ShieldCheck, Crown, Check, Copy, Link2, Mail, Phone, UserCheck, X, Undo2, Clock } from "lucide-react";
 
 const STATUS_COLOR = {
   neu: "secondary", zusage: "default", absage: "destructive", favorit: "default",
@@ -184,9 +184,23 @@ function InquiriesList() {
     }
   };
 
+  const revoke = async (id) => {
+    setResponding(id);
+    try {
+      await api.post(`/my/profile-inquiries/${id}/revoke`);
+      toast.success("Freigabe widerrufen — der Link funktioniert nicht mehr.");
+      load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    } finally {
+      setResponding(null);
+    }
+  };
+
   if (!inquiries || inquiries.length === 0) return null;
   const pending = inquiries.filter((i) => i.status === "pending");
   const resolved = inquiries.filter((i) => i.status !== "pending");
+  const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString("de-DE") : null);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6" data-testid="inquiries-card">
@@ -194,6 +208,10 @@ function InquiriesList() {
         <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary shrink-0"><UserCheck className="h-5 w-5" /></div>
         <h2 className="font-display text-xl font-bold">Anfragen von Vermietern</h2>
       </div>
+      <p className="text-sm text-muted-foreground mt-3">
+        Eine Freigabe umfasst genau die Dokumente, die Sie zu diesem Zeitpunkt hinterlegt haben,
+        gilt 14 Tage und lässt sich jederzeit widerrufen.
+      </p>
       <div className="mt-5 space-y-3">
         {pending.map((i) => (
           <div key={i.id} className="rounded-xl border border-border bg-secondary/30 p-4" data-testid={`inquiry-${i.id}`}>
@@ -216,19 +234,41 @@ function InquiriesList() {
             </div>
           </div>
         ))}
-        {resolved.slice(0, 5).map((i) => (
-          <div key={i.id} className="rounded-xl border border-border/60 p-4 opacity-70" data-testid={`inquiry-${i.id}`}>
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <p className="text-sm text-muted-foreground">{i.property_label || (i.contact_email || i.contact_phone)}</p>
-                {i.status === "granted" && i.share_url && (
-                  <a href={i.share_url} target="_blank" rel="noreferrer" className="text-primary text-xs hover:underline">Freigabe-Link ansehen</a>
-                )}
+        {resolved.slice(0, 5).map((i) => {
+          const expired = i.status === "granted" && !i.share_active;
+          const label = i.share_active ? `Freigegeben bis ${fmtDate(i.share_expires_at)}`
+            : expired ? "Abgelaufen" : i.status === "revoked" ? "Widerrufen" : "Abgelehnt";
+          return (
+            <div key={i.id} className={`rounded-xl border border-border/60 p-4 ${i.share_active ? "" : "opacity-70"}`} data-testid={`inquiry-${i.id}`}>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-sm text-muted-foreground">{i.property_label || (i.contact_email || i.contact_phone)}</p>
+                  {i.share_active && i.share_url && (
+                    <>
+                      <a href={i.share_url} target="_blank" rel="noreferrer" className="text-primary text-xs hover:underline">Freigabe-Link ansehen</a>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <Clock className="h-3 w-3" /> {i.shared_document_count} Dokument{i.shared_document_count === 1 ? "" : "e"} · läuft am {fmtDate(i.share_expires_at)} automatisch ab
+                      </p>
+                    </>
+                  )}
+                  {expired && <p className="text-xs text-muted-foreground mt-1">Der Link ist abgelaufen und funktioniert nicht mehr.</p>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant={i.share_active ? "default" : "secondary"}>{label}</Badge>
+                  {i.share_active ? (
+                    <Button size="sm" variant="outline" disabled={responding === i.id} onClick={() => revoke(i.id)} data-testid={`revoke-${i.id}`}>
+                      {responding === i.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><X className="h-3.5 w-3.5 mr-1" /> Widerrufen</>}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled={responding === i.id} onClick={() => respond(i.id, "grant")} data-testid={`regrant-${i.id}`}>
+                      {responding === i.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Undo2 className="h-3.5 w-3.5 mr-1" /> Erneut freigeben</>}
+                    </Button>
+                  )}
+                </div>
               </div>
-              <Badge variant={i.status === "granted" ? "default" : "secondary"}>{i.status === "granted" ? "Freigegeben" : "Abgelehnt"}</Badge>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
