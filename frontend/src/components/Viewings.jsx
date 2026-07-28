@@ -14,6 +14,25 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { CalendarDays, Plus, Users, Trash2, Loader2, UserPlus, CalendarPlus } from "lucide-react";
 import { downloadIcs } from "@/lib/ics";
+import { SegmentedDateInput } from "@/components/SegmentedDateInput";
+
+/* Date + time for a viewing, stored as one "YYYY-MM-DDTHH:MM" string like before, but
+   rendered as the segmented date (see SegmentedDateInput) paired with a plain time input
+   instead of a single native <input type="datetime-local">. That combined native control
+   is what produced the confusing behaviour: a segment could flash invalid mid-type even
+   when the year was already correctly pre-filled by us. */
+function DateTimeField({ value, onChange, testId }) {
+  const [datePart, timePart] = (value || "").split("T");
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <SegmentedDateInput value={datePart || ""} testId={testId && `${testId}-date`}
+        onChange={(d) => onChange(d ? `${d}T${timePart || "10:00"}` : "")} />
+      <Input type="time" value={timePart || ""} data-testid={testId && `${testId}-time`}
+        onChange={(e) => onChange(`${datePart || ""}T${e.target.value}`)}
+        className="w-28" />
+    </div>
+  );
+}
 
 export const TYPE_LABEL = { single: "Einzelbesichtigung", slots: "Zeitfenster", group: "Massenbesichtigung" };
 
@@ -75,11 +94,17 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, prese
 
   const submit = async () => {
     if (!targetProperty) { toast.error("Bitte wählen Sie ein Objekt aus."); return; }
+    // A date and time typed in the "wrong" order can sit half-composed (e.g. "T14:00"
+    // with no date yet) — only a fully-formed value should ever reach the backend.
+    const isCompleteDateTime = (v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v || "");
+    if (type !== "slots" && !isCompleteDateTime(form.datetime)) {
+      toast.error("Bitte Datum und Uhrzeit vollständig angeben."); return;
+    }
     setSaving(true);
     const payload = {
       property_id: targetProperty, type, title: form.title || "Besichtigung",
       datetime: type === "slots" ? null : form.datetime,
-      slots: type === "slots" ? slots.filter(Boolean) : [],
+      slots: type === "slots" ? slots.filter(isCompleteDateTime) : [],
       max_participants: form.max_participants ? Number(form.max_participants) : null,
       notes: form.notes,
       duration_minutes: form.duration_minutes ? Number(form.duration_minutes) : 30,
@@ -138,14 +163,18 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, prese
           </div>
           <div><Label>Titel</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1.5" placeholder="z.B. Besichtigung Samstag" /></div>
           {type !== "slots" ? (
-            <div><Label>Datum & Uhrzeit</Label><Input type="datetime-local" value={form.datetime} onChange={(e) => setForm({ ...form, datetime: e.target.value })} className="mt-1.5" data-testid="viewing-datetime" /></div>
+            <div><Label>Datum & Uhrzeit</Label>
+              <div className="mt-1.5">
+                <DateTimeField value={form.datetime} onChange={(v) => setForm({ ...form, datetime: v })} testId="viewing-datetime" />
+              </div>
+            </div>
           ) : (
             <div className="space-y-3">
               <div>
                 <Label>Zeitfenster</Label>
                 <div className="space-y-2 mt-1.5">
                   {slots.map((s, i) => (
-                    <Input key={i} type="datetime-local" value={s} onChange={(e) => { const n = [...slots]; n[i] = e.target.value; setSlots(n); }} />
+                    <DateTimeField key={i} value={s} onChange={(v) => { const n = [...slots]; n[i] = v; setSlots(n); }} />
                   ))}
                   <Button type="button" variant="outline" size="sm" onClick={() => setSlots([...slots, ""])}>+ Slot</Button>
                 </div>

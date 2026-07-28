@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/lib/api";
 import { validateFile } from "@/lib/validateFile";
+import { useSEO } from "@/lib/seo";
+import { SegmentedDateInput } from "@/components/SegmentedDateInput";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
 
@@ -101,6 +103,18 @@ export default function PublicApplication() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
 
+  // It's a specific flat, not the homepage — sharing this link should show that flat's
+  // own photo and name, not the generic MietGate card. Called unconditionally (before the
+  // early returns below) so the hook order stays stable across loading/error/loaded states;
+  // useSEO itself no-ops on the still-undefined values while `data` hasn't arrived yet.
+  const prop = data?.property;
+  useSEO({
+    title: prop ? `Bewerbung: ${prop.title}` : undefined,
+    description: prop ? `Bewerben Sie sich in wenigen Minuten für „${prop.title}"${prop.city ? ` in ${prop.city}` : ""}.` : undefined,
+    path: `/b/${code}`,
+    image: prop?.image_url ? `${BACKEND}${prop.image_url}` : undefined,
+  });
+
   if (error === "payment_locked") return <div className="min-h-screen flex items-center justify-center bg-background text-center p-6"><div><Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h1 className="font-display text-2xl font-bold">Bewerbung vorübergehend pausiert</h1><p className="text-muted-foreground mt-2 max-w-md">Dieser Bewerbungslink ist aktuell pausiert, da der Vermieter eine Zahlung aktualisieren muss. Ihre bisherigen Eingaben bleiben in diesem Browser gespeichert — bitte versuchen Sie es später erneut.</p></div></div>;
   if (error) return <div className="min-h-screen flex items-center justify-center bg-background text-center p-6"><div><Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h1 className="font-display text-2xl font-bold">Link nicht verfügbar</h1><p className="text-muted-foreground mt-2">Dieser Bewerbungslink ist ungültig oder wurde deaktiviert.</p></div></div>;
   if (!data) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -154,8 +168,10 @@ export default function PublicApplication() {
                 {f.options?.map((o) => <SelectItem key={o} value={o}>{f.option_labels?.[o] || o}</SelectItem>)}
               </SelectContent>
             </Select>
+          ) : f.type === "date" ? (
+            <SegmentedDateInput value={val} onChange={(v) => set(f.key, v)} testId={`field-${f.key}`} />
           ) : (
-            <Input {...common} type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "tel" ? "tel" : f.type === "email" ? "email" : "text"}
+            <Input {...common} type={f.type === "number" ? "number" : f.type === "tel" ? "tel" : f.type === "email" ? "email" : "text"}
               value={val} onChange={(e) => set(f.key, e.target.value)} />
           )}
         </div>
@@ -367,11 +383,11 @@ export default function PublicApplication() {
                   <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
                 </Button>
                 {step < lastStep ? (
-                  <Button type="button" onClick={goNext} data-testid="funnel-next">
+                  <Button type="button" onClick={goNext} disabled={!validStep()} data-testid="funnel-next">
                     Weiter <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 ) : (
-                  <Button type="submit" size="lg" disabled={submitting} data-testid="submit-application">
+                  <Button type="submit" size="lg" disabled={submitting || !validStep()} data-testid="submit-application">
                     {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Bewerbung absenden
                   </Button>
                 )}

@@ -50,6 +50,11 @@ def _public_property(prop, org):
         "form_config": prop.get("form_config", {}),
         "code": prop["application_code"],
         "branding": branding,
+        # For social-share previews: the flat's own photo and name, not a generic card.
+        # Same unauthenticated route PropertyImages already uses to render photos, so
+        # nothing new is exposed here.
+        "image_url": (f"/api/public/properties/{prop['id']}/images/{prop['title_image_id']}"
+                     if prop.get("title_image_id") else None),
     }
 
 
