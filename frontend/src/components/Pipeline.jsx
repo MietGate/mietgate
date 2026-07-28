@@ -322,7 +322,15 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
                     <CalendarPlus className="h-4 w-4 mr-1" /> Einladen
                   </Button>
                 </div>
-                {viewings.length === 0 && <p className="text-xs text-muted-foreground mt-1">Erstellen Sie zuerst einen Termin im Tab „Besichtigungen".</p>}
+                {viewings.length === 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground">Für dieses Objekt gibt es noch keinen Termin.</p>
+                    <Button size="sm" variant="outline" className="mt-2" data-testid="create-viewing-inline"
+                      onClick={() => { onClose(); setSearchParams({ tab: "viewings" }, { replace: true }); }}>
+                      <CalendarPlus className="h-4 w-4 mr-1" /> Termin erstellen
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -370,6 +378,31 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
 
 const Label2 = ({ children }) => <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</span>;
 
+/* Appointment state on the card itself — otherwise "Besichtigung" says nothing about
+   whether a date exists or whether the applicant has confirmed it. */
+const VIEWING_CHIP = {
+  confirmed: { label: "bestätigt", cls: "bg-success/15 text-success border-success/30" },
+  invited: { label: "ausstehend", cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  reschedule_requested: { label: "Umbuchung", cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  declined: { label: "abgesagt", cls: "bg-destructive/10 text-destructive border-destructive/20" },
+};
+
+function ViewingChip({ info }) {
+  if (!info) return null;
+  const chip = VIEWING_CHIP[info.status] || VIEWING_CHIP.invited;
+  const when = info.when
+    ? new Date(info.when).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : "Termin offen";
+  return (
+    <div className={`mt-2 flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium ${chip.cls}`}
+      data-testid="card-viewing-chip">
+      <CalendarPlus className="h-3 w-3 shrink-0" />
+      <span className="truncate">{when}</span>
+      <span className="ml-auto shrink-0">· {chip.label}</span>
+    </div>
+  );
+}
+
 const getApplicantName = (a) => [a.form_data?.vorname, a.form_data?.nachname].filter(Boolean).join(" ") || a.applicant_email;
 
 const SORTERS = {
@@ -384,11 +417,25 @@ export function Pipeline({ propertyId }) {
   const [activeId, setActiveId] = useState(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("new");
+  const [viewingByApp, setViewingByApp] = useState({});
   const [searchParams, setSearchParams] = useSearchParams();
 
   const load = useCallback(async () => {
-    const { data } = await api.get(`/applications?property_id=${propertyId}`);
-    setApps(data); setLoading(false);
+    const [appsRes, viewRes] = await Promise.all([
+      api.get(`/applications?property_id=${propertyId}`),
+      api.get(`/viewings?property_id=${propertyId}`).catch(() => ({ data: [] })),
+    ]);
+    setApps(appsRes.data);
+    // application_id -> the appointment that applicant is on, so the card in the
+    // "Besichtigung" column can show when it is and whether it's still unconfirmed.
+    const map = {};
+    for (const v of viewRes.data) {
+      for (const p of v.participants || []) {
+        if (p.application_id) map[p.application_id] = { when: p.slot || v.datetime, status: p.status };
+      }
+    }
+    setViewingByApp(map);
+    setLoading(false);
   }, [propertyId]);
 
   useEffect(() => { load(); }, [load]);
@@ -468,6 +515,7 @@ export function Pipeline({ propertyId }) {
                 {a.stars > 0 && <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{a.stars}</span>}
                 <span className="flex items-center gap-0.5"><FileText className="h-3 w-3" />{a.document_count}</span>
               </div>
+              <ViewingChip info={viewingByApp[a.id]} />
             </div>
           );
         })}
@@ -503,6 +551,7 @@ export function Pipeline({ propertyId }) {
                                 {a.stars > 0 && <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{a.stars}</span>}
                                 <span className="flex items-center gap-0.5"><FileText className="h-3 w-3" />{a.document_count}</span>
                               </div>
+                              <ViewingChip info={viewingByApp[a.id]} />
                             </div>
                           )}
                         </Draggable>

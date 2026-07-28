@@ -140,6 +140,45 @@ async def unread_count(user: dict = Depends(get_current_user)):
     return {"count": count}
 
 
+@router.get("/badges")
+async def sidebar_badges(user: dict = Depends(get_current_user)):
+    """Counts for the sidebar: what still needs this user's attention, per section.
+
+    Cheap counts only — this is polled alongside the notification bell, so it must not
+    turn into a second dashboard query.
+    """
+    out = {"messages": await db.messages.count_documents(
+        {"recipient_id": user["id"], "read": False})}
+
+    if user.get("role") == "applicant":
+        # Appointments the applicant was invited to but has not answered yet.
+        out["viewings"] = await db.viewings.count_documents({
+            "cancelled": {"$ne": True},
+            "participants": {"$elemMatch": {"applicant_user_id": user["id"], "status": "invited"}},
+        })
+        # Requested documents with no matching upload yet.
+        apps = await db.applications.find(
+            {"applicant_user_id": user["id"], "requested_documents": {"$exists": True, "$ne": []}},
+            {"requested_documents": 1, "_id": 0}).to_list(200)
+        if apps:
+            have = set(await db.documents.distinct(
+                "doc_type", {"applicant_user_id": user["id"], "is_deleted": False}))
+            wanted = {d for a in apps for d in a.get("requested_documents", [])}
+            out["documents"] = len(wanted - have)
+        else:
+            out["documents"] = 0
+    elif user.get("org_id"):
+        # Applications nobody has looked at yet.
+        out["applications"] = await db.applications.count_documents(
+            {"org_id": user["org_id"], "status": "neu"})
+        # Applicants who answered an invitation and are waiting on the landlord.
+        out["calendar"] = await db.viewings.count_documents({
+            "org_id": user["org_id"], "cancelled": {"$ne": True},
+            "participants.status": "reschedule_requested",
+        })
+    return out
+
+
 @router.post("/notifications/{nid}/read")
 async def mark_read(nid: str, user: dict = Depends(get_current_user)):
     await db.notifications.update_one({"id": nid, "user_id": user["id"]}, {"$set": {"read": True}})

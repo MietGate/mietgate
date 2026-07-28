@@ -15,11 +15,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // Ordered along the landlord's actual workflow: overview → incoming → conversation → scheduling → objects.
+// `badge` names a counter from GET /badges — see routes_message.sidebar_badges.
 const landlordNav = [
   { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
-  { to: "/bewerbungen", label: "Bewerbungen", icon: Inbox },
-  { to: "/nachrichten", label: "Nachrichten", icon: MessageSquare },
-  { to: "/kalender", label: "Kalender", icon: CalendarDays },
+  { to: "/bewerbungen", label: "Bewerbungen", icon: Inbox, badge: "applications" },
+  { to: "/nachrichten", label: "Nachrichten", icon: MessageSquare, badge: "messages" },
+  { to: "/kalender", label: "Kalender", icon: CalendarDays, badge: "calendar" },
   { to: "/objekte", label: "Objekte", icon: Building2 },
   { to: "/team", label: "Team", icon: Users },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
@@ -27,9 +28,9 @@ const landlordNav = [
 
 const applicantNav = [
   { to: "/bewerber", label: "Übersicht", icon: LayoutDashboard },
-  { to: "/bewerber/nachrichten", label: "Nachrichten", icon: MessageSquare },
-  { to: "/bewerber/dokumente", label: "Dokumente", icon: FileText },
-  { to: "/bewerber/termine", label: "Termine", icon: CalendarDays },
+  { to: "/bewerber/nachrichten", label: "Nachrichten", icon: MessageSquare, badge: "messages" },
+  { to: "/bewerber/dokumente", label: "Dokumente", icon: FileText, badge: "documents" },
+  { to: "/bewerber/termine", label: "Termine", icon: CalendarDays, badge: "viewings" },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 
@@ -184,12 +185,20 @@ export function DashboardShell() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [supportsTeam, setSupportsTeam] = useState(true);
+  const [badges, setBadges] = useState({});
 
   useEffect(() => {
     if (user?.role === "landlord" || (user?.role !== "admin" && user?.role !== "applicant" && user?.org_id)) {
       api.get("/me/entitlements").then((r) => setSupportsTeam(!!r.data.supports_team)).catch(() => setSupportsTeam(false));
     }
   }, [user]);
+
+  // Refetched on every navigation so a count clears as soon as the user deals with it,
+  // instead of lingering until a full reload.
+  useEffect(() => {
+    if (!user || user.role === "admin") return;
+    api.get("/badges").then((r) => setBadges(r.data)).catch(() => {});
+  }, [user, location.pathname]);
 
   const baseNav = user?.role === "admin" ? adminNav : user?.role === "applicant" ? applicantNav : landlordNav;
   const nav = baseNav.filter((n) => n.to !== "/team" || supportsTeam);
@@ -215,7 +224,14 @@ export function DashboardShell() {
                 data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-[15px] font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
                 <Icon className="h-4.5 w-4.5" style={{ width: 20, height: 20 }} />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.badge && badges[item.badge] > 0 && (
+                  <span data-testid={`nav-badge-${item.badge}`}
+                    className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center tabular-nums ${
+                      active ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>
+                    {badges[item.badge] > 99 ? "99+" : badges[item.badge]}
+                  </span>
+                )}
               </Link>
             );
           })}

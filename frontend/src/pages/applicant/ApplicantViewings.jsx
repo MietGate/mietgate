@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, CalendarDays, MapPin, Clock, CalendarPlus } from "lucide-react";
+import { Loader2, CalendarDays, MapPin, Clock, CalendarPlus, ChevronLeft, ChevronRight, List } from "lucide-react";
 import { downloadIcs } from "@/lib/ics";
 
 function ViewingCard({ v, onChanged }) {
@@ -79,8 +79,75 @@ function ViewingCard({ v, onChanged }) {
   );
 }
 
+/* Month grid for the same appointments. Useful once someone is juggling viewings across
+   several flats, where a flat list stops answering "what does my week look like". */
+function CalendarView({ views, onChanged }) {
+  const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [selected, setSelected] = useState(null);
+
+  const byDay = {};
+  for (const v of views) {
+    const when = v.slot || v.datetime;
+    if (!when) continue;
+    const key = new Date(when).toDateString();
+    (byDay[key] = byDay[key] || []).push(v);
+  }
+
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  // Monday-first: JS getDay() is Sunday-first, so shift it.
+  const leading = (first.getDay() + 6) % 7;
+  const cells = [...Array(leading).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => new Date(month.getFullYear(), month.getMonth(), i + 1))];
+  const today = new Date().toDateString();
+  const shift = (delta) => { setMonth(new Date(month.getFullYear(), month.getMonth() + delta, 1)); setSelected(null); };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <Button variant="ghost" size="icon" onClick={() => shift(-1)} aria-label="Vorheriger Monat" data-testid="cal-prev">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <p className="font-semibold">{month.toLocaleDateString("de-DE", { month: "long", year: "numeric" })}</p>
+          <Button variant="ghost" size="icon" onClick={() => shift(1)} aria-label="Nächster Monat" data-testid="cal-next">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-muted-foreground mb-1">
+          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => <div key={d}>{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((d, i) => {
+            if (!d) return <div key={`x${i}`} />;
+            const key = d.toDateString();
+            const items = byDay[key] || [];
+            return (
+              <button key={key} type="button" onClick={() => items.length && setSelected(key)}
+                disabled={!items.length} data-testid={`cal-day-${d.getDate()}`}
+                className={`aspect-square rounded-md text-sm flex flex-col items-center justify-center transition-colors ${
+                  key === today ? "ring-1 ring-primary" : ""} ${
+                  items.length ? "bg-accent/60 font-semibold hover:bg-accent cursor-pointer" : "text-muted-foreground"} ${
+                  selected === key ? "bg-primary text-primary-foreground" : ""}`}>
+                {d.getDate()}
+                {items.length > 0 && <span className={`h-1 w-1 rounded-full mt-0.5 ${selected === key ? "bg-primary-foreground" : "bg-primary"}`} />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {/* Selecting a day filters the cards below; without a selection everything stays visible
+          so the calendar never hides appointments. */}
+      <div className="space-y-3">
+        {(selected ? byDay[selected] : views).map((v) => <ViewingCard key={v.id} v={v} onChanged={onChanged} />)}
+      </div>
+    </div>
+  );
+}
+
 export default function ApplicantViewings() {
   const [views, setViews] = useState(null);
+  const [mode, setMode] = useState("list");
   const load = () => api.get("/my/viewings").then((r) => setViews(r.data)).catch(() => setViews([]));
   useEffect(() => { load(); }, []);
 
@@ -88,11 +155,23 @@ export default function ApplicantViewings() {
 
   return (
     <div className="space-y-6 animate-fade-up max-w-3xl">
-      <div><h1 className="font-display text-3xl font-bold">Meine Termine</h1><p className="text-muted-foreground mt-1">Besichtigungstermine verwalten.</p></div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h1 className="font-display text-3xl font-bold">Meine Termine</h1><p className="text-muted-foreground mt-1">Besichtigungstermine verwalten.</p></div>
+        {views.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => setMode(mode === "list" ? "calendar" : "list")}
+            data-testid="toggle-viewing-mode">
+            {mode === "list"
+              ? <><CalendarDays className="h-4 w-4 mr-1" /> Kalenderansicht</>
+              : <><List className="h-4 w-4 mr-1" /> Listenansicht</>}
+          </Button>
+        )}
+      </div>
       {views.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground">
           <CalendarDays className="h-10 w-10 mx-auto mb-3" />Keine Termine.
         </div>
+      ) : mode === "calendar" ? (
+        <CalendarView views={views} onChanged={load} />
       ) : (
         <div className="space-y-3">{views.map((v) => <ViewingCard key={v.id} v={v} onChanged={load} />)}</div>
       )}

@@ -27,16 +27,25 @@ function Thread({ conversation, onSent }) {
   const [sending, setSending] = useState(false);
   const endRef = useRef(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  /* `silent` skips the spinner: a background refresh must not blank out a thread the
+     user is reading, which is what made sending feel slow. */
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const { data } = await api.get(`/messages?application_id=${conversation.application_id}`);
       setMessages(data);
-    } catch { toast.error("Nachrichten konnten nicht geladen werden"); }
-    finally { setLoading(false); }
+    } catch { if (!silent) toast.error("Nachrichten konnten nicht geladen werden"); }
+    finally { if (!silent) setLoading(false); }
   }, [conversation.application_id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Without this, a reply only showed up after a full page reload.
+  useEffect(() => {
+    const t = setInterval(() => load(true), 15000);
+    return () => clearInterval(t);
+  }, [load]);
+
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [messages]);
 
   const send = async () => {
@@ -45,7 +54,7 @@ function Thread({ conversation, onSent }) {
     try {
       await api.post("/messages", { application_id: conversation.application_id, body: body.trim() });
       setBody("");
-      await load();
+      await load(true);
       onSent?.();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setSending(false); }
@@ -89,13 +98,13 @@ function Thread({ conversation, onSent }) {
         <div className="flex gap-2 items-end">
           <Textarea rows={2} value={body} onChange={(e) => setBody(e.target.value)}
             placeholder="Nachricht schreiben…" data-testid="message-input"
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send(); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             className="resize-none" />
           <Button onClick={send} disabled={sending || !body.trim()} data-testid="message-send">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1.5">Strg + Enter zum Senden</p>
+        <p className="text-[11px] text-muted-foreground mt-1.5">Enter zum Senden · Umschalt + Enter für eine neue Zeile</p>
       </div>
     </div>
   );
@@ -107,14 +116,19 @@ export default function Messages() {
   const [activeId, setActiveId] = useState(null);
   const [q, setQ] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
       const { data } = await api.get("/conversations");
       setConversations(data);
-    } catch { toast.error("Postfach konnte nicht geladen werden"); }
+    } catch { if (!silent) toast.error("Postfach konnte nicht geladen werden"); }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const t = setInterval(() => load(true), 30000);
+    return () => clearInterval(t);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
