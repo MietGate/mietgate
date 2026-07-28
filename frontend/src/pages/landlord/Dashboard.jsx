@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import {
-  Building2, Inbox, FileText, CalendarDays, MessageSquare, Plus, ArrowRight, Loader2
+  Building2, Inbox, FileText, CalendarDays, MessageSquare, Plus, ArrowRight, Loader2, Zap, AlertTriangle
 } from "lucide-react";
 
 const StatCard = ({ icon: Icon, label, value, to }) => {
@@ -80,25 +80,56 @@ export default function LandlordDashboard() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-display font-bold text-lg mb-4">Abo-Status</h2>
-          <div className="flex items-center gap-2">
-            <Badge className={["active", "trialing"].includes(data.subscription_status) ? "bg-success text-success-foreground" : data.subscription_status === "past_due" ? "bg-destructive text-destructive-foreground" : ""}
-              variant={["active", "trialing"].includes(data.subscription_status) ? "default" : "secondary"}>
-              {data.subscription_status === "active" ? "Aktiv" : data.subscription_status === "trialing" ? "Testphase" : data.subscription_status === "past_due" ? "Zahlung fehlgeschlagen" : "Kein aktives Abo"}
-            </Badge>
-            {data.plan_key && <span className="text-sm text-muted-foreground capitalize">{data.plan_key}</span>}
+        {["active", "trialing"].includes(data.subscription_status) ? (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h2 className="font-display font-bold text-lg mb-4">Abo-Status</h2>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-success text-success-foreground">
+                {data.subscription_status === "active" ? "Aktiv" : "Testphase"}
+              </Badge>
+              {data.plan_key && <span className="text-sm text-muted-foreground capitalize">{data.plan_key}</span>}
+            </div>
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><MessageSquare className="h-4 w-4" /> {data.unread_messages} ungelesene Nachrichten</div>
+            </div>
           </div>
-          {!["active", "trialing"].includes(data.subscription_status) && (
-            <>
-              <p className="text-sm text-muted-foreground mt-3">Schalten Sie mehr Objekte und Funktionen frei.</p>
-              <Button asChild variant="outline" size="sm" className="mt-4 w-full"><Link to="/einstellungen?tab=abo">Paket wählen</Link></Button>
-            </>
-          )}
-          <div className="mt-6 pt-6 border-t border-border">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><MessageSquare className="h-4 w-4" /> {data.unread_messages} ungelesene Nachrichten</div>
+        ) : data.subscription_status === "past_due" ? (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-5">
+            <h2 className="font-display font-bold text-lg mb-4">Abo-Status</h2>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-destructive text-destructive-foreground">Zahlung fehlgeschlagen</Badge>
+              {data.plan_key && <span className="text-sm text-muted-foreground capitalize">{data.plan_key}</span>}
+            </div>
+            <p className="text-sm text-muted-foreground mt-3 flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-destructive" />
+              Aktualisieren Sie Ihre Zahlungsmethode, um Ihre Bewerbungslinks wieder zu aktivieren.
+            </p>
+            <Button asChild variant="outline" size="sm" className="mt-4 w-full"><Link to="/einstellungen?tab=abo">Zahlungsmethode aktualisieren</Link></Button>
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><MessageSquare className="h-4 w-4" /> {data.unread_messages} ungelesene Nachrichten</div>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Same dark-card upsell design as the "verifiziertes Mieterprofil" pitch on
+             ApplicantDocuments — one visual language for "here's a paid feature" everywhere. */
+          <div className="rounded-xl bg-brand-dark text-white p-6" data-testid="dashboard-premium-upsell">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              <p className="font-display font-bold">Mehr Objekte freischalten</p>
+            </div>
+            <p className="text-sm text-white/70 mt-2">
+              Objekt anlegen und bearbeiten ist kostenlos. Veröffentlichen Sie Ihren Bewerbungslink
+              mit einem Paket Ihrer Wahl — 3 Tage kostenlos testen, jederzeit kündbar.
+            </p>
+            <Link to="/einstellungen?tab=abo" data-testid="dashboard-premium-cta"
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity mt-4">
+              Paket wählen
+            </Link>
+            <div className="mt-5 pt-5 border-t border-white/15">
+              <div className="flex items-center gap-2 text-sm text-white/70"><MessageSquare className="h-4 w-4" /> {data.unread_messages} ungelesene Nachrichten</div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

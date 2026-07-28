@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import api, { formatApiError, openDocument } from "@/lib/api";
+import api, { formatApiError, previewDocument, downloadDocument } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { validateFile } from "@/lib/validateFile";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Upload, FileText, Trash2, Download, Link2, ShieldCheck, ExternalLink, Clock, Check } from "lucide-react";
+import { Loader2, Upload, FileText, Trash2, Download, Link2, ShieldCheck, ExternalLink, Clock, Check, Eye } from "lucide-react";
 
 const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
 const ALLOWED_EXT = ["pdf", "jpg", "jpeg", "png"];
@@ -87,8 +87,12 @@ export default function ApplicantDocuments() {
     try { await api.delete(`/documents/${id}`); toast.success("Gelöscht"); load(); }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
+  const preview = async (d) => {
+    try { await previewDocument(d.id); }
+    catch { toast.error("Vorschau fehlgeschlagen"); }
+  };
   const download = async (d) => {
-    try { await openDocument(d.id, d.original_filename); }
+    try { await downloadDocument(d.id, d.original_filename); }
     catch { toast.error("Download fehlgeschlagen"); }
   };
   const attach = async (docId, applicationId) => {
@@ -248,20 +252,21 @@ export default function ApplicantDocuments() {
         {docs.map((d) => (
           <div key={d.id} className="rounded-lg border border-border bg-card p-4" data-testid={`mydoc-${d.id}`}>
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 truncate">
+              <button onClick={() => preview(d)} className="flex items-center gap-3 truncate text-left flex-1 min-w-0" data-testid={`mydoc-preview-${d.id}`}>
                 <FileText className="h-5 w-5 text-primary shrink-0" />
                 <div className="truncate">
                   <p className="font-medium truncate">{d.doc_type}</p>
                   <p className="text-sm text-muted-foreground truncate">{d.original_filename}</p>
                 </div>
-              </div>
+              </button>
               <div className="flex items-center gap-1 shrink-0">
                 {apps.length > 0 && (
                   <button onClick={() => setAttaching(attaching === d.id ? null : d.id)} className="p-2 rounded-md hover:bg-secondary" title="Mit Bewerbung verknüpfen">
                     <Link2 className="h-4 w-4" />
                   </button>
                 )}
-                <button onClick={() => download(d)} className="p-2 rounded-md hover:bg-secondary"><Download className="h-4 w-4" /></button>
+                <button onClick={() => preview(d)} className="p-2 rounded-md hover:bg-secondary" title="Vorschau"><Eye className="h-4 w-4" /></button>
+                <button onClick={() => download(d)} className="p-2 rounded-md hover:bg-secondary" title="Herunterladen"><Download className="h-4 w-4" /></button>
                 <button onClick={() => del(d.id)} className="p-2 rounded-md hover:bg-secondary"><Trash2 className="h-4 w-4 text-destructive" /></button>
               </div>
             </div>

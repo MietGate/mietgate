@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import api, { openDocument, formatApiError } from "@/lib/api";
+import api, { previewDocument, downloadDocument, formatApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -276,11 +276,16 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
                         <span className="text-xs text-muted-foreground shrink-0 ml-2">{d.release_hint}</span>
                       </div>
                     ) : (
-                      <button key={d.id} onClick={() => openDocument(d.id, d.original_filename).catch(() => toast.error("Download fehlgeschlagen"))}
-                        className="w-full flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary transition-colors" data-testid={`doc-${d.id}`}>
-                        <span className="flex items-center gap-2 truncate"><FileText className="h-4 w-4 text-primary" /> <span className="truncate">{d.doc_type}</span></span>
-                        <Download className="h-4 w-4 text-muted-foreground" />
-                      </button>
+                      <div key={d.id} className="w-full flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary transition-colors" data-testid={`doc-${d.id}`}>
+                        <button onClick={() => previewDocument(d.id).catch(() => toast.error("Vorschau fehlgeschlagen"))}
+                          className="flex items-center gap-2 truncate flex-1 text-left" data-testid={`doc-preview-${d.id}`}>
+                          <FileText className="h-4 w-4 text-primary shrink-0" /> <span className="truncate">{d.doc_type}</span>
+                        </button>
+                        <button onClick={() => downloadDocument(d.id, d.original_filename).catch(() => toast.error("Download fehlgeschlagen"))}
+                          className="p-1 rounded hover:bg-background text-muted-foreground shrink-0 ml-2" title="Herunterladen" data-testid={`doc-download-${d.id}`}>
+                          <Download className="h-4 w-4" />
+                        </button>
+                      </div>
                     )
                   ))}
                 </div>

@@ -56,8 +56,11 @@ async def public_upload(code: str = Form(...), application_id: str = Form(...),
         raise HTTPException(status_code=400, detail="Maximale Anzahl Dokumente für diese Bewerbung erreicht")
     rec = await _store_document(file, doc_type, app["applicant_user_id"],
                                 application_id, app["org_id"], app["property_id"])
+    # Deep-link straight to the applicant's card, not just the property — otherwise clicking
+    # the notification lands on the Kanban board with no obvious next step.
     await notify(prop.get("created_by"), "new_document", "Neues Dokument",
-                f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).", f"/objekte/{app['property_id']}")
+                f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).",
+                f"/objekte/{app['property_id']}?tab=pipeline&open={application_id}")
     return rec
 
 
@@ -77,7 +80,8 @@ async def upload_document(doc_type: str = Form("Sonstiges"),
     if org_id:
         prop = await db.properties.find_one({"id": property_id}, NO_ID)
         await notify(prop.get("created_by"), "new_document", "Neues Dokument",
-                     f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).", f"/objekte/{property_id}")
+                     f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).",
+                     f"/objekte/{property_id}?tab=pipeline&open={application_id}")
     return rec
 
 
@@ -161,7 +165,8 @@ async def attach_document(doc_id: str, application_id: str = Form(...),
     prop = await db.properties.find_one({"id": app["property_id"]}, NO_ID)
     if prop:
         await notify(prop.get("created_by"), "new_document", "Neues Dokument",
-                     f"Ein Bewerber hat ein Dokument verknüpft ({rec.get('doc_type', 'Sonstiges')}).", f"/objekte/{app['property_id']}")
+                     f"Ein Bewerber hat ein Dokument verknüpft ({rec.get('doc_type', 'Sonstiges')}).",
+                     f"/objekte/{app['property_id']}?tab=pipeline&open={application_id}")
     return {"ok": True}
 
 
