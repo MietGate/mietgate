@@ -112,7 +112,7 @@ export function MarketingFooter() {
         <div className="grid md:grid-cols-4 gap-10">
           <div className="md:col-span-1">
             <Logo textClass="text-white" className="h-8 bg-white rounded-md p-0.5" />
-            <p className="mt-4 text-sm text-white/50 max-w-xs">Digitales Vermietungsmanagement für den deutschen Immobilienmarkt.</p>
+            <p className="mt-4 text-sm text-white/50 max-w-xs">Mietbewerbungen digital verwalten – für den deutschen Immobilienmarkt.</p>
             <div className="mt-4">
               <SocialLinks />
             </div>
