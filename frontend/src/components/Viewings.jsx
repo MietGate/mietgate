@@ -36,6 +36,11 @@ function DateTimeField({ value, onChange, testId }) {
 
 export const TYPE_LABEL = { single: "Einzelbesichtigung", slots: "Zeitfenster", group: "Massenbesichtigung" };
 
+// A literal `[]` default parameter is a new array reference on every render — with no
+// stable prop passed in, the effect that depends on it below would fire, setState, re-render,
+// get handed another new `[]`, and fire again forever ("Maximum update depth exceeded").
+const NO_PRESELECT = [];
+
 /* Slots carried a single application_id before per-slot capacity existed; older rows are
    read in that shape, so count both. */
 const slotTaken = (s) => (s.application_ids ? s.application_ids.length : (s.application_id ? 1 : 0));
@@ -49,7 +54,7 @@ function slotSummary(v) {
 
 /* Shared by the per-property tab and the global calendar.
    `properties` turns on the object picker; `defaultDate` (yyyy-mm-dd) pre-fills a clicked calendar day. */
-export function CreateViewingDialog({ propertyId, properties, defaultDate, preselectApplicants = [],
+export function CreateViewingDialog({ propertyId, properties, defaultDate, preselectApplicants = NO_PRESELECT,
                                      onCreated, open: openProp, onOpenChange, hideTrigger }) {
   const [openState, setOpenState] = useState(false);
   const controlled = openProp !== undefined;
