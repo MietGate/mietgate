@@ -240,8 +240,7 @@ export function DashboardShell() {
               return (
                 <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
                   data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
-                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all ${active ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
-                  {active && <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all ${active ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
                   <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${active ? "bg-primary text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.6)]" : "bg-white/5 text-white/70"}`}>
                     <Icon style={{ width: 17, height: 17 }} />
                   </span>
@@ -260,9 +259,11 @@ export function DashboardShell() {
               divider instead of trailing directly after the workflow items above it. */}
           {user?.role !== "admin" && (
             <Link to="/hilfe" onClick={() => setOpen(false)} data-testid="nav-hilfe"
-              className={`mt-auto flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-colors ${
-                location.pathname === "/hilfe" ? "bg-white/12 text-white" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
-              <LifeBuoy style={{ width: 20, height: 20 }} />
+              className={`mt-auto flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all ${
+                location.pathname === "/hilfe" ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
+              <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${location.pathname === "/hilfe" ? "bg-primary text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.6)]" : "bg-white/5 text-white/70"}`}>
+                <LifeBuoy style={{ width: 17, height: 17 }} />
+              </span>
               Hilfe & Support
             </Link>
           )}
