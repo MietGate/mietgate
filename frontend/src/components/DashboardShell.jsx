@@ -220,6 +220,7 @@ export function DashboardShell() {
 
   return (
     <div className="app-shell min-h-screen flex bg-background text-foreground">
+      <div className="fixed top-0 inset-x-0 h-[3px] z-50 bg-gradient-to-r from-primary via-premium to-primary" />
       {/* Sidebar */}
       {/* lg:sticky + lg:h-screen (not lg:static) pins the sidebar to the viewport height on
           desktop — with plain `static` its box stretched to match the main column's full
@@ -239,8 +240,9 @@ export function DashboardShell() {
               return (
                 <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
                   data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all ${active ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
-                  <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${active ? "bg-primary text-primary-foreground shadow-soft" : "bg-white/5 text-white/70"}`}>
+                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all ${active ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
+                  {active && <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />}
+                  <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${active ? "bg-primary text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.6)]" : "bg-white/5 text-white/70"}`}>
                     <Icon style={{ width: 17, height: 17 }} />
                   </span>
                   <span className="flex-1">{item.label}</span>
