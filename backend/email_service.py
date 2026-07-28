@@ -37,7 +37,21 @@ def _plain_text(html: str) -> str:
     return text.strip()
 
 
-def _wrap(title: str, body_html: str) -> str:
+def _category_footer(category: str) -> str:
+    """Discreet way out of one kind of mail.
+
+    Deliberately a link into the settings rather than a one-click GET that switches the
+    category off: mail scanners and link prefetchers follow URLs in e-mails, and a
+    prefetch must not silently mute someone's notifications.
+    """
+    if not category:
+        return ""
+    return (f"<br />&middot; <a href='{FRONTEND_URL}/einstellungen?tab=notifications' "
+            f"style='color:#94a3b8;text-decoration:underline'>"
+            f"Diese Art von Benachrichtigung deaktivieren</a>")
+
+
+def _wrap(title: str, body_html: str, category: str = None) -> str:
     return f"""
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f6f4;padding:32px 0;font-family:Arial,Helvetica,sans-serif;">
       <tr><td align="center">
@@ -53,7 +67,7 @@ def _wrap(title: str, body_html: str) -> str:
           </td></tr>
           <tr><td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:12px;">
             MietGate.de – Mietbewerbungen digital verwalten · Diese E-Mail wurde automatisch
-            versendet. Antworten erreichen uns unter {EMAIL_REPLY_TO}.
+            versendet. Antworten erreichen uns unter {EMAIL_REPLY_TO}.{_category_footer(category)}
           </td></tr>
         </table>
       </td></tr>
@@ -62,12 +76,16 @@ def _wrap(title: str, body_html: str) -> str:
 
 
 async def send_email(to_email: str, subject: str, title: str, body_html: str,
-                     headers: dict = None) -> bool:
-    """Send one mail. Returns whether it was accepted, so bulk callers can count honestly."""
+                     headers: dict = None, category: str = None) -> bool:
+    """Send one mail. Returns whether it was accepted, so bulk callers can count honestly.
+
+    `category` only adds the opt-out link; whether the mail may be sent at all is decided
+    by the caller (helpers.email_user), since contract-critical mail has no category.
+    """
     if not RESEND_API_KEY:
         logger.warning("RESEND_API_KEY not set, skipping email")
         return False
-    full_html = _wrap(title, body_html)
+    full_html = _wrap(title, body_html, category)
     payload = {
         "from": EMAIL_FROM,
         "to": [to_email],

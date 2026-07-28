@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChatThread } from "@/components/ChatThread";
 import { STATUS_COLUMNS as COLUMNS, ACTIVE_STAGES, confirmStatusChange } from "@/lib/applicationStatus";
 import { toast } from "sonner";
-import { Star, FileText, Download, Loader2, User, CalendarPlus, Lock, Check, PartyPopper } from "lucide-react";
+import { Star, FileText, Download, Loader2, User, CalendarPlus, Lock, Check, PartyPopper, Maximize2, Minimize2 } from "lucide-react";
 
 const DOC_TYPES = ["BonitÃ¤tsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
   "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "BÃ¼rgschaft", "Sonstiges"];
@@ -101,6 +101,7 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
   const [fieldDefs, setFieldDefs] = useState([]);
   const [docRequestOpen, setDocRequestOpen] = useState(false);
   const [property, setProperty] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const [, setSearchParams] = useSearchParams();
 
   const load = useCallback(async () => {
@@ -153,7 +154,10 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0" aria-describedby={undefined}>
+      {/* The default panel is narrow enough that form answers and the chat get cramped;
+          the wide mode gives them room without opening a separate page. */}
+      <SheetContent className={`w-full overflow-y-auto p-0 transition-[max-width] ${expanded ? "sm:max-w-3xl" : "sm:max-w-lg"}`}
+        aria-describedby={undefined}>
         {!app ? <div className="flex justify-center py-20"><SheetTitle className="sr-only">Bewerbung</SheetTitle><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : (
           <>
             <SheetHeader className="p-6 border-b border-border bg-secondary/40">
@@ -166,10 +170,17 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
                     <p className="text-sm text-muted-foreground">{app.applicant_email}</p>
                   </div>
                 </div>
-                <span className={`font-mono text-sm font-bold px-2.5 py-1 rounded-md border ${scoreColor(app.matching_score)}`}
-                  title="Automatische Einschätzung als Entscheidungshilfe (Einkommen im Verhältnis zur Miete, Haushaltsgröße vs. Zimmerzahl, Einzugstermin angegeben, Vollständigkeit der Dokumente). Ersetzt keine eigene Prüfung.">
-                  {app.matching_score}/100
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`font-mono text-sm font-bold px-2.5 py-1 rounded-md border ${scoreColor(app.matching_score)}`}
+                    title="Automatische Einschätzung als Entscheidungshilfe (Einkommen im Verhältnis zur Miete, Haushaltsgröße vs. Zimmerzahl, Einzugstermin angegeben, Vollständigkeit der Dokumente). Ersetzt keine eigene Prüfung.">
+                    {app.matching_score}/100
+                  </span>
+                  <button onClick={() => setExpanded((e) => !e)} data-testid="toggle-sheet-width"
+                    title={expanded ? "Kleinere Ansicht" : "Großansicht"}
+                    className="hidden sm:flex p-1.5 rounded-md hover:bg-secondary text-muted-foreground">
+                    {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </SheetHeader>
 

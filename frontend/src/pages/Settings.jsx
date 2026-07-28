@@ -146,7 +146,11 @@ export default function Settings() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isLandlord = user?.role === "landlord";
-  const [tab, setTab] = useState(searchParams.get("tab") === "abo" ? "billing" : "profile");
+  // "abo" is the historic alias for the billing tab; every other tab is addressable by
+  // its own name so e-mails can link straight to the right one.
+  const TAB_ALIASES = { abo: "billing" };
+  const requestedTab = searchParams.get("tab");
+  const [tab, setTab] = useState(requestedTab ? (TAB_ALIASES[requestedTab] || requestedTab) : "profile");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [profile, setProfile] = useState({ first_name: user?.first_name || "", last_name: user?.last_name || "", phone: user?.phone || "" });
   const [pw, setPw] = useState({ current_password: "", new_password: "" });

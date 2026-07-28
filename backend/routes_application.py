@@ -194,7 +194,7 @@ async def submit_application(req: ApplyRequest):
     ) if activation_link else ""
     await render_and_send("application_received", email, prop["org_id"],
                           {"property_title": prop["title"], "activation_block": activation_block,
-                           "premium_block": premium_block})
+                           "premium_block": premium_block}, category="applications")
     return {"ok": True, "application_id": app_id, "activation_token": activation_link,
             "account_created": activation_link is not None}
 

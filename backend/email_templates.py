@@ -79,7 +79,8 @@ def _fill(text: str, context: dict) -> str:
     return text
 
 
-async def render_and_send(template_key: str, to_email: str, org_id: str, context: dict):
+async def render_and_send(template_key: str, to_email: str, org_id: str, context: dict,
+                          category: str = None):
     tpl = None
     if org_id:
         org = await db.organizations.find_one({"id": org_id}, NO_ID)
@@ -92,4 +93,4 @@ async def render_and_send(template_key: str, to_email: str, org_id: str, context
     subject = _fill(tpl["subject"], context)
     title = _fill(tpl["title"], context)
     body_html = _fill(tpl["body_html"], context)
-    await send_email(to_email, subject, title, body_html)
+    await send_email(to_email, subject, title, body_html, category=category)

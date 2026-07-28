@@ -39,7 +39,7 @@ async def send_viewing_reminders():
                          f'Ihre Besichtigung "{v["title"]}" findet am {when} statt.', "/bewerber/termine")
             if p.get("applicant_email") and await email_enabled(p["applicant_user_id"], "viewings"):
                 await render_and_send("viewing_reminder", p["applicant_email"], v.get("org_id"),
-                                      {"viewing_title": v["title"], "when": when})
+                                      {"viewing_title": v["title"], "when": when}, category="viewings")
             if p.get("status") == "invited":
                 await notify(v.get("created_by"), "viewing_no_response", "Bewerber hat nicht reagiert",
                              f'Ein eingeladener Bewerber hat den Termin "{v["title"]}" noch nicht bestätigt.',
@@ -77,7 +77,7 @@ async def dispatch_pending_viewing_invites():
                          f"Sie wurden zu einer Besichtigung eingeladen: {v['title']}", "/bewerber/termine")
             if p.get("applicant_email") and await email_enabled(p["applicant_user_id"], "viewings"):
                 await render_and_send("viewing_invite", p["applicant_email"], v.get("org_id"),
-                                      {"viewing_title": v["title"], "when_block": when_block})
+                                      {"viewing_title": v["title"], "when_block": when_block}, category="viewings")
             p["notified"] = True
             changed = True
             sent += 1

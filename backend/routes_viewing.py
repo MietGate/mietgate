@@ -144,7 +144,7 @@ async def invite_participants(vid: str, payload: InvitePayload, user: dict = Dep
         when_block = f"<p>Termin: <b>{when}</b></p>" if when else ""
         if app.get("applicant_email") and await email_enabled(app["applicant_user_id"], "viewings"):
             await render_and_send("viewing_invite", app["applicant_email"], viewing.get("org_id"),
-                                  {"viewing_title": viewing["title"], "when_block": when_block})
+                                  {"viewing_title": viewing["title"], "when_block": when_block}, category="viewings")
         await db.applications.update_one({"id": app_id}, {"$set": {"status": "besichtigung"}})
     await db.viewings.update_one({"id": vid}, {"$set": {"participants": new_parts}})
     await log_activity(user["org_id"], user["id"], "invite", "viewing", vid)
@@ -161,7 +161,7 @@ async def delete_viewing(vid: str, user: dict = Depends(get_current_user)):
                      f"Die Besichtigung „{viewing['title']}“ wurde abgesagt.", "/bewerber/termine")
         if p.get("applicant_email") and await email_enabled(p["applicant_user_id"], "viewings"):
             await render_and_send("viewing_cancelled", p["applicant_email"], viewing.get("org_id"),
-                                  {"viewing_title": viewing["title"]})
+                                  {"viewing_title": viewing["title"]}, category="viewings")
     # Soft-cancel instead of hard delete, so an applicant who missed the email still sees
     # the cancellation in "Meine Termine" instead of the appointment just vanishing.
     await db.viewings.update_one({"id": vid}, {"$set": {"cancelled": True, "cancelled_at": now_iso()}})
@@ -231,7 +231,7 @@ async def book_slot(vid: str, payload: BookSlotPayload, user: dict = Depends(get
                           category="viewings")
     if mine.get("applicant_email") and await email_enabled(mine["applicant_user_id"], "viewings"):
         await render_and_send("viewing_slot_confirmed", mine["applicant_email"], viewing.get("org_id"),
-                              {"viewing_title": viewing["title"], "slot_time": payload.slot_time})
+                              {"viewing_title": viewing["title"], "slot_time": payload.slot_time}, category="viewings")
     return {"ok": True, "slot": payload.slot_time}
 
 

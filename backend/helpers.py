@@ -36,7 +36,7 @@ async def email_user(user_id, subject, title, body_html, category=None):
         return
     u = await db.users.find_one({"id": user_id}, {"email": 1, "_id": 0})
     if u and u.get("email"):
-        await send_email(u["email"], subject, title, body_html)
+        await send_email(u["email"], subject, title, body_html, category=category)
 
 
 def now_iso():
