@@ -193,12 +193,21 @@ export function DashboardShell() {
     }
   }, [user]);
 
-  // Refetched on every navigation so a count clears as soon as the user deals with it,
-  // instead of lingering until a full reload.
+  // Refetched on every navigation so a count clears as soon as the user deals with it —
+  // plus a poll, since reading a chat or opening an application doesn't always change the
+  // route (e.g. clicking between conversations on /nachrichten stays on the same path).
   useEffect(() => {
     if (!user || user.role === "admin") return;
     api.get("/badges").then((r) => setBadges(r.data)).catch(() => {});
   }, [user, location.pathname]);
+
+  useEffect(() => {
+    if (!user || user.role === "admin") return;
+    const i = setInterval(() => {
+      api.get("/badges").then((r) => setBadges(r.data)).catch(() => {});
+    }, 20000);
+    return () => clearInterval(i);
+  }, [user]);
 
   const baseNav = user?.role === "admin" ? adminNav : user?.role === "applicant" ? applicantNav : landlordNav;
   const nav = baseNav.filter((n) => n.to !== "/team" || supportsTeam);

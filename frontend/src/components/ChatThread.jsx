@@ -56,13 +56,18 @@ export function ChatThread({ applicationId, myRole, onSent, quickActions, testId
 
   const send = async () => {
     if (!body.trim()) return;
+    const text = body.trim();
+    const pendingReplyTo = replyTo;
     setSending(true);
     try {
-      await api.post("/messages", {
-        application_id: applicationId, body: body.trim(), reply_to: replyTo?.id || null,
+      // The POST already returns the finished message, so the bubble can appear right away
+      // instead of waiting on a full reload — that round-trip happens in the background.
+      const { data } = await api.post("/messages", {
+        application_id: applicationId, body: text, reply_to: pendingReplyTo?.id || null,
       });
+      setMessages((m) => [...m, data]);
       setBody(""); setReplyTo(null);
-      await load(true);
+      load(true);
       onSent?.();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setSending(false); }

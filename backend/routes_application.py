@@ -156,6 +156,7 @@ async def submit_application(req: ApplyRequest):
         "applicant_user_id": user["id"], "applicant_email": email,
         "form_data": req.form_data, "status": "neu", "stars": 0, "tags": [],
         "internal_notes": "", "consent": True, "created_at": now_iso(),
+        "viewed_by_landlord": False,
     }
     await db.applications.insert_one(application)
     await log_activity(prop["org_id"], user["id"], "apply", "application", app_id, {"property": prop["title"]})
@@ -248,6 +249,10 @@ async def get_application(app_id: str, user: dict = Depends(get_current_user)):
     app = await db.applications.find_one({"id": app_id}, NO_ID)
     if not app or app["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    # The sidebar's "Bewerbungen" badge counts unseen applications — opening one here is
+    # what "seen" means, independent of the pipeline stage the landlord later moves it to.
+    if not app.get("viewed_by_landlord"):
+        await db.applications.update_one({"id": app_id}, {"$set": {"viewed_by_landlord": True}})
     await _enrich(app)
     docs = await db.documents.find({"application_id": app_id, "is_deleted": False}, NO_ID).to_list(100)
     # Bonity/ID documents stay withheld until the application reaches the stage where the

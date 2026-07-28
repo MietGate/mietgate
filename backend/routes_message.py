@@ -62,10 +62,12 @@ async def list_conversations(user: dict = Depends(get_current_user)):
 
     prop_cache = {}
     out = []
+    seen_app_ids = set()
     for r in rows:
         app = await db.applications.find_one({"id": r["_id"]}, NO_ID)
         if not app:
             continue
+        seen_app_ids.add(app["id"])
         pid = r.get("property_id") or app.get("property_id")
         if pid not in prop_cache:
             prop_cache[pid] = await db.properties.find_one({"id": pid}, NO_ID)
@@ -85,6 +87,35 @@ async def list_conversations(user: dict = Depends(get_current_user)):
             "total": r["total"],
             "unread": r["unread"],
         })
+
+    # A landlord should be able to write the first message to any applicant, not only
+    # reply to one who wrote first — so every application without messages yet also gets
+    # a (empty) row here instead of being invisible until the applicant speaks up.
+    if org_id:
+        no_msg_apps = await db.applications.find(
+            {"org_id": org_id, "id": {"$nin": list(seen_app_ids)}}, NO_ID
+        ).sort("created_at", -1).to_list(300)
+        for app in no_msg_apps:
+            pid = app.get("property_id")
+            if pid not in prop_cache:
+                prop_cache[pid] = await db.properties.find_one({"id": pid}, NO_ID)
+            prop = prop_cache[pid] or {}
+            fd = app.get("form_data") or {}
+            name = " ".join(filter(None, [fd.get("vorname"), fd.get("nachname")])).strip()
+            out.append({
+                "application_id": app["id"],
+                "property_id": pid,
+                "property_title": prop.get("title"),
+                "applicant_name": name or app.get("applicant_email"),
+                "applicant_email": app.get("applicant_email"),
+                "application_status": app.get("status"),
+                "last_body": None,
+                "last_at": app.get("created_at"),
+                "last_sender_role": None,
+                "total": 0,
+                "unread": 0,
+            })
+        out.sort(key=lambda x: x["last_at"] or "", reverse=True)
     return out
 
 
@@ -196,9 +227,10 @@ async def sidebar_badges(user: dict = Depends(get_current_user)):
         else:
             out["documents"] = 0
     elif user.get("org_id"):
-        # Applications nobody has looked at yet.
+        # Applications nobody has looked at yet — tracked separately from pipeline stage,
+        # so opening one clears the badge without moving it out of "Neu".
         out["applications"] = await db.applications.count_documents(
-            {"org_id": user["org_id"], "status": "neu"})
+            {"org_id": user["org_id"], "status": "neu", "viewed_by_landlord": {"$ne": True}})
         # Applicants who answered an invitation and are waiting on the landlord.
         out["calendar"] = await db.viewings.count_documents({
             "org_id": user["org_id"], "cancelled": {"$ne": True},

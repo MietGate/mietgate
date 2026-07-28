@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 const relTime = (iso) => {
+  if (!iso) return "";
   const d = new Date(iso);
   const mins = Math.round((Date.now() - d) / 60000);
   if (mins < 1) return "gerade eben";
@@ -114,8 +115,14 @@ export default function Messages() {
                   {c.property_title && <p className="text-xs text-muted-foreground truncate mt-0.5">{c.property_title}</p>}
                   <div className="flex items-center gap-2 mt-1">
                     <p className={`text-xs truncate flex-1 ${c.unread ? "text-foreground" : "text-muted-foreground"}`}>
-                      {c.last_sender_role === "landlord" && "Sie: "}
-                      {c.last_body || <span className="italic">Nachricht zurückgezogen</span>}
+                      {c.total === 0 ? (
+                        <span className="italic">Noch keine Nachrichten – jetzt schreiben</span>
+                      ) : (
+                        <>
+                          {c.last_sender_role === "landlord" && "Sie: "}
+                          {c.last_body || <span className="italic">Nachricht zurückgezogen</span>}
+                        </>
+                      )}
                     </p>
                     {c.unread > 0 && (
                       <span className="shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
