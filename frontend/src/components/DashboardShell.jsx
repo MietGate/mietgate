@@ -240,8 +240,8 @@ export function DashboardShell() {
               return (
                 <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
                   data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all ${active ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
-                  <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${active ? "bg-primary text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.6)]" : "bg-white/5 text-white/70"}`}>
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all duration-150 ${active ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/10 hover:translate-x-0.5"}`}>
+                  <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors duration-150 ${active ? "bg-primary text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.6)]" : "bg-white/5 text-white/70 group-hover:bg-white/10 group-hover:text-white"}`}>
                     <Icon style={{ width: 17, height: 17 }} />
                   </span>
                   <span className="flex-1">{item.label}</span>
@@ -259,9 +259,9 @@ export function DashboardShell() {
               divider instead of trailing directly after the workflow items above it. */}
           {user?.role !== "admin" && (
             <Link to="/hilfe" onClick={() => setOpen(false)} data-testid="nav-hilfe"
-              className={`mt-auto flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all ${
-                location.pathname === "/hilfe" ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/[0.06]"}`}>
-              <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${location.pathname === "/hilfe" ? "bg-primary text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.6)]" : "bg-white/5 text-white/70"}`}>
+              className={`group mt-auto flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all duration-150 ${
+                location.pathname === "/hilfe" ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/10 hover:translate-x-0.5"}`}>
+              <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors duration-150 ${location.pathname === "/hilfe" ? "bg-primary text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.6)]" : "bg-white/5 text-white/70 group-hover:bg-white/10 group-hover:text-white"}`}>
                 <LifeBuoy style={{ width: 17, height: 17 }} />
               </span>
               Hilfe & Support
@@ -269,10 +269,10 @@ export function DashboardShell() {
           )}
         </nav>
         <div className="p-3 border-t border-white/10">
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-xl text-base text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors">
+          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-xl text-base text-white/60 hover:text-white hover:bg-white/10 hover:translate-x-0.5 transition-all duration-150">
             <Home style={{ width: 20, height: 20 }} /> Zur Website
           </Link>
-          <button onClick={doLogout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-base text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors">
+          <button onClick={doLogout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-base text-white/60 hover:text-white hover:bg-white/10 hover:translate-x-0.5 transition-all duration-150">
             <LogOut style={{ width: 20, height: 20 }} /> Abmelden
           </button>
         </div>
