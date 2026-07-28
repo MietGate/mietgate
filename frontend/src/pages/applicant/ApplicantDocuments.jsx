@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import api, { formatApiError, openDocument } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { validateFile } from "@/lib/validateFile";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Upload, FileText, Trash2, Download, Link2, ShieldCheck, ExternalLink, Clock } from "lucide-react";
+import { Loader2, Upload, FileText, Trash2, Download, Link2, ShieldCheck, ExternalLink, Clock, Check } from "lucide-react";
 
 const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
 const ALLOWED_EXT = ["pdf", "jpg", "jpeg", "png"];
@@ -22,6 +23,7 @@ function ChoiceButton({ active, onClick, icon: Icon, label, hint, testId }) {
 }
 
 export default function ApplicantDocuments() {
+  const { user } = useAuth();
   const [docs, setDocs] = useState(null);
   const [apps, setApps] = useState([]);
   const [docType, setDocType] = useState("Bonitätsauskunft");
@@ -29,6 +31,8 @@ export default function ApplicantDocuments() {
   const [attaching, setAttaching] = useState(null);
   const fileRef = useRef();
   const bonityFileRef = useRef();
+  const requestFileRef = useRef();
+  const requestedTypeRef = useRef(null);
 
   const [partners, setPartners] = useState(null);
   const [bonityRoute, setBonityRoute] = useState(null);   // null | "have" | "bonify"
@@ -37,16 +41,24 @@ export default function ApplicantDocuments() {
   // so nobody silently loses track of a document a landlord will ask for later.
   const [bonityDismissed, setBonityDismissed] = useState(false);
 
-  const load = () => api.get("/documents").then((r) => setDocs(r.data)).catch(() => setDocs([]));
+  const loadApps = () => api.get("/my/applications").then((r) => setApps(r.data)).catch(() => setApps([]));
+  const load = () => Promise.all([
+    api.get("/documents").then((r) => setDocs(r.data)).catch(() => setDocs([])),
+    loadApps(),
+  ]);
   useEffect(() => {
     load();
-    api.get("/my/applications").then((r) => setApps(r.data)).catch(() => setApps([]));
     api.get("/partners").then((r) => setPartners(r.data)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hasSchufa = docs?.some((d) => d.doc_type === "Bonitätsauskunft");
   // "Später hochladen" is only offered when no landlord made the bonity report mandatory.
   const schufaRequired = apps.some((a) => (a.required_documents || []).includes("Bonitätsauskunft"));
+
+  /* Applications where the landlord asked for specific documents. Anything still listed in
+     missing_documents has no matching upload yet — that's the number the applicant cares about. */
+  const openRequests = apps.filter((a) => (a.requested_documents || []).length > 0);
 
   const upload = async (e, forcedType) => {
     const input = e.target;
@@ -91,6 +103,54 @@ export default function ApplicantDocuments() {
   return (
     <div className="space-y-6 animate-fade-up max-w-3xl">
       <div><h1 className="font-display text-3xl font-bold">Meine Dokumente</h1><p className="text-muted-foreground mt-1">Einmal hochladen, mit beliebigen Bewerbungen verknüpfen.</p></div>
+
+      {/* What a landlord actually asked for comes first — without this the applicant had to
+          guess which of the eight document types was meant. */}
+      {openRequests.map((a) => {
+        const requested = a.requested_documents || [];
+        const missing = a.missing_documents || [];
+        const done = requested.length - missing.length;
+        return (
+          <div key={a.id} className={`rounded-xl border p-6 ${missing.length ? "border-primary/40 bg-accent/30" : "border-success/40 bg-success/5"}`}
+            data-testid={`doc-request-${a.id}`}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold">Angeforderte Dokumente · {a.property_title}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {missing.length === 0
+                    ? "Alle angeforderten Dokumente liegen vor. Vielen Dank!"
+                    : `Noch ${missing.length} von ${requested.length} offen`}
+                </p>
+              </div>
+              <span className="text-sm font-medium tabular-nums">{done}/{requested.length}</span>
+            </div>
+            <div className="mt-4 space-y-1.5">
+              {requested.map((t) => {
+                const open = missing.includes(t);
+                return (
+                  <div key={t} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
+                    <span className={`h-5 w-5 shrink-0 rounded-full border flex items-center justify-center ${
+                      open ? "border-border" : "bg-success border-success text-success-foreground"}`}>
+                      {!open && <Check className="h-3 w-3" />}
+                    </span>
+                    <span className={`flex-1 ${open ? "" : "text-muted-foreground line-through"}`}>{t}</span>
+                    {open && (
+                      <Button size="sm" variant="outline" disabled={uploading}
+                        onClick={() => { requestedTypeRef.current = t; requestFileRef.current?.click(); }}
+                        data-testid={`upload-requested-${t}`}>
+                        <Upload className="h-3.5 w-3.5 mr-1" /> Hochladen
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      {/* The type comes from a ref rather than state so the pick can't race a re-render. */}
+      <input ref={requestFileRef} type="file" onChange={(e) => upload(e, requestedTypeRef.current)}
+        className="hidden" accept=".pdf,.jpg,.jpeg,.png" data-testid="requested-file-input" />
 
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-end gap-3">
@@ -216,6 +276,26 @@ export default function ApplicantDocuments() {
           </div>
         ))}
       </div>
+
+      {/* Shown once documents exist: the value of keeping them here only becomes obvious
+          after the first upload, which is the moment to make the case. */}
+      {docs.length > 0 && !user?.premium && (
+        <div className="rounded-xl bg-brand-dark text-white p-6" data-testid="documents-premium-upsell">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            <p className="font-display font-bold">Ihre Dokumente dauerhaft griffbereit</p>
+          </div>
+          <p className="text-sm text-white/70 mt-2">
+            Mit einem verifizierten Mieterprofil bewerben Sie sich mit einem Klick — Ihre Unterlagen
+            sind hinterlegt und Sie müssen sie nie wieder einzeln hochladen. Auch bei Wohnungen
+            außerhalb von MietGate.
+          </p>
+          <a href="/fuer-mieter" data-testid="documents-premium-cta"
+            className="inline-flex items-center gap-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity mt-4">
+            Profil aktivieren – 4,99 €/Monat
+          </a>
+        </div>
+      )}
     </div>
   );
 }

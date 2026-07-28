@@ -303,6 +303,17 @@ async def my_applications(user: dict = Depends(get_current_user)):
         a["required_documents"] = (prop or {}).get("required_documents", [])
         a["document_timing"] = (prop or {}).get("document_timing", "after")
         a["document_count"] = await db.documents.count_documents({"application_id": a["id"], "is_deleted": False})
+        # Which of the explicitly requested documents are still outstanding. Documents the
+        # applicant uploaded on their own initiative count too — they were asked for the
+        # document, not for the act of uploading it after being asked.
+        requested = a.get("requested_documents") or []
+        a["requested_documents"] = requested
+        if requested:
+            have = await db.documents.distinct(
+                "doc_type", {"applicant_user_id": user["id"], "is_deleted": False})
+            a["missing_documents"] = [d for d in requested if d not in have]
+        else:
+            a["missing_documents"] = []
     return apps
 
 

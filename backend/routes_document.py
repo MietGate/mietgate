@@ -1,13 +1,15 @@
 import uuid
 from fastapi import (APIRouter, HTTPException, Depends, UploadFile, File, Form,
                      Header, Response)
+from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
-from typing import Optional
+from typing import Optional, List
 from database import db, NO_ID
 from security import get_current_user, resolve_user_by_token
 from storage import (put_object, get_object, delete_object, guess_mime,
                      safe_inline_response, APP_NAME)
 from helpers import new_id, now_iso, log_activity, notify
+from email_service import send_email
 from constants import (DOCUMENT_TYPES, doc_released_to_landlord, doc_release_hint,
                        redact_doc_for_landlord)
 
@@ -163,20 +165,56 @@ async def attach_document(doc_id: str, application_id: str = Form(...),
     return {"ok": True}
 
 
-class DocRequest:
-    pass
+class DocRequestPayload(BaseModel):
+    application_id: str
+    doc_types: List[str] = []
+    message: str = ""
 
 
 @router.post("/documents/request")
-async def request_documents(application_id: str = Form(...), message: str = Form(""),
-                            user: dict = Depends(get_current_user)):
-    app = await db.applications.find_one({"id": application_id})
+async def request_documents(payload: DocRequestPayload, user: dict = Depends(get_current_user)):
+    """Ask the applicant for specific documents.
+
+    The previous version sent a bodyless "please upload something" nudge, which left the
+    applicant guessing and gave neither side a way to see what was still missing.
+    """
+    app = await db.applications.find_one({"id": payload.application_id})
     if not app or app["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+
+    wanted = [d for d in payload.doc_types if d in DOCUMENT_TYPES]
+    if not wanted:
+        raise HTTPException(status_code=400, detail="Bitte wählen Sie mindestens ein Dokument aus")
+    # Same gate as viewing them: a landlord may not demand bonity or ID documents before the
+    # application has reached the stage where the Orientierungshilfe allows it.
+    status = app.get("status", "neu")
+    allowed = [d for d in wanted if doc_released_to_landlord(d, status)]
+    blocked = [d for d in wanted if d not in allowed]
+    if not allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Diese Dokumente dürfen Sie in diesem Status noch nicht anfordern. "
+                   f"{doc_release_hint(blocked[0])}.")
+
+    # Union with anything already requested — a follow-up request must not silently drop
+    # documents the applicant still owes from an earlier one.
+    already = app.get("requested_documents") or []
+    merged = already + [d for d in allowed if d not in already]
+    await db.applications.update_one(
+        {"id": payload.application_id},
+        {"$set": {"requested_documents": merged, "documents_requested_at": now_iso()}})
+
+    listed = "".join(f"<li>{d}</li>" for d in allowed)
+    intro = payload.message.strip() or "Der Vermieter bittet Sie, folgende Dokumente hochzuladen:"
     await notify(app["applicant_user_id"], "document_request", "Dokumente angefordert",
-                 message or "Der Vermieter bittet Sie, Dokumente hochzuladen.", "/bewerber/dokumente")
-    await log_activity(app["org_id"], user["id"], "document_request", "application", application_id)
-    return {"ok": True}
+                 f"{intro} {', '.join(allowed)}", "/bewerber/dokumente")
+    if app.get("applicant_email"):
+        await send_email(app["applicant_email"], "Dokumente angefordert", "Dokumente angefordert",
+                         f"<p>{intro}</p><ul>{listed}</ul>"
+                         f"<p>Sie finden die Liste in Ihrem MietGate-Konto unter „Meine Dokumente“.</p>")
+    await log_activity(app["org_id"], user["id"], "document_request", "application",
+                       payload.application_id, {"doc_types": allowed})
+    return {"ok": True, "requested_documents": merged, "blocked": blocked}
 
 
 @router.post("/uploads/image")

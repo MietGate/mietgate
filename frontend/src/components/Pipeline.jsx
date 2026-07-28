@@ -1,15 +1,29 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import api, { openDocument } from "@/lib/api";
+import api, { openDocument, formatApiError } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus, Lock } from "lucide-react";
+import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus, Lock, Check } from "lucide-react";
+
+const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
+  "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
+/* Mirrors constants.DOC_RELEASE_STAGE — the stage an application must reach before these
+   may be demanded. The backend enforces it; this only keeps the UI honest. */
+const DOC_STAGE = {
+  "Bonitätsauskunft": 4, "Gehaltsnachweise": 4, "Arbeitsvertrag": 4,
+  "Mietschuldenfreiheitsbescheinigung": 4, "Bürgschaft": 4, "Ausweis": 5, "Aufenthaltstitel": 5,
+};
+const STAGE_ORDER = { neu: 0, pruefung: 1, interessant: 2, besichtigung: 3, favorit: 4, zusage: 5 };
+const docRequestable = (type, status) =>
+  (STAGE_ORDER[status] ?? -1) >= (DOC_STAGE[type] ?? 0);
 
 const COLUMNS = [
   { key: "neu", label: "Neu", dot: "bg-slate-400" }, { key: "pruefung", label: "Prüfung", dot: "bg-blue-500" },
@@ -30,6 +44,61 @@ function scoreColor(s) {
   return "bg-destructive/10 text-destructive border-destructive/20";
 }
 
+/* Picking the document types up front is the whole point: the applicant then sees exactly
+   this list with a "still missing" count, instead of a vague "please upload something". */
+function RequestDocsDialog({ open, onOpenChange, status, alreadyRequested, onSubmit }) {
+  const [selected, setSelected] = useState([]);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (open) setSelected([]); }, [open]);
+
+  const toggle = (t) => setSelected((s) => s.includes(t) ? s.filter((x) => x !== t) : [...s, t]);
+  const submit = async () => { setBusy(true); try { await onSubmit(selected); } finally { setBusy(false); } };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Welche Dokumente benötigen Sie?</DialogTitle></DialogHeader>
+        <div className="space-y-1.5 max-h-80 overflow-y-auto">
+          {DOC_TYPES.map((t) => {
+            const requestable = docRequestable(t, status);
+            const have = alreadyRequested.includes(t);
+            return (
+              <label key={t} data-testid={`req-doc-${t}`}
+                className={`flex items-center gap-3 rounded-md border px-3 py-2 text-sm ${
+                  requestable && !have ? "border-border cursor-pointer hover:bg-secondary" : "border-dashed border-border opacity-60"}`}>
+                {have ? (
+                  <Check className="h-4 w-4 text-success shrink-0" />
+                ) : (
+                  <Checkbox checked={selected.includes(t)} disabled={!requestable}
+                    onCheckedChange={() => requestable && toggle(t)} />
+                )}
+                <span className="flex-1">{t}</span>
+                {have && <span className="text-xs text-muted-foreground">bereits angefordert</span>}
+                {!have && !requestable && (
+                  <span className="text-xs text-muted-foreground">
+                    {DOC_STAGE[t] === 5 ? "ab Zusage" : "ab Favorit"}
+                  </span>
+                )}
+              </label>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Bonitäts- und Ausweisunterlagen lassen sich erst ab der engeren Auswahl anfordern —
+          vorher ist das datenschutzrechtlich nicht zulässig.
+        </p>
+        <DialogFooter>
+          <Button onClick={submit} disabled={selected.length === 0 || busy} data-testid="submit-doc-request">
+            {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {selected.length || ""} Dokument{selected.length === 1 ? "" : "e"} anfordern
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   const [app, setApp] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -38,6 +107,7 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   const [viewings, setViewings] = useState([]);
   const [selViewing, setSelViewing] = useState("");
   const [fieldDefs, setFieldDefs] = useState([]);
+  const [docRequestOpen, setDocRequestOpen] = useState(false);
   const msgEndRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -73,9 +143,16 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
     await api.post("/messages", { application_id: appId, body: msg });
     setMsg(""); const m = await api.get(`/messages?application_id=${appId}`); setMessages(m.data);
   };
-  const requestDocs = async () => {
-    const fd = new FormData(); fd.append("application_id", appId); fd.append("message", "Bitte laden Sie Ihre Dokumente hoch.");
-    await api.post("/documents/request", fd); toast.success("Dokumente angefordert");
+  const requestDocs = async (docTypes) => {
+    try {
+      const { data } = await api.post("/documents/request", { application_id: appId, doc_types: docTypes });
+      toast.success(`${docTypes.length} Dokument(e) angefordert`);
+      setDocRequestOpen(false);
+      if (data.blocked?.length) {
+        toast.info(`Noch nicht anforderbar: ${data.blocked.join(", ")}`);
+      }
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
   const inviteToViewing = async () => {
     if (!selViewing) return;
@@ -146,7 +223,12 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
 
               <div>
                 <div className="flex items-center justify-between"><Label2>Dokumente ({app.documents?.length || 0})</Label2>
-                  <button onClick={requestDocs} className="text-xs text-primary hover:underline" data-testid="request-docs">Anfordern</button></div>
+                  <button onClick={() => setDocRequestOpen(true)} className="text-xs text-primary hover:underline" data-testid="request-docs">Anfordern</button></div>
+                {app.requested_documents?.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1.5" data-testid="requested-docs-summary">
+                    Angefordert: {app.requested_documents.join(", ")}
+                  </p>
+                )}
                 <div className="mt-2 space-y-2">
                   {(!app.documents || app.documents.length === 0) && <p className="text-sm text-muted-foreground">Keine Dokumente hochgeladen.</p>}
                   {app.documents?.map((d) => (
@@ -222,6 +304,10 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
                 </div>
               </div>
             </div>
+
+            <RequestDocsDialog open={docRequestOpen} onOpenChange={setDocRequestOpen}
+              status={app.status} alreadyRequested={app.requested_documents || []}
+              onSubmit={requestDocs} />
           </>
         )}
       </SheetContent>
