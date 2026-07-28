@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import {
   LayoutDashboard, Building2, Users, Settings, LogOut, Bell, Menu, X,
   CreditCard, ShieldCheck, FileText, CalendarDays, Home, ChevronRight, Link2, Contact, Search,
-  Inbox, MessageSquare, Mail, Megaphone, ClipboardList
+  Inbox, MessageSquare, Mail, Megaphone, ClipboardList, LifeBuoy
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -235,6 +235,16 @@ export function DashboardShell() {
               </Link>
             );
           })}
+          {/* Sits at the end of the nav, above the divider: reachable from every screen
+              without competing with the workflow items above it. */}
+          {user?.role !== "admin" && (
+            <Link to="/hilfe" onClick={() => setOpen(false)} data-testid="nav-hilfe"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-[15px] font-medium transition-colors ${
+                location.pathname === "/hilfe" ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
+              <LifeBuoy style={{ width: 20, height: 20 }} />
+              Hilfe & Support
+            </Link>
+          )}
         </nav>
         <div className="p-3 border-t border-white/10">
           <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-md text-[15px] text-white/60 hover:text-white hover:bg-white/10 transition-colors">

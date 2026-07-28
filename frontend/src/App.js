@@ -32,6 +32,7 @@ import PropertyForm from "@/pages/landlord/PropertyForm";
 import PropertyDetail from "@/pages/landlord/PropertyDetail";
 import Team from "@/pages/landlord/Team";
 import Settings from "@/pages/Settings";
+import Help from "@/pages/Help";
 import ApplicantDashboard from "@/pages/applicant/ApplicantDashboard";
 import ApplicantDocuments from "@/pages/applicant/ApplicantDocuments";
 import ApplicantMessages from "@/pages/applicant/ApplicantMessages";
@@ -131,6 +132,7 @@ function AppRouter() {
       {/* Shared settings (landlord + applicant + admin) */}
       <Route element={<ProtectedRoute roles={["landlord", "applicant", "admin"]}><DashboardShell /></ProtectedRoute>}>
         <Route path="/einstellungen" element={<Settings />} />
+        <Route path="/hilfe" element={<Help />} />
       </Route>
       <Route path="/telefonnummer-ergaenzen" element={<ProtectedRoute roles={["landlord", "applicant", "admin"]}><CompletePhone /></ProtectedRoute>} />
 
