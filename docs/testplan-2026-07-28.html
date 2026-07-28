@@ -1,0 +1,422 @@
+<title>MietGate — Testdurchlauf</title>
+<style>
+  :root {
+    --ink: #08213a;
+    --ink-2: #2d4459;
+    --muted: #5d7183;
+    --line: #dce6e6;
+    --ground: #f6faf9;
+    --surface: #ffffff;
+    --teal: #1a7f7a;
+    --teal-soft: #e6f2f1;
+    --green: #14803f;
+    --green-soft: #e4f4ea;
+    --amber: #9a6410;
+    --amber-soft: #fbf0dd;
+    --shadow: 0 1px 2px rgba(8, 33, 58, .06), 0 8px 24px -16px rgba(8, 33, 58, .3);
+
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8f0f2; --ink-2: #b8c9d4; --muted: #8b9fae; --line: #1e3040;
+      --ground: #0a141c; --surface: #10202c;
+      --teal: #35a8a0; --teal-soft: #102c2c;
+      --green: #4bb578; --green-soft: #0f2a1c;
+      --amber: #d69b44; --amber-soft: #2c2113;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e8f0f2; --ink-2: #b8c9d4; --muted: #8b9fae; --line: #1e3040;
+    --ground: #0a141c; --surface: #10202c;
+    --teal: #35a8a0; --teal-soft: #102c2c;
+    --green: #4bb578; --green-soft: #0f2a1c;
+    --amber: #d69b44; --amber-soft: #2c2113;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+  :root[data-theme="light"] {
+    --ink: #08213a; --ink-2: #2d4459; --muted: #5d7183; --line: #dce6e6;
+    --ground: #f6faf9; --surface: #ffffff;
+    --teal: #1a7f7a; --teal-soft: #e6f2f1;
+    --green: #14803f; --green-soft: #e4f4ea;
+    --amber: #9a6410; --amber-soft: #fbf0dd;
+    --shadow: 0 1px 2px rgba(8, 33, 58, .06), 0 8px 24px -16px rgba(8, 33, 58, .3);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 16.5px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 20px 96px; }
+
+  /* ---- sticky progress ---- */
+  .bar {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    margin: 0 -20px 0; padding: 12px 20px;
+  }
+  .bar-inner { max-width: 740px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+  .bar-label { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap;
+               font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .track { flex: 1; height: 5px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .fill { height: 100%; width: 0%; background: var(--teal); border-radius: 99px; transition: width .35s ease; }
+  .reset {
+    font: inherit; font-size: 12px; color: var(--muted); background: none;
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer;
+  }
+  .reset:hover { color: var(--ink); border-color: var(--muted); }
+  .reset:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  /* ---- masthead ---- */
+  header.top { padding: 52px 0 8px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--teal); margin: 0 0 12px;
+  }
+  h1 { font-size: clamp(30px, 5.5vw, 42px); line-height: 1.1; letter-spacing: -.025em;
+       font-weight: 800; margin: 0 0 14px; text-wrap: balance; }
+  .lede { font-size: 18px; color: var(--ink-2); margin: 0; max-width: 60ch; }
+
+  .roles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+  .role {
+    display: flex; align-items: baseline; gap: 9px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 9px; padding: 9px 14px; box-shadow: var(--shadow);
+  }
+  .role b { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--teal); }
+  .role span { font-size: 14px; color: var(--ink-2); }
+
+  /* ---- callouts ---- */
+  .note {
+    border: 1px solid var(--line); border-left: 3px solid var(--amber);
+    background: var(--amber-soft); border-radius: 0 9px 9px 0;
+    padding: 15px 18px; margin: 30px 0 0;
+  }
+  .note p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
+  .note p + p { margin-top: 8px; }
+  .note strong { color: var(--ink); }
+
+  /* ---- phases ---- */
+  section { margin-top: 46px; }
+  .head { display: flex; align-items: baseline; gap: 13px; margin-bottom: 4px; }
+  .num {
+    font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--teal);
+    background: var(--teal-soft); border-radius: 5px; padding: 3px 7px;
+    font-variant-numeric: tabular-nums; flex: none;
+  }
+  h2 { font-size: 21px; letter-spacing: -.015em; font-weight: 700; margin: 0; }
+  .sub { font-size: 14.5px; color: var(--muted); margin: 0 0 16px 46px; }
+
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  li.step {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 13px 16px; box-shadow: var(--shadow);
+    display: grid; grid-template-columns: auto 1fr; gap: 13px; align-items: start;
+    transition: opacity .2s ease;
+  }
+  li.step.done { opacity: .5; }
+  li.step.done .txt { text-decoration: line-through; text-decoration-color: var(--muted); }
+  input[type=checkbox] {
+    appearance: none; width: 19px; height: 19px; margin: 2px 0 0; flex: none; cursor: pointer;
+    border: 1.5px solid var(--muted); border-radius: 5px; background: transparent;
+    display: grid; place-content: center;
+  }
+  input[type=checkbox]:checked { background: var(--teal); border-color: var(--teal); }
+  input[type=checkbox]:checked::after {
+    content: ""; width: 9px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translate(1px, -1px);
+  }
+  input[type=checkbox]:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  .who {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; font-weight: 600;
+    border-radius: 4px; padding: 2px 6px; margin-right: 8px; vertical-align: 1.5px;
+    white-space: nowrap;
+  }
+  .who.du { background: var(--teal-soft); color: var(--teal); }
+  .who.nou { background: var(--green-soft); color: var(--green); }
+  .who.beide { background: var(--amber-soft); color: var(--amber); }
+  .txt { font-size: 15.5px; }
+  .watch {
+    display: block; margin-top: 7px; padding-left: 11px; border-left: 2px solid var(--line);
+    font-size: 13.5px; color: var(--muted);
+  }
+  .watch b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---- closing ---- */
+  .closing { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 30px; }
+  .closing h2 { margin-bottom: 6px; }
+  .closing p { font-size: 15px; color: var(--ink-2); max-width: 64ch; }
+  ul.plain { padding-left: 20px; margin: 12px 0 0; }
+  ul.plain li { font-size: 15px; color: var(--ink-2); margin-bottom: 7px; }
+  code {
+    font-family: var(--mono); font-size: .88em; background: var(--teal-soft);
+    color: var(--teal); padding: 1.5px 5px; border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 560px) {
+    .sub { margin-left: 0; }
+    body { font-size: 16px; }
+  }
+</style>
+
+<div class="bar">
+  <div class="bar-inner">
+    <span class="bar-label" id="count">0 / 0 erledigt</span>
+    <div class="track"><div class="fill" id="fill"></div></div>
+    <button class="reset" id="reset" type="button">Zurücksetzen</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Testdurchlauf · Live auf mietgate.de</p>
+    <h1>Rollenspiel-Test: Vermieter und Bewerberin</h1>
+    <p class="lede">
+      Neun Deploys, rund vierzig Änderungen — dieser Durchlauf prüft sie in der Reihenfolge,
+      in der ein echter Vermietungsfall abläuft. Die Phasen bauen aufeinander auf: Phase&nbsp;3
+      braucht die Bewerbung aus Phase&nbsp;2.
+    </p>
+
+    <div class="roles">
+      <div class="role"><b>DU</b> <span>Vermieter · henry.bork1996@gmail.com</span></div>
+      <div class="role"><b>NOURIA</b> <span>Bewerberin · n.el@outlook.de</span></div>
+    </div>
+
+    <div class="note">
+      <p><strong>Zwei Dinge vorbereiten, sonst laufen zwei Phasen ins Leere:</strong></p>
+      <p><strong>Phase 7</strong> braucht mindestens zwei weitere Bewerbungen neben Nourias — sonst
+        erscheint die Rückfrage zur Massen-Absage gar nicht. Bewirb dich vorher zweimal über den
+        Link mit beliebigen Wegwerf-Adressen.</p>
+      <p><strong>Phase 8</strong> hat zehn Minuten Wartezeit eingebaut. Startet sie früh und macht
+        währenddessen mit Phase 9 weiter.</p>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="num">01</span><h2>Objekt anlegen</h2></div>
+    <p class="sub">Der Wizard hat einen neuen Schritt und rechnet mit.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Einloggen, dann <b>Objekte → Neues Objekt</b>.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Bei <b>Mietdaten</b> nur Kaltmiete und Nebenkosten eintragen.
+        <span class="watch"><b>Erwartet:</b> Warmmiete füllt sich selbst. Pfeiltasten im Feld springen in ganzen Euro, nicht in Cent.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Warmmiete danach von Hand überschreiben, dann Kaltmiete ändern.
+        <span class="watch"><b>Erwartet:</b> Dein eigener Wert bleibt stehen und wird nicht überschrieben.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Schritt <b>Bilder</b>: zwei Fotos auswählen, eines wieder entfernen.
+        <span class="watch"><b>Erwartet:</b> Das erste ist als Titelbild markiert. Nach dem Speichern liegt es unter „Bilder“.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Bei <b>Weitere Informationen</b> die Dokumenten-Einstellung ansehen.
+        <span class="watch"><b>Erwartet:</b> „Vor Besichtigung“ gibt es nicht mehr — nur noch Ja/Nein.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Objekt speichern, Bewerbungslink aktivieren, Link kopieren.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Im Dashboard bei „Erste Schritte“ auf <b>Textbaustein kopieren</b>.
+        <span class="watch"><b>Erwartet:</b> Du landest auf dem Tab <b>Bewerbungslink</b>, nicht bei den Bewerbern.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>„Erste Schritte“ minimieren.
+        <span class="watch"><b>Erwartet:</b> Knopf unten rechts mit der Zahl der offenen Schritte. Bleibt nach Reload minimiert.</span></span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">02</span><h2>Nouria bewirbt sich</h2></div>
+    <p class="sub">Schick ihr den Link. Sie klickt sich durch, du bleibst am Telefon.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Link öffnen und Formular ausfüllen.
+        <span class="watch"><b>Erwartet:</b> Nicht-Pflichtfelder sind mit <b>(optional)</b> beschriftet.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Beim <b>Beschäftigungsstatus</b> die Auswahl aufklappen.
+        <span class="watch"><b>Erwartet:</b> Azubi, Elternzeit und Sonstiges stehen zur Wahl.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span><b>Grund des Umzugs</b> ansehen.
+        <span class="watch"><b>Erwartet:</b> Dropdown mit acht Gründen statt eines leeren Textfelds.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Datumsfelder ausprobieren — springt es von Tag zu Monat weiter?
+        <span class="watch"><b>Diesen Punkt konnte ich nicht nachstellen.</b> Notiert Browser und Feld, falls es hakt.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Bewerbung absenden und die Konto-Aktivierungsmail bestätigen.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">03</span><h2>Bewerbung kommt an</h2></div>
+    <p class="sub">Hier lagen mehrere tote Klickziele.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Benachrichtigungs-Mail öffnen.
+        <span class="watch"><b>Erwartet:</b> Logo im Kopf, Button <b>Bewerbung ansehen</b>, unten ein Abmeldelink.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Auf den Button klicken.
+        <span class="watch"><b>Erwartet:</b> Nourias Karte öffnet sich direkt — nicht nur die Objektseite.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Im Dashboard auf die Zeile unter „Neueste Bewerbungen“ klicken.
+        <span class="watch"><b>Erwartet:</b> Ganze Zeile ist klickbar und führt zur Bewerbung.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Sidebar ansehen.
+        <span class="watch"><b>Erwartet:</b> Zahl bei <b>Bewerbungen</b>. Verschwindet, sobald du die Bewerbung angesehen hast.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>In der Bewerberkarte oben rechts auf das Vergrößern-Symbol.
+        <span class="watch"><b>Erwartet:</b> Panel wird breiter, Formularantworten sind besser lesbar.</span></span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">04</span><h2>Chat</h2></div>
+    <p class="sub">Am stärksten umgebaut — drei Oberflächen laufen jetzt über eine Komponente.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who beide">BEIDE</span>Beide öffnen die Nachrichten und schreiben abwechselnd. <b>Nicht</b> neu laden.
+        <span class="watch"><b>Erwartet:</b> Neue Nachrichten erscheinen innerhalb von 15 Sekunden von selbst. Genau das ging vorher gar nicht.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who beide">BEIDE</span>Mit <b>Enter</b> senden, mit <b>Umschalt+Enter</b> eine neue Zeile machen.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Über eine ihrer Nachrichten fahren, Pfeil anklicken, antworten.
+        <span class="watch"><b>Erwartet:</b> Zitat steht in der Blase. Nouria sieht es auch.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Eigene Nachricht zurückziehen.
+        <span class="watch"><b>Erwartet:</b> „Diese Nachricht wurde zurückgezogen“ — sie verschwindet bewusst nicht spurlos.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who beide">BEIDE</span>Emoji-Knopf links vom Eingabefeld benutzen.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Über dem Eingabefeld <b>Phase ändern</b> und <b>Bewerten</b> ausprobieren.
+        <span class="watch"><b>Erwartet:</b> Wirkt sofort, ohne den Chat zu verlassen.</span></span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">05</span><h2>Besichtigung</h2></div>
+    <p class="sub">Zeitfenster fassen jetzt mehrere Personen.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Im Chat auf <b>Zu Besichtigung einladen</b>.
+        <span class="watch"><b>Erwartet:</b> Termin-Dialog öffnet sich, Nouria ist bereits angehakt.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Art <b>Zeitfenster</b>, zwei Slots anlegen, <b>Plätze pro Zeitfenster</b> auf 2 setzen. Erstellen.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Terminliste ansehen.
+        <span class="watch"><b>Erwartet:</b> „2 Zeitfenster · 0/4 Plätze belegt“.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Unter <b>Termine</b> ein Zeitfenster buchen.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Pipeline ansehen, Spalte Besichtigung.
+        <span class="watch"><b>Erwartet:</b> Karte zeigt Datum und <b>bestätigt</b> statt <b>ausstehend</b>.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Oben rechts auf <b>Kalenderansicht</b> umschalten und zurück.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Zweiten Termin als <b>Einzelbesichtigung</b> anlegen und Nouria einladen.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Dort <b>Umbuchung anfragen</b>.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Gelb markierte Anfrage öffnen, neue Zeit eintragen, anbieten.
+        <span class="watch"><b>Erwartet:</b> Nouria bekommt das <b>konkrete neue Datum</b> per Mail. Vorher war das eine Sackgasse.</span></span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">06</span><h2>Dokumente</h2></div>
+    <p class="sub">Komplett neu gebaut — im ersten Test der schwächste Teil.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>In Nourias Karte bei Dokumente auf <b>Anfordern</b>.
+        <span class="watch"><b>Erwartet:</b> Auswahl statt Blind-Anfrage. <b>Bonitätsauskunft ist ausgegraut</b> mit Hinweis „ab Favorit“.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span><b>Sonstiges</b> anfordern.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Unter <b>Dokumente</b> nachsehen.
+        <span class="watch"><b>Erwartet:</b> Karte oben mit „noch 1 von 1 offen“ und Hochladen-Knopf in der Zeile.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Dokument hochladen.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Benachrichtigung prüfen und das Dokument in der Karte öffnen.
+        <span class="watch"><b>Der ursprüngliche Fehler:</b> Beides fehlte komplett — keine Meldung, nichts sichtbar.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Nouria auf <b>Favorit</b> ziehen, dann erneut Dokumente anfordern.
+        <span class="watch"><b>Erwartet:</b> Bonitätsauskunft ist jetzt wählbar.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Ans Seitenende scrollen.
+        <span class="watch"><b>Erwartet:</b> Hinweis „Ihre Dokumente dauerhaft griffbereit“.</span></span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">07</span><h2>Zusage und Absage</h2></div>
+    <p class="sub">Braucht die zusätzlichen Bewerbungen von oben.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Nouria auf <b>Zusage</b> ziehen.
+        <span class="watch"><b>Erwartet:</b> Erst Rückfrage zur Zusage, dann eine <b>zweite</b> zu den übrigen Bewerbern. Beide bestätigen.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who nou">NOURIA</span>Mailfach prüfen.
+        <span class="watch"><b>Erwartet:</b> „Herzlichen Glückwunsch“ mit Ausblick auf Übergabe und Mietvertrag.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Postfächer der Dummy-Bewerber prüfen.
+        <span class="watch"><b>Erwartet:</b> Freundlich formulierte Absage mit Hinweis auf das Mieterprofil.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Nourias Karte öffnen.
+        <span class="watch"><b>Erwartet:</b> Grüner Block mit Telefonnummer, Objektadresse und Knopf für den Übergabetermin. Fehlt die Adresse, steht das dort statt einer Leerzeile.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Nouria zurück auf <b>Favorit</b> ziehen.
+        <span class="watch"><b>Erwartet:</b> Sie erhält eine <b>„Gute Neuigkeiten“</b>-Mail, keinen kommentarlosen Rücksprung.</span></span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">08</span><h2>Offene Besichtigung</h2></div>
+    <p class="sub">Zeitgesteuert. Früh starten, dann Phase 9 machen.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Neuen Termin anlegen und <b>Offene Besichtigung</b> ankreuzen.</span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Über den Bewerbungslink eine neue Testbewerbung abschicken. <b>Uhrzeit notieren.</b></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Sofort in die Teilnehmerliste des Termins sehen.
+        <span class="watch"><b>Erwartet:</b> Person steht schon drin, obwohl noch keine Mail raus ist.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Nach 10–11 Minuten das Postfach prüfen.
+        <span class="watch"><b>Erwartet:</b> Einladung ist da. Läuft über einen Hintergrundprozess im Minutentakt — nicht auf die Sekunde genau.</span></span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="num">09</span><h2>Hilfe, Konto, Sicherheit</h2></div>
+    <p class="sub">Gut geeignet für die Wartezeit aus Phase 8.</p>
+    <ol class="steps">
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who beide">BEIDE</span>In der Sidebar unten <b>Hilfe &amp; Support</b> öffnen.
+        <span class="watch"><b>Erwartet:</b> Ihr seht unterschiedliche Kataloge — Vermieter- und Bewerberfragen.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Nach <code>schufa</code> suchen.
+        <span class="watch"><b>Erwartet:</b> Findet den Bonitäts-Eintrag, obwohl das Wort in unserem Text nicht mehr vorkommt.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Support-Formular abschicken und im Adminbereich nachsehen.
+        <span class="watch"><b>Erwartet:</b> Landet in der bekannten Ticketliste, kein neuer Kanal.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span><b>Einstellungen → Passwort:</b> Feld „Aktuelles Passwort“ leer lassen.
+        <span class="watch"><b>Erwartet:</b> Knopf bleibt grau. Das war die Sicherheitslücke.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who du">DU</span>Mit falschem aktuellem Passwort versuchen.
+        <span class="watch"><b>Erwartet:</b> Klare Fehlermeldung, keine Änderung.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who beide">BEIDE</span>In einer beliebigen Mail unten auf <b>Diese Art von Benachrichtigung deaktivieren</b>.
+        <span class="watch"><b>Erwartet:</b> Führt in die Einstellungen, schaltet nichts direkt ab — Mailscanner folgen Links automatisch.</span></span></li>
+      <li class="step"><input type="checkbox"><span class="txt"><span class="who beide">BEIDE</span>Schriftgrößen beurteilen.
+        <span class="watch">Basis von 16 auf 17px erhöht. Zu groß oder immer noch zu klein? Ist ein Einzeiler.</span></span></li>
+    </ol>
+  </section>
+
+  <div class="closing">
+    <h2>Was ihr hier nicht findet</h2>
+    <p>Drei Dinge stehen bewusst nicht in der Liste, weil sie nicht am Bildschirm zu klären sind:</p>
+    <ul class="plain">
+      <li><b>Apple Pay zeigt ein „M“.</b> Kein Software-Fehler — im Stripe-Dashboard fehlt das
+        Icon. Zu setzen unter <em>Einstellungen → Unternehmen → Branding → Icon</em>, quadratisch,
+        mindestens 128×128&nbsp;px.</li>
+      <li><b>Datums-Autosprung.</b> Alle Felder sind native Browser-Felder, die eigentlich von
+        selbst weiterspringen. Wenn es hakt: notiert Feld und Browser, dann sehe ich gezielt nach.</li>
+      <li><b>Score-Berechnung.</b> Sag mir, ob es um Diskriminierungsrisiko geht oder ob dir ein
+        konkreter Wert falsch vorkam — danach richtet sich, wie ich das prüfe.</li>
+    </ul>
+    <p style="margin-top:22px">
+      Alles, was auffällt, direkt hier notieren oder mir hinterher am Stück durchgeben —
+      wie beim letzten Mal funktioniert das gut.
+    </p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var KEY = "mg_testplan_v1";
+    var boxes = Array.prototype.slice.call(document.querySelectorAll("input[type=checkbox]"));
+    var fill = document.getElementById("fill");
+    var count = document.getElementById("count");
+
+    boxes.forEach(function (b, i) { b.dataset.idx = i; });
+
+    function saved() {
+      try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
+    }
+    function persist() {
+      var state = {};
+      boxes.forEach(function (b, i) { if (b.checked) state[i] = 1; });
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
+    }
+    function render() {
+      var done = 0;
+      boxes.forEach(function (b) {
+        b.closest("li").classList.toggle("done", b.checked);
+        if (b.checked) done++;
+      });
+      fill.style.width = (boxes.length ? (done / boxes.length) * 100 : 0) + "%";
+      count.textContent = done + " / " + boxes.length + " erledigt";
+    }
+
+    var state = saved();
+    boxes.forEach(function (b, i) { b.checked = !!state[i]; });
+    render();
+
+    boxes.forEach(function (b) {
+      b.addEventListener("change", function () { persist(); render(); });
+    });
+
+    document.getElementById("reset").addEventListener("click", function () {
+      if (!confirm("Alle Haken zurücksetzen?")) return;
+      boxes.forEach(function (b) { b.checked = false; });
+      persist(); render();
+    });
+  })();
+</script>
