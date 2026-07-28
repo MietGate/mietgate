@@ -231,7 +231,7 @@ export function DashboardShell() {
             return (
               <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
                 data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-[15px] font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-base font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
                 <Icon className="h-4.5 w-4.5" style={{ width: 20, height: 20 }} />
                 <span className="flex-1">{item.label}</span>
                 {item.badge && badges[item.badge] > 0 && (
@@ -248,7 +248,7 @@ export function DashboardShell() {
               without competing with the workflow items above it. */}
           {user?.role !== "admin" && (
             <Link to="/hilfe" onClick={() => setOpen(false)} data-testid="nav-hilfe"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-[15px] font-medium transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-base font-medium transition-colors ${
                 location.pathname === "/hilfe" ? "bg-primary text-primary-foreground" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
               <LifeBuoy style={{ width: 20, height: 20 }} />
               Hilfe & Support
@@ -256,10 +256,10 @@ export function DashboardShell() {
           )}
         </nav>
         <div className="p-3 border-t border-white/10">
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-md text-[15px] text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-md text-base text-white/60 hover:text-white hover:bg-white/10 transition-colors">
             <Home style={{ width: 20, height: 20 }} /> Zur Website
           </Link>
-          <button onClick={doLogout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[15px] text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+          <button onClick={doLogout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-base text-white/60 hover:text-white hover:bg-white/10 transition-colors">
             <LogOut style={{ width: 20, height: 20 }} /> Abmelden
           </button>
         </div>
