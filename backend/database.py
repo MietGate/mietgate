@@ -20,6 +20,7 @@ async def ensure_indexes():
     await db.user_sessions.create_index("session_token")
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.email_verification_tokens.create_index("expires_at", expireAfterSeconds=0)
+    await db.revoked_tokens.create_index("jti")
     await db.revoked_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.login_attempts.create_index("identifier")
     await db.login_attempts.create_index("expires_at", expireAfterSeconds=0)
@@ -45,3 +46,17 @@ async def ensure_indexes():
     await db.subscriptions.create_index([("user_id", 1), ("kind", 1)])
     await db.login_otps.create_index("email", unique=True)
     await db.login_otps.create_index("expires_at", expireAfterSeconds=0)
+    # Chat/badges were doing full collection scans on every load and every 20s badge poll —
+    # these were missing since the collections were created, and it only bites once they
+    # grow past what fits in a scan's cache.
+    await db.messages.create_index("application_id")
+    await db.messages.create_index("org_id")
+    await db.messages.create_index([("recipient_id", 1), ("read", 1)])
+    await db.notifications.create_index([("user_id", 1), ("read", 1)])
+    await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
+    await db.applications.create_index([("org_id", 1), ("status", 1)])
+    await db.applications.create_index("applicant_user_id")
+    await db.viewings.create_index("org_id")
+    await db.viewings.create_index("property_id")
+    await db.documents.create_index("application_id")
+    await db.documents.create_index("applicant_user_id")

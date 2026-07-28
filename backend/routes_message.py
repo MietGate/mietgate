@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
@@ -60,18 +61,33 @@ async def list_conversations(user: dict = Depends(get_current_user)):
         {"$limit": 200},
     ]).to_list(200)
 
-    prop_cache = {}
+    # One round-trip for every application instead of one per conversation — each is a
+    # separate hop to Atlas, and that adds up fast once there's more than a couple of chats.
+    app_ids = [r["_id"] for r in rows]
+    apps_list = await db.applications.find({"id": {"$in": app_ids}}, NO_ID).to_list(len(app_ids)) if app_ids else []
+    apps_by_id = {a["id"]: a for a in apps_list}
+
+    # A landlord should be able to write the first message to any applicant, not only
+    # reply to one who wrote first — so every application without messages yet also gets
+    # a (empty) row here instead of being invisible until the applicant speaks up.
+    no_msg_apps = []
+    if org_id:
+        no_msg_apps = await db.applications.find(
+            {"org_id": org_id, "id": {"$nin": list(apps_by_id.keys())}}, NO_ID
+        ).sort("created_at", -1).to_list(300)
+
+    prop_ids = {a.get("property_id") for a in list(apps_by_id.values()) + no_msg_apps} | {r.get("property_id") for r in rows}
+    prop_ids.discard(None)
+    props_list = await db.properties.find({"id": {"$in": list(prop_ids)}}, NO_ID).to_list(len(prop_ids)) if prop_ids else []
+    prop_cache = {p["id"]: p for p in props_list}
+
     out = []
-    seen_app_ids = set()
     for r in rows:
-        app = await db.applications.find_one({"id": r["_id"]}, NO_ID)
+        app = apps_by_id.get(r["_id"])
         if not app:
             continue
-        seen_app_ids.add(app["id"])
         pid = r.get("property_id") or app.get("property_id")
-        if pid not in prop_cache:
-            prop_cache[pid] = await db.properties.find_one({"id": pid}, NO_ID)
-        prop = prop_cache[pid] or {}
+        prop = prop_cache.get(pid) or {}
         fd = app.get("form_data") or {}
         name = " ".join(filter(None, [fd.get("vorname"), fd.get("nachname")])).strip()
         out.append({
@@ -88,33 +104,25 @@ async def list_conversations(user: dict = Depends(get_current_user)):
             "unread": r["unread"],
         })
 
-    # A landlord should be able to write the first message to any applicant, not only
-    # reply to one who wrote first — so every application without messages yet also gets
-    # a (empty) row here instead of being invisible until the applicant speaks up.
+    for app in no_msg_apps:
+        pid = app.get("property_id")
+        prop = prop_cache.get(pid) or {}
+        fd = app.get("form_data") or {}
+        name = " ".join(filter(None, [fd.get("vorname"), fd.get("nachname")])).strip()
+        out.append({
+            "application_id": app["id"],
+            "property_id": pid,
+            "property_title": prop.get("title"),
+            "applicant_name": name or app.get("applicant_email"),
+            "applicant_email": app.get("applicant_email"),
+            "application_status": app.get("status"),
+            "last_body": None,
+            "last_at": app.get("created_at"),
+            "last_sender_role": None,
+            "total": 0,
+            "unread": 0,
+        })
     if org_id:
-        no_msg_apps = await db.applications.find(
-            {"org_id": org_id, "id": {"$nin": list(seen_app_ids)}}, NO_ID
-        ).sort("created_at", -1).to_list(300)
-        for app in no_msg_apps:
-            pid = app.get("property_id")
-            if pid not in prop_cache:
-                prop_cache[pid] = await db.properties.find_one({"id": pid}, NO_ID)
-            prop = prop_cache[pid] or {}
-            fd = app.get("form_data") or {}
-            name = " ".join(filter(None, [fd.get("vorname"), fd.get("nachname")])).strip()
-            out.append({
-                "application_id": app["id"],
-                "property_id": pid,
-                "property_title": prop.get("title"),
-                "applicant_name": name or app.get("applicant_email"),
-                "applicant_email": app.get("applicant_email"),
-                "application_status": app.get("status"),
-                "last_body": None,
-                "last_at": app.get("created_at"),
-                "last_sender_role": None,
-                "total": 0,
-                "unread": 0,
-            })
         out.sort(key=lambda x: x["last_at"] or "", reverse=True)
     return out
 
@@ -204,39 +212,41 @@ async def sidebar_badges(user: dict = Depends(get_current_user)):
     """Counts for the sidebar: what still needs this user's attention, per section.
 
     Cheap counts only — this is polled alongside the notification bell, so it must not
-    turn into a second dashboard query.
+    turn into a second dashboard query. Each count is its own round-trip to Atlas, so
+    they're fired concurrently instead of one after another — awaited sequentially, three
+    ~100ms round-trips become a ~300ms wait; run together, it's the cost of the slowest one.
     """
-    out = {"messages": await db.messages.count_documents(
-        {"recipient_id": user["id"], "read": False})}
+    messages_count = db.messages.count_documents({"recipient_id": user["id"], "read": False})
 
     if user.get("role") == "applicant":
-        # Appointments the applicant was invited to but has not answered yet.
-        out["viewings"] = await db.viewings.count_documents({
+        viewings_count = db.viewings.count_documents({
             "cancelled": {"$ne": True},
             "participants": {"$elemMatch": {"applicant_user_id": user["id"], "status": "invited"}},
         })
-        # Requested documents with no matching upload yet.
-        apps = await db.applications.find(
+        apps_task = db.applications.find(
             {"applicant_user_id": user["id"], "requested_documents": {"$exists": True, "$ne": []}},
             {"requested_documents": 1, "_id": 0}).to_list(200)
-        if apps:
-            have = set(await db.documents.distinct(
-                "doc_type", {"applicant_user_id": user["id"], "is_deleted": False}))
-            wanted = {d for a in apps for d in a.get("requested_documents", [])}
-            out["documents"] = len(wanted - have)
-        else:
-            out["documents"] = 0
-    elif user.get("org_id"):
+        have_task = db.documents.distinct("doc_type", {"applicant_user_id": user["id"], "is_deleted": False})
+        messages, viewings, apps, have = await asyncio.gather(
+            messages_count, viewings_count, apps_task, have_task)
+        wanted = {d for a in apps for d in a.get("requested_documents", [])}
+        return {"messages": messages, "viewings": viewings, "documents": len(wanted - set(have))}
+
+    if user.get("org_id"):
         # Applications nobody has looked at yet — tracked separately from pipeline stage,
         # so opening one clears the badge without moving it out of "Neu".
-        out["applications"] = await db.applications.count_documents(
+        applications_count = db.applications.count_documents(
             {"org_id": user["org_id"], "status": "neu", "viewed_by_landlord": {"$ne": True}})
         # Applicants who answered an invitation and are waiting on the landlord.
-        out["calendar"] = await db.viewings.count_documents({
+        calendar_count = db.viewings.count_documents({
             "org_id": user["org_id"], "cancelled": {"$ne": True},
             "participants.status": "reschedule_requested",
         })
-    return out
+        messages, applications, calendar = await asyncio.gather(
+            messages_count, applications_count, calendar_count)
+        return {"messages": messages, "applications": applications, "calendar": calendar}
+
+    return {"messages": await messages_count}
 
 
 @router.post("/notifications/{nid}/read")

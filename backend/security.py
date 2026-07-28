@@ -1,5 +1,6 @@
 import os
 import uuid
+import asyncio
 import jwt
 import bcrypt
 from datetime import datetime, timezone, timedelta
@@ -69,9 +70,17 @@ async def get_current_user(request: Request) -> dict:
     # Try JWT first
     try:
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
-        if payload.get("jti") and await db.revoked_tokens.find_one({"jti": payload["jti"]}):
-            raise HTTPException(status_code=401, detail="Sitzung wurde beendet. Bitte erneut anmelden.")
-        user = await db.users.find_one({"id": payload["sub"]}, NO_ID)
+        # This runs on every single authenticated request in the app, so the revocation
+        # check and the user lookup — independent of each other, both derived straight from
+        # the JWT payload — go out together instead of adding up as two sequential round-trips.
+        jti = payload.get("jti")
+        if jti:
+            revoked, user = await asyncio.gather(
+                db.revoked_tokens.find_one({"jti": jti}), db.users.find_one({"id": payload["sub"]}, NO_ID))
+            if revoked:
+                raise HTTPException(status_code=401, detail="Sitzung wurde beendet. Bitte erneut anmelden.")
+        else:
+            user = await db.users.find_one({"id": payload["sub"]}, NO_ID)
     except jwt.PyJWTError:
         user = None
     # Fallback: opaque session token (Google auth)
