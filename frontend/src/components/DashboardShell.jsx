@@ -219,17 +219,20 @@ export function DashboardShell() {
   const doLogout = async () => { await logout(); navigate("/"); };
 
   return (
-    <div className="min-h-screen flex bg-background text-foreground">
+    <div className="app-shell min-h-screen flex bg-background text-foreground">
       {/* Sidebar */}
       {/* lg:sticky + lg:h-screen (not lg:static) pins the sidebar to the viewport height on
           desktop — with plain `static` its box stretched to match the main column's full
           (often scrollable, taller-than-viewport) height, pushing "Hilfe & Support" and
           "Zur Website"/"Abmelden" below the fold on any page longer than one screen. */}
-      <aside className={`font-sidebar glass-dark relative fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen text-white flex flex-col overflow-hidden transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-        {/* Soft radial brand glow behind the nav — the onepage.io dark-panel signature —
-            sits under the content (z-0) so it reads as ambient light, not a shape. */}
-        <div className="pointer-events-none absolute -top-24 -left-16 h-64 w-64 rounded-full bg-primary/25 blur-[80px] z-0" />
-        <div className="pointer-events-none absolute bottom-0 -right-20 h-56 w-56 rounded-full bg-premium/10 blur-[90px] z-0" />
+      <aside className={`font-sidebar relative fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen text-white flex flex-col overflow-hidden transition-transform bg-[linear-gradient(165deg,hsl(214,60%,9%)_0%,hsl(220,55%,6%)_55%,hsl(224,45%,4%)_100%)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        {/* Soft radial brand glow behind the nav — the onepage.io dark-panel signature.
+            filter:blur on these self-contained shapes (not backdrop-filter on the panel
+            itself, which read as a muddy smear with nothing but flat page background to
+            sample) so the glow is always clean regardless of what's on the other side. */}
+        <div className="pointer-events-none absolute -top-20 -left-20 h-64 w-64 rounded-full bg-primary/30 blur-[70px] z-0" />
+        <div className="pointer-events-none absolute top-1/2 -right-24 h-72 w-72 rounded-full bg-premium/[0.08] blur-[90px] z-0" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_60%_at_50%_0%,rgba(255,255,255,0.05),transparent_60%)] z-0" />
         <div className="h-16 relative z-10 flex items-center justify-center px-3 border-b border-white/10">
           <Link to="/" className="flex items-center justify-center w-full">
             <img src="/mietgate-logo-wide.png" alt="MietGate" className="h-10 w-auto" />

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,17 +6,14 @@
 
 body {
     margin: 0;
-    font-family: 'Plus Jakarta Sans', 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Rounded, geometric grotesk — closer to the onepage.io reference than the previous
-   Sora-only pairing. Kept on h1-h4/.font-display only, not body copy, so long-form text
-   stays on Plus Jakarta Sans for readability. */
 h1, h2, h3, h4, .font-display {
-    font-family: 'Sora', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    letter-spacing: -0.025em;
+    font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.02em;
 }
 
 .font-mono {
@@ -25,8 +22,24 @@ h1, h2, h3, h4, .font-display {
     letter-spacing: -0.01em;
 }
 
+/* A more neutral, professional grotesk for the sidebar nav — Hanken Grotesk's rounder
+   letterforms read a touch playful for older landlords navigating day-to-day workflow. */
 .font-sidebar {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Scoped to the logged-in app shell only (DashboardShell) — the onepage.io-inspired
+   redesign covers the software, not the marketing site above, so this must not leak
+   into the global body/h1-h4 rules that Landing/Features/Pricing etc. still rely on. */
+.app-shell {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.app-shell h1, .app-shell h2, .app-shell h3, .app-shell h4, .app-shell .font-display {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.02em;
+}
+.app-shell .font-sidebar {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 @layer base {
