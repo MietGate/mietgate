@@ -24,10 +24,14 @@ unterschriebener AVV nach Art. 28 DSGVO vorliegt:
       Teil des kostenlosen R2-Plans
 - [ ] **Stripe** — DPA meist automatisch mit den Stripe-ToS akzeptiert, im Dashboard unter
       Settings → Legal gegenprüfen
-- [ ] **Resend** — DPA anfordern/abschließen; zusätzlich prüfen, ob Resends eigener AVV mit
-      Amazon SES (der faktische Versand läuft über AWS SES, siehe `feedback-smtp.eu-west-1
-      .amazonses.com` MX-Record) für dich einsehbar/durchgereicht ist — sonst fehlt ein Glied
-      in der Auftragsverarbeiter-Kette
+- [x] **Resend** — erledigt: Resends DPA (https://resend.com/legal/dpa) ist vorab
+      unterzeichnet und gilt automatisch mit Kontoerstellung/Zustimmung zu den Nutzungsbedingungen
+      als geschlossen, kein separater Abschluss nötig. Kopie zur eigenen Dokumentation unter
+      https://resend.com/docs/knowledge-base/downloading-documents herunterladen und ablegen.
+      Offen bleibt nur: Resends eigener Unterauftragsverarbeiter Amazon SES (faktischer Versand
+      läuft über AWS SES, siehe `feedback-smtp.eu-west-1.amazonses.com` MX-Record) — ob dieser
+      in Resends eigener Subprozessoren-Liste öffentlich einsehbar ist, kurz gegenprüfen unter
+      https://resend.com/legal (falls es eine separate Subprozessoren-Seite gibt).
 - [ ] Alle unterschriebenen AVVs an einem Ort ablegen (z. B. eigener Ordner), falls eine
       Behörde danach fragt
 
