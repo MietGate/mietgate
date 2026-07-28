@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus, Lock, Check } from "lucide-react";
+import { Star, FileText, Download, Send, Loader2, User, X, CalendarPlus, Lock, Check, PartyPopper } from "lucide-react";
 
 const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
   "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
@@ -24,6 +24,27 @@ const DOC_STAGE = {
 const STAGE_ORDER = { neu: 0, pruefung: 1, interessant: 2, besichtigung: 3, favorit: 4, zusage: 5 };
 const docRequestable = (type, status) =>
   (STAGE_ORDER[status] ?? -1) >= (DOC_STAGE[type] ?? 0);
+
+/* Applicants still in the running — the ones a "someone else got it" mail would reach. */
+const ACTIVE_STAGES = ["neu", "pruefung", "interessant", "besichtigung", "favorit"];
+
+/* Both the drag handler and the detail sheet change status, and both must ask before
+   anything leaves the building. Returns null when the landlord backed out. */
+function confirmStatusChange(newStatus, otherActiveCount) {
+  if (newStatus === "absage") {
+    return window.confirm("Status auf „Absage\" setzen? Der Bewerber erhält dadurch sofort eine Absage-E-Mail.")
+      ? { reject_others: false } : null;
+  }
+  if (newStatus === "zusage") {
+    if (!window.confirm("Zusage erteilen? Der Bewerber erhält sofort eine Zusage-E-Mail.")) return null;
+    const rejectOthers = otherActiveCount > 0 && window.confirm(
+      `Sollen die übrigen ${otherActiveCount} Bewerber jetzt eine freundliche Absage erhalten?\n\n` +
+      `Sie werden auf „Absage\" gesetzt und erhalten eine E-Mail. Das lässt sich nicht rückgängig machen.\n\n` +
+      `Abbrechen: Zusage wird trotzdem erteilt, die anderen bleiben unverändert.`);
+    return { reject_others: rejectOthers };
+  }
+  return { reject_others: false };
+}
 
 const COLUMNS = [
   { key: "neu", label: "Neu", dot: "bg-slate-400" }, { key: "pruefung", label: "Prüfung", dot: "bg-blue-500" },
@@ -99,7 +120,7 @@ function RequestDocsDialog({ open, onOpenChange, status, alreadyRequested, onSub
   );
 }
 
-function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
+function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, onChanged }) {
   const [app, setApp] = useState(null);
   const [messages, setMessages] = useState([]);
   const [msg, setMsg] = useState("");
@@ -108,6 +129,8 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   const [selViewing, setSelViewing] = useState("");
   const [fieldDefs, setFieldDefs] = useState([]);
   const [docRequestOpen, setDocRequestOpen] = useState(false);
+  const [property, setProperty] = useState(null);
+  const [, setSearchParams] = useSearchParams();
   const msgEndRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -119,6 +142,7 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
     if (propertyId) {
       const v = await api.get(`/viewings?property_id=${propertyId}`);
       setViewings(v.data);
+      api.get(`/properties/${propertyId}`).then((r) => setProperty(r.data)).catch(() => {});
     }
   }, [appId, propertyId]);
 
@@ -135,8 +159,13 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
   };
   const setStars = (n) => { setApp({ ...app, stars: n }); saveMeta({ stars: n }); };
   const changeStatus = async (s) => {
-    if (s === "absage" && !window.confirm("Status auf \"Absage\" setzen? Der Bewerber erhält dadurch sofort eine Absage-E-Mail.")) return;
-    await api.patch(`/applications/${appId}/status`, { status: s }); toast.success("Status aktualisiert"); load(); onChanged?.();
+    const opts = confirmStatusChange(s, otherActiveCount);
+    if (!opts) return;
+    const { data } = await api.patch(`/applications/${appId}/status`, { status: s, ...opts });
+    toast.success(data.rejected_others
+      ? `Zusage erteilt · ${data.rejected_others} Absage(n) versendet`
+      : "Status aktualisiert");
+    load(); onChanged?.();
   };
   const sendMsg = async () => {
     if (!msg.trim()) return;
@@ -183,6 +212,30 @@ function ApplicationSheet({ appId, propertyId, open, onClose, onChanged }) {
             </SheetHeader>
 
             <div className="p-6 space-y-6">
+              {/* After a Zusage the next real-world step is the handover, so the contact
+                  details and the way to book it belong here rather than three clicks away. */}
+              {app.status === "zusage" && (
+                <div className="rounded-xl border-2 border-success/40 bg-success/5 p-4" data-testid="handover-block">
+                  <div className="flex items-center gap-2">
+                    <PartyPopper className="h-4.5 w-4.5 text-success" style={{ width: 18, height: 18 }} />
+                    <p className="font-semibold text-sm">Ihr neuer Mieter — Übergabe planen</p>
+                  </div>
+                  <div className="mt-3 space-y-1 text-sm">
+                    <p><span className="text-muted-foreground">Kontakt: </span>{app.applicant_email}
+                      {app.form_data?.telefon && <> · {app.form_data.telefon}</>}</p>
+                    <p>
+                      <span className="text-muted-foreground">Objekt: </span>
+                      {[property?.street, property?.house_number, property?.zip, property?.city].filter(Boolean).join(" ")
+                        || <span className="text-amber-700 dark:text-amber-500">Keine Adresse hinterlegt — bitte im Objekt ergänzen</span>}
+                    </p>
+                  </div>
+                  <Button size="sm" className="mt-3" data-testid="plan-handover"
+                    onClick={() => { onClose(); setSearchParams({ tab: "viewings" }, { replace: true }); }}>
+                    <CalendarPlus className="h-4 w-4 mr-1" /> Übergabetermin anlegen
+                  </Button>
+                </div>
+              )}
+
               <div>
                 <Label2>Status</Label2>
                 <Select value={app.status} onValueChange={changeStatus}>
@@ -351,13 +404,22 @@ export function Pipeline({ propertyId }) {
     }
   }, [searchParams, setSearchParams]);
 
+  const otherActiveCount = (excludeId) =>
+    apps.filter((a) => a.id !== excludeId && ACTIVE_STAGES.includes(a.status)).length;
+
   const onDragEnd = async (result) => {
     const { destination, draggableId, source } = result;
     if (!destination || destination.droppableId === source.droppableId) return;
     const newStatus = destination.droppableId;
-    if (newStatus === "absage" && !window.confirm("Status auf \"Absage\" setzen? Der Bewerber erhält dadurch sofort eine Absage-E-Mail.")) return;
+    const opts = confirmStatusChange(newStatus, otherActiveCount(draggableId));
+    if (!opts) return;
     setApps((prev) => prev.map((a) => (a.id === draggableId ? { ...a, status: newStatus } : a)));
-    try { await api.patch(`/applications/${draggableId}/status`, { status: newStatus }); }
+    try {
+      const { data } = await api.patch(`/applications/${draggableId}/status`, { status: newStatus, ...opts });
+      // A bulk rejection moved cards we don't know about locally — refetch instead of
+      // leaving the board showing applicants who are no longer where they appear.
+      if (data.rejected_others) { toast.success(`${data.rejected_others} Absage(n) versendet`); load(); }
+    }
     catch { toast.error("Statusänderung fehlgeschlagen"); load(); }
   };
 
@@ -454,7 +516,8 @@ export function Pipeline({ propertyId }) {
           })}
         </div>
       </DragDropContext>
-      <ApplicationSheet appId={activeId} propertyId={propertyId} open={!!activeId} onClose={() => setActiveId(null)} onChanged={load} />
+      <ApplicationSheet appId={activeId} propertyId={propertyId} otherActiveCount={otherActiveCount(activeId)}
+        open={!!activeId} onClose={() => setActiveId(null)} onChanged={load} />
     </>
   );
 }

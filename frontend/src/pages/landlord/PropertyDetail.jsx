@@ -25,8 +25,7 @@ export default function PropertyDetail() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [choosingPlan, setChoosingPlan] = useState(false);
-  const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState(null); // null until prop loads, then defaulted below
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const load = () => api.get(`/properties/${id}`).then((r) => setProp(r.data)).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
   useEffect(() => {
@@ -35,6 +34,14 @@ export default function PropertyDetail() {
   }, [id]);
 
   if (!prop) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  /* The URL is the single source of truth for the active tab, so deep links from elsewhere
+     (onboarding, the handover block) still switch tabs after the landlord has clicked around. */
+  const tab = searchParams.get("tab") || (prop.link_active ? "pipeline" : "link");
+  const setTab = (v) => {
+    const next = new URLSearchParams(searchParams); next.set("tab", v);
+    setSearchParams(next, { replace: true });
+  };
 
   const appLink = `${window.location.origin}/b/${prop.application_code}`;
   const copy = () => { navigator.clipboard.writeText(appLink); setCopied(true); toast.success("Link kopiert"); setTimeout(() => setCopied(false), 2000); };
@@ -125,9 +132,7 @@ export default function PropertyDetail() {
         </div>
       )}
 
-      {/* ?tab= lets other screens deep-link a specific tab (e.g. the onboarding step that
-          points at the Inserat snippets, which live under "link"). */}
-      <Tabs key={prop.id} value={tab ?? searchParams.get("tab") ?? (prop.link_active ? "pipeline" : "link")} onValueChange={setTab}>
+      <Tabs key={prop.id} value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="pipeline" data-testid="tab-pipeline">Bewerber ({prop.application_count})</TabsTrigger>
           <TabsTrigger value="link" data-testid="tab-link">Bewerbungslink</TabsTrigger>

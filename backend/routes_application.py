@@ -249,6 +249,43 @@ async def get_application(app_id: str, user: dict = Depends(get_current_user)):
 
 class StatusUpdate(BaseModel):
     status: str
+    # Only meaningful when moving to "zusage": send the remaining applicants a friendly
+    # rejection. Opt-in, because it mails a lot of people at once and cannot be undone.
+    reject_others: bool = False
+
+
+# Stages where an applicant is still in the running — the ones a "someone else got it"
+# mail should reach. "absage"/"archiv"/"zurueckgezogen" are already out.
+_ACTIVE_STAGES = ["neu", "pruefung", "interessant", "besichtigung", "favorit"]
+
+_APPLICANT_SERVICE_PITCH = (
+    "<div style='margin-top:28px;padding:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px'>"
+    "<p style='margin:0 0 6px;font-weight:700;color:#0a2540'>Schneller zur nächsten Wohnung</p>"
+    "<p style='margin:0 0 14px;color:#475569;font-size:14px'>Mit einem verifizierten Mieterprofil bewerben Sie "
+    "sich mit einem Klick — Ihre Unterlagen sind hinterlegt, und Vermieter sehen sofort, dass Ihre Angaben "
+    "vollständig sind. Auch bei Wohnungen außerhalb von MietGate.</p>"
+    "<a href='{url}/fuer-mieter' style='background:#0a2540;color:#ffffff;padding:10px 18px;border-radius:6px;"
+    "text-decoration:none;display:inline-block;font-weight:600;font-size:14px'>Mieterprofil ansehen</a>"
+    "</div>"
+)
+
+
+def _rejection_html(ptitle: str, someone_else: bool) -> str:
+    """A rejection people can read without feeling dismissed.
+
+    Most applicants get many of these; the tone is the one thing we control, and the
+    profile pitch only makes sense once they know they're still looking.
+    """
+    lead = ("<p>vielen Dank, dass Sie sich für <b>%s</b> beworben haben — und für die Mühe, die Sie sich "
+            "mit Ihrer Bewerbung gemacht haben.</p>" % ptitle)
+    if someone_else:
+        lead += ("<p>Die Wohnung ist inzwischen vergeben. Bei der Vielzahl an Bewerbungen musste eine "
+                 "Entscheidung fallen, die nichts über Sie als Mieterin oder Mieter aussagt.</p>")
+    else:
+        lead += ("<p>Wir können Ihre Bewerbung dieses Mal leider nicht berücksichtigen. Das ist keine "
+                 "Bewertung Ihrer Person — bei den meisten Wohnungen entscheiden am Ende Details.</p>")
+    lead += "<p>Für Ihre weitere Suche wünschen wir Ihnen viel Erfolg. Sie können sich jederzeit wieder bewerben.</p>"
+    return lead + _APPLICANT_SERVICE_PITCH.format(url=FRONTEND_URL)
 
 
 @router.patch("/applications/{app_id}/status")
@@ -258,20 +295,67 @@ async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(ge
     app = await db.applications.find_one({"id": app_id})
     if not app or app["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    previous = app.get("status", "neu")
     await db.applications.update_one({"id": app_id}, {"$set": {"status": body.status}})
     await log_activity(app["org_id"], user["id"], "status_change", "application", app_id, {"status": body.status})
-    status_label = STATUS_LABELS.get(body.status, body.status)
-    await notify(app["applicant_user_id"], "status_change", "Statusänderung",
-                 f"Ihre Bewerbung hat den Status: {status_label}", "/bewerber")
     prop = await db.properties.find_one({"id": app["property_id"]}, NO_ID)
     ptitle = (prop or {}).get("title", "Ihre Bewerbung")
-    await email_user(app["applicant_user_id"], "Statusänderung Ihrer Bewerbung",
-                     "Es gibt ein Update zu Ihrer Bewerbung",
-                     f"<p>Der Status Ihrer Bewerbung für <b>{ptitle}</b> wurde aktualisiert:</p>"
-                     f"<p style='font-size:17px;font-weight:700;color:#0a2540'>{status_label}</p>"
-                     f"<p>Details finden Sie in Ihrem MietGate-Konto.</p>",
-                     category="applications")
-    return {"ok": True, "status": body.status}
+    status_label = STATUS_LABELS.get(body.status, body.status)
+    rejected_others = 0
+
+    if body.status == "zusage":
+        await notify(app["applicant_user_id"], "status_change", "Zusage erhalten! 🎉",
+                     f"Sie haben die Zusage für „{ptitle}“ erhalten.", "/bewerber")
+        await email_user(app["applicant_user_id"], f"Zusage für {ptitle}", "Herzlichen Glückwunsch! 🎉",
+                         f"<p>Ihre Bewerbung für <b>{ptitle}</b> war erfolgreich — die Wohnung gehört Ihnen.</p>"
+                         f"<p>Der Vermieter meldet sich in Kürze bei Ihnen, um die Übergabe und den "
+                         f"Mietvertrag zu besprechen.</p>"
+                         f"<p>Wir wünschen Ihnen einen guten Start im neuen Zuhause!</p>",
+                         category="applications")
+        if body.reject_others:
+            others = await db.applications.find(
+                {"property_id": app["property_id"], "status": {"$in": _ACTIVE_STAGES},
+                 "id": {"$ne": app_id}}).to_list(1000)
+            for other in others:
+                await db.applications.update_one({"id": other["id"]}, {"$set": {"status": "absage"}})
+                await notify(other["applicant_user_id"], "status_change", "Entscheidung gefallen",
+                             f"Die Wohnung „{ptitle}“ wurde vergeben.", "/bewerber")
+                await email_user(other["applicant_user_id"], f"Ihre Bewerbung für {ptitle}",
+                                 "Ihre Bewerbung", _rejection_html(ptitle, someone_else=True),
+                                 category="applications")
+            rejected_others = len(others)
+            await log_activity(app["org_id"], user["id"], "bulk_reject", "property",
+                               app["property_id"], {"count": rejected_others})
+
+    elif body.status == "absage":
+        await notify(app["applicant_user_id"], "status_change", "Entscheidung zu Ihrer Bewerbung",
+                     f"Ihre Bewerbung für „{ptitle}“ wurde nicht berücksichtigt.", "/bewerber")
+        await email_user(app["applicant_user_id"], f"Ihre Bewerbung für {ptitle}", "Ihre Bewerbung",
+                         _rejection_html(ptitle, someone_else=False), category="applications")
+
+    elif previous == "zusage":
+        # The deal fell through and the landlord is reopening the process. Without this the
+        # applicant would just see their status quietly drop back with no explanation.
+        await notify(app["applicant_user_id"], "status_change", "Gute Neuigkeiten",
+                     f"„{ptitle}“ ist wieder verfügbar — Ihre Bewerbung ist zurück im Verfahren.", "/bewerber")
+        await email_user(app["applicant_user_id"], f"Gute Neuigkeiten zu {ptitle}", "Gute Neuigkeiten",
+                         f"<p>Die Wohnung <b>{ptitle}</b> ist wieder verfügbar geworden, und Ihre Bewerbung "
+                         f"ist zurück im Verfahren.</p>"
+                         f"<p>Aktueller Stand: <b>{status_label}</b>. Der Vermieter meldet sich bei Ihnen, "
+                         f"sobald es weitergeht — eventuell mit einem neuen Besichtigungstermin.</p>",
+                         category="applications")
+
+    else:
+        await notify(app["applicant_user_id"], "status_change", "Statusänderung",
+                     f"Ihre Bewerbung hat den Status: {status_label}", "/bewerber")
+        await email_user(app["applicant_user_id"], "Statusänderung Ihrer Bewerbung",
+                         "Es gibt ein Update zu Ihrer Bewerbung",
+                         f"<p>Der Status Ihrer Bewerbung für <b>{ptitle}</b> wurde aktualisiert:</p>"
+                         f"<p style='font-size:17px;font-weight:700;color:#0a2540'>{status_label}</p>"
+                         f"<p>Details finden Sie in Ihrem MietGate-Konto.</p>",
+                         category="applications")
+
+    return {"ok": True, "status": body.status, "rejected_others": rejected_others}
 
 
 class AppMeta(BaseModel):
