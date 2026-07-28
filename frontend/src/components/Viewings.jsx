@@ -17,6 +17,17 @@ import { downloadIcs } from "@/lib/ics";
 
 export const TYPE_LABEL = { single: "Einzelbesichtigung", slots: "Zeitfenster", group: "Massenbesichtigung" };
 
+/* Slots carried a single application_id before per-slot capacity existed; older rows are
+   read in that shape, so count both. */
+const slotTaken = (s) => (s.application_ids ? s.application_ids.length : (s.application_id ? 1 : 0));
+
+function slotSummary(v) {
+  const slots = v.slots || [];
+  const seats = slots.reduce((n, s) => n + (s.capacity || 1), 0);
+  const taken = slots.reduce((n, s) => n + slotTaken(s), 0);
+  return `${slots.length} Zeitfenster · ${taken}/${seats} Plätze belegt`;
+}
+
 /* Shared by the per-property tab and the global calendar.
    `properties` turns on the object picker; `defaultDate` (yyyy-mm-dd) pre-fills a clicked calendar day. */
 export function CreateViewingDialog({ propertyId, properties, defaultDate, preselectApplicants = [],
@@ -33,6 +44,8 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, prese
   const [saving, setSaving] = useState(false);
   const [applicants, setApplicants] = useState([]);
   const [invitees, setInvitees] = useState([]);
+  const [slotCapacity, setSlotCapacity] = useState("1");
+  const [openInvite, setOpenInvite] = useState(false);
 
   // When a day is clicked in the calendar, start that day at 10:00.
   useEffect(() => {
@@ -70,6 +83,8 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, prese
       max_participants: form.max_participants ? Number(form.max_participants) : null,
       notes: form.notes,
       duration_minutes: form.duration_minutes ? Number(form.duration_minutes) : 30,
+      slot_capacity: Math.max(1, Number(slotCapacity) || 1),
+      open_invite: openInvite,
     };
     try {
       const { data } = await api.post("/viewings", payload);
@@ -86,7 +101,7 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, prese
       }
       setOpen(false); onCreated();
       setForm({ title: "", datetime: "", max_participants: "", notes: "", duration_minutes: "30" });
-      setSlots([""]); setInvitees([]);
+      setSlots([""]); setInvitees([]); setSlotCapacity("1"); setOpenInvite(false);
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setSaving(false); }
   };
@@ -125,19 +140,40 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, prese
           {type !== "slots" ? (
             <div><Label>Datum & Uhrzeit</Label><Input type="datetime-local" value={form.datetime} onChange={(e) => setForm({ ...form, datetime: e.target.value })} className="mt-1.5" data-testid="viewing-datetime" /></div>
           ) : (
-            <div>
-              <Label>Zeitfenster</Label>
-              <div className="space-y-2 mt-1.5">
-                {slots.map((s, i) => (
-                  <Input key={i} type="datetime-local" value={s} onChange={(e) => { const n = [...slots]; n[i] = e.target.value; setSlots(n); }} />
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={() => setSlots([...slots, ""])}>+ Slot</Button>
+            <div className="space-y-3">
+              <div>
+                <Label>Zeitfenster</Label>
+                <div className="space-y-2 mt-1.5">
+                  {slots.map((s, i) => (
+                    <Input key={i} type="datetime-local" value={s} onChange={(e) => { const n = [...slots]; n[i] = e.target.value; setSlots(n); }} />
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => setSlots([...slots, ""])}>+ Slot</Button>
+                </div>
+              </div>
+              <div>
+                <Label>Plätze pro Zeitfenster</Label>
+                <Input type="number" min="1" value={slotCapacity} onChange={(e) => setSlotCapacity(e.target.value)}
+                  className="mt-1.5" data-testid="viewing-slot-capacity" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Wer zuerst bucht, kommt zuerst. Bei einem Zeitfenster von einer Stunde und
+                  30 Minuten pro Besichtigung passen z.&nbsp;B. 2 Bewerber nacheinander hinein.
+                </p>
               </div>
             </div>
           )}
           {type === "group" && <div><Label>Max. Teilnehmer</Label><Input type="number" value={form.max_participants} onChange={(e) => setForm({ ...form, max_participants: e.target.value })} className="mt-1.5" /></div>}
           <div><Label>Dauer (Minuten)</Label><Input type="number" min="5" step="5" value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} className="mt-1.5" data-testid="viewing-duration" /></div>
           <div><Label>Notizen</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1.5" /></div>
+          <label className="flex items-start gap-2.5 rounded-md border border-border p-3 cursor-pointer hover:bg-secondary/50">
+            <Checkbox checked={openInvite} onCheckedChange={setOpenInvite} className="mt-0.5" data-testid="viewing-open-invite" />
+            <span className="text-sm">
+              Offene Besichtigung
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                Jeder neue Bewerber wird automatisch eingeladen. Die Einladung geht rund
+                10 Minuten nach der Bewerbung raus, damit Sie vorher noch eingreifen können.
+              </span>
+            </span>
+          </label>
           {applicants.length > 0 && (
             <div>
               <Label>Bewerber einladen <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
@@ -305,12 +341,13 @@ export function Viewings({ propertyId, property }) {
             <div key={v.id} className="rounded-xl border border-border bg-card p-5" data-testid={`viewing-${v.id}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{v.title}</h3>
                     <Badge variant="secondary">{TYPE_LABEL[v.type]}</Badge>
+                    {v.open_invite && <Badge data-testid={`open-invite-${v.id}`}>Offene Besichtigung</Badge>}
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {v.type === "slots" ? `${v.slots?.length || 0} Zeitfenster` : (v.datetime ? new Date(v.datetime).toLocaleString("de-DE") : "Kein Datum")}
+                    {v.type === "slots" ? slotSummary(v) : (v.datetime ? new Date(v.datetime).toLocaleString("de-DE") : "Kein Datum")}
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1"><Users className="h-3.5 w-3.5" /> {v.participants?.length || 0} Teilnehmer</p>
                 </div>

@@ -10,6 +10,7 @@ from helpers import new_id, now_iso, log_activity, notify, compute_matching_scor
 from constants import (FORM_FIELDS, STATUS_LABELS, PIPELINE_STATUSES,
                        redact_doc_for_landlord)
 from email_templates import render_and_send
+from routes_viewing import auto_invite_to_open_viewings
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 
@@ -153,6 +154,9 @@ async def submit_application(req: ApplyRequest):
     }
     await db.applications.insert_one(application)
     await log_activity(prop["org_id"], user["id"], "apply", "application", app_id, {"property": prop["title"]})
+    # "Offene Besichtigung": anyone who applies is put on the guest list right away, the
+    # invitation mail follows a few minutes later.
+    await auto_invite_to_open_viewings(application, prop)
     # notify landlord
     # Deep-link straight to this application instead of the property page — otherwise the
     # landlord still has to hunt for the applicant that the notification is about.

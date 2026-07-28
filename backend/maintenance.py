@@ -53,6 +53,52 @@ async def send_viewing_reminders():
     return count
 
 
+async def dispatch_pending_viewing_invites():
+    """Send the queued invitations of "offene Besichtigungen" whose delay has elapsed.
+
+    Queued in routes_viewing.auto_invite_to_open_viewings — see there for why the mail is
+    deliberately not sent in the same second the application arrives.
+    """
+    now = datetime.now(timezone.utc)
+    cursor = db.viewings.find({"cancelled": {"$ne": True}, "participants.notified": False})
+    sent = 0
+    async for v in cursor:
+        parts = v.get("participants", [])
+        changed = False
+        for p in parts:
+            if p.get("notified") is not False:
+                continue
+            due = _parse(p.get("notify_after"))
+            if not due or due > now:
+                continue
+            when = v.get("datetime") or p.get("slot")
+            when_block = f"<p>Termin: <b>{when}</b></p>" if when else ""
+            await notify(p["applicant_user_id"], "viewing_invite", "Einladung zur Besichtigung",
+                         f"Sie wurden zu einer Besichtigung eingeladen: {v['title']}", "/bewerber/termine")
+            if p.get("applicant_email") and await email_enabled(p["applicant_user_id"], "viewings"):
+                await render_and_send("viewing_invite", p["applicant_email"], v.get("org_id"),
+                                      {"viewing_title": v["title"], "when_block": when_block})
+            p["notified"] = True
+            changed = True
+            sent += 1
+        if changed:
+            await db.viewings.update_one({"id": v["id"]}, {"$set": {"participants": parts}})
+    if sent:
+        logger.info(f"Dispatched {sent} pending viewing invites")
+    return sent
+
+
+async def pending_invite_loop():
+    """Own loop: the hourly maintenance pass is far too coarse for a 10-minute delay."""
+    await asyncio.sleep(30)
+    while True:
+        try:
+            await dispatch_pending_viewing_invites()
+        except Exception as e:
+            logger.error(f"Pending invite dispatch failed: {e}")
+        await asyncio.sleep(60)
+
+
 async def run_gdpr_cleanup():
     """Delete applications & their documents per retention rules."""
     now = datetime.now(timezone.utc)
@@ -143,7 +189,9 @@ async def run_once():
     d = await run_gdpr_cleanup()
     lt = await send_lead_task_reminders()
     ot = await expire_one_time_subscriptions()
-    return {"reminders": r, "deleted_applications": d, "lead_task_reminders": lt, "expired_one_time": ot}
+    pi = await dispatch_pending_viewing_invites()
+    return {"reminders": r, "deleted_applications": d, "lead_task_reminders": lt,
+            "expired_one_time": ot, "pending_invites": pi}
 
 
 async def maintenance_loop():

@@ -79,4 +79,6 @@ async def on_startup():
         logger.error(f"Storage init failed: {e}")
     asyncio.get_event_loop().run_in_executor(None, stripe_service.setup_catalog)
     asyncio.create_task(maintenance.maintenance_loop())
-    logger.info("Maintenance loop scheduled")
+    # Separate, much shorter cadence — queued viewing invites are due after ~10 minutes.
+    asyncio.create_task(maintenance.pending_invite_loop())
+    logger.info("Maintenance loops scheduled")

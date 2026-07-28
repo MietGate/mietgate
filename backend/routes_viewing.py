@@ -1,3 +1,4 @@
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
@@ -10,15 +11,42 @@ from email_service import send_email
 router = APIRouter(prefix="/api", tags=["viewings"])
 
 
+def normalize_slots(slots):
+    """Bring slots into the {time, capacity, application_ids} shape.
+
+    Slots used to hold a single application_id. Rows created before per-slot capacity
+    existed are converted on read, so nothing has to be migrated up front.
+    """
+    out = []
+    for s in slots or []:
+        if "application_ids" in s:
+            out.append({**s, "capacity": s.get("capacity") or 1,
+                        "application_ids": s.get("application_ids") or []})
+        else:
+            legacy = s.get("application_id")
+            out.append({"time": s.get("time"), "capacity": s.get("capacity") or 1,
+                        "application_ids": [legacy] if legacy else []})
+    return out
+
+
+def slot_is_free(slot):
+    return len(slot.get("application_ids") or []) < (slot.get("capacity") or 1)
+
+
 class ViewingPayload(BaseModel):
     property_id: str
     type: str = "single"  # single | slots | group
     title: Optional[str] = None
     datetime: Optional[str] = None       # for single/group
     slots: List[str] = []                # ISO datetimes for slot system
+    # How many applicants fit into one slot. A one-hour window with 30-minute viewings
+    # holds two people one after another, so capacity is the landlord's call.
+    slot_capacity: int = 1
     max_participants: Optional[int] = None
     notes: Optional[str] = None
     duration_minutes: int = 30
+    # Everyone who applies from now on is invited automatically.
+    open_invite: bool = False
 
 
 @router.post("/viewings")
@@ -27,18 +55,50 @@ async def create_viewing(payload: ViewingPayload, user: dict = Depends(get_curre
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
     vid = new_id()
+    capacity = max(1, payload.slot_capacity)
     doc = {
         "id": vid, "property_id": payload.property_id, "org_id": user["org_id"],
         "type": payload.type, "title": payload.title or "Besichtigung",
         "datetime": payload.datetime, "duration_minutes": payload.duration_minutes,
-        "slots": [{"time": s, "application_id": None} for s in payload.slots],
+        "slots": [{"time": s, "capacity": capacity, "application_ids": []} for s in payload.slots],
         "max_participants": payload.max_participants, "notes": payload.notes,
+        "open_invite": payload.open_invite,
         "participants": [], "created_by": user["id"], "created_at": now_iso(),
     }
     await db.viewings.insert_one(doc)
     await log_activity(user["org_id"], user["id"], "create", "viewing", vid)
     doc.pop("_id", None)
     return doc
+
+
+AUTO_INVITE_DELAY_MINUTES = 10
+
+
+async def auto_invite_to_open_viewings(app: dict, prop: dict):
+    """Add a fresh applicant to every "offene Besichtigung" of that property.
+
+    The invitation itself is queued rather than sent: the applicant has just received the
+    "Bewerbung eingegangen" mail, and a second one in the same second reads like a machine
+    gun. It also leaves the landlord a short window to intervene before it goes out.
+    Dispatch happens in maintenance.dispatch_pending_viewing_invites.
+    """
+    open_views = await db.viewings.find(
+        {"property_id": prop["id"], "open_invite": True, "cancelled": {"$ne": True}}).to_list(20)
+    if not open_views:
+        return
+    send_at = (datetime.now(timezone.utc) + timedelta(minutes=AUTO_INVITE_DELAY_MINUTES)).isoformat()
+    for v in open_views:
+        parts = v.get("participants", [])
+        if any(p.get("application_id") == app["id"] for p in parts):
+            continue
+        parts.append({
+            "application_id": app["id"], "applicant_user_id": app.get("applicant_user_id"),
+            "applicant_email": app.get("applicant_email"),
+            "status": "invited", "slot": None,
+            "auto_invited": True, "notify_after": send_at, "notified": False,
+        })
+        await db.viewings.update_one({"id": v["id"]}, {"$set": {"participants": parts}})
+        await db.applications.update_one({"id": app["id"]}, {"$set": {"status": "besichtigung"}})
 
 
 @router.get("/viewings")
@@ -116,7 +176,7 @@ async def my_viewings(user: dict = Depends(get_current_user)):
     for v in views:
         mine = next((p for p in v.get("participants", []) if p["applicant_user_id"] == user["id"]), None)
         prop = await db.properties.find_one({"id": v["property_id"]}, NO_ID)
-        free_slots = [s["time"] for s in v.get("slots", []) if not s.get("application_id")]
+        free_slots = [s["time"] for s in normalize_slots(v.get("slots", [])) if slot_is_free(s)]
         my_app_id = mine.get("application_id") if mine else None
         # include the slot I already booked as still selectable label
         result.append({
@@ -146,17 +206,19 @@ async def book_slot(vid: str, payload: BookSlotPayload, user: dict = Depends(get
     mine = next((p for p in parts if p["applicant_user_id"] == user["id"]), None)
     if not mine:
         raise HTTPException(status_code=403, detail="Nicht eingeladen")
-    slots = viewing.get("slots", [])
+    slots = normalize_slots(viewing.get("slots", []))
     target = next((s for s in slots if s["time"] == payload.slot_time), None)
     if not target:
         raise HTTPException(status_code=404, detail="Zeitfenster nicht gefunden")
-    if target.get("application_id") and target["application_id"] != mine.get("application_id"):
-        raise HTTPException(status_code=409, detail="Zeitfenster bereits vergeben")
+    my_app = mine.get("application_id")
+    # First come, first served — but a slot can hold more than one applicant if the
+    # landlord said so, so it's only full once its capacity is used up.
+    if my_app not in (target.get("application_ids") or []) and not slot_is_free(target):
+        raise HTTPException(status_code=409, detail="Zeitfenster bereits ausgebucht")
     # release any previously held slot by this applicant
     for s in slots:
-        if s.get("application_id") == mine.get("application_id"):
-            s["application_id"] = None
-    target["application_id"] = mine.get("application_id")
+        s["application_ids"] = [a for a in s.get("application_ids", []) if a != my_app]
+    target["application_ids"] = list(target.get("application_ids", [])) + [my_app]
     mine["slot"] = payload.slot_time
     mine["status"] = "confirmed"
     await db.viewings.update_one({"id": vid}, {"$set": {"slots": slots, "participants": parts}})
@@ -184,7 +246,7 @@ async def respond_viewing(vid: str, payload: RespondPayload, user: dict = Depend
     if not viewing or viewing.get("cancelled"):
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     parts = viewing.get("participants", [])
-    slots = viewing.get("slots", [])
+    slots = normalize_slots(viewing.get("slots", []))
     found = False
     for p in parts:
         if p["applicant_user_id"] == user["id"]:
@@ -194,8 +256,8 @@ async def respond_viewing(vid: str, payload: RespondPayload, user: dict = Depend
             if payload.action == "decline" and p.get("slot"):
                 # free up the booked slot so other applicants can take it
                 for s in slots:
-                    if s.get("application_id") == p.get("application_id"):
-                        s["application_id"] = None
+                    s["application_ids"] = [a for a in s.get("application_ids", [])
+                                            if a != p.get("application_id")]
                 p["slot"] = None
     if not found:
         raise HTTPException(status_code=403, detail="Nicht eingeladen")
@@ -231,7 +293,7 @@ async def respond_to_reschedule(vid: str, application_id: str, payload: Reschedu
     if not viewing or viewing["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     parts = viewing.get("participants", [])
-    slots = viewing.get("slots", [])
+    slots = normalize_slots(viewing.get("slots", []))
     target = next((p for p in parts if p.get("application_id") == application_id), None)
     if not target:
         raise HTTPException(status_code=404, detail="Teilnehmer nicht gefunden")
@@ -240,8 +302,7 @@ async def respond_to_reschedule(vid: str, application_id: str, payload: Reschedu
 
     # Either way the previously held slot is released — the applicant no longer wants it.
     for s in slots:
-        if s.get("application_id") == application_id:
-            s["application_id"] = None
+        s["application_ids"] = [a for a in s.get("application_ids", []) if a != application_id]
     target["slot"] = None
 
     new_datetime = None
