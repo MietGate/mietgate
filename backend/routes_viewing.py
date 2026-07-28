@@ -67,7 +67,10 @@ async def invite_participants(vid: str, payload: InvitePayload, user: dict = Dep
     for app_id in payload.application_ids:
         if app_id in existing_ids:
             continue
-        app = await db.applications.find_one({"id": app_id})
+        # Scope to the caller's own org: an unscoped lookup would let a landlord pull a
+        # foreign application into their viewing, leaking that applicant's e-mail address
+        # in the response and flipping the other org's application status.
+        app = await db.applications.find_one({"id": app_id, "org_id": viewing["org_id"]})
         if not app:
             continue
         new_parts.append({

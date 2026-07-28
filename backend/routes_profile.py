@@ -8,7 +8,7 @@ from database import db, NO_ID
 from security import get_current_user
 from helpers import new_id, now_iso, notify, email_user
 from email_service import send_email
-from storage import get_object
+from storage import get_object, safe_inline_response
 
 router = APIRouter(prefix="/api", tags=["profile"])
 
@@ -165,5 +165,7 @@ async def download_shared_document(share_token: str, doc_id: str):
     if not rec:
         raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
     data, content_type = await run_in_threadpool(get_object, rec["storage_path"])
-    return Response(content=data, media_type=rec.get("content_type", content_type),
-                    headers={"Content-Disposition": f'inline; filename="{rec.get("original_filename","file")}"'})
+    media_type, disposition = safe_inline_response(
+        rec.get("content_type") or content_type, rec.get("original_filename", "datei"))
+    return Response(content=data, media_type=media_type,
+                    headers={"Content-Disposition": disposition})

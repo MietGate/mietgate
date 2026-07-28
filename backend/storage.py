@@ -98,3 +98,21 @@ def delete_object(path: str) -> None:
 def guess_mime(filename: str) -> str:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
     return MIME_TYPES.get(ext, "application/octet-stream")
+
+
+# Content types the browser may render in place. Everything else (HTML, SVG, anything
+# unrecognised) is forced to download instead: applicants upload arbitrary files, and the
+# content type is theirs to choose, so serving one inline would let them run scripts on
+# the API's own origin.
+INLINE_SAFE_TYPES = {
+    "image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf",
+}
+
+
+def safe_inline_response(content_type: str, filename: str = "datei") -> tuple:
+    """Returns (media_type, Content-Disposition) for serving a stored upload."""
+    ct = (content_type or "").split(";", 1)[0].strip().lower()
+    safe_name = (filename or "datei").replace('"', "").replace("\\", "").replace("\r", "").replace("\n", "")
+    if ct in INLINE_SAFE_TYPES:
+        return ct, f'inline; filename="{safe_name}"'
+    return "application/octet-stream", f'attachment; filename="{safe_name}"'

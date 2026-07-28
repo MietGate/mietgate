@@ -112,9 +112,13 @@ async def cancel_premium(user: dict = Depends(get_current_user)):
 
 
 @router.get("/payments/status/{session_id}")
-async def payment_status(session_id: str):
+async def payment_status(session_id: str, user: dict = Depends(get_current_user)):
     record = await stripe_service.sync_status(session_id)
-    if not record:
+    # Only the payer (or a colleague in the paying org) may poll a transaction — otherwise
+    # this unauthenticated lookup both leaked plan/status and let anyone drive Stripe calls.
+    own = record and (record.get("user_id") == user["id"]
+                      or (record.get("org_id") and record["org_id"] == user.get("org_id")))
+    if not own:
         raise HTTPException(status_code=404, detail="Transaktion nicht gefunden")
     return {"session_id": record["session_id"], "status": record["status"],
             "payment_status": record["payment_status"], "plan_key": record.get("plan_key")}

@@ -137,7 +137,6 @@ async def _send_verification_email(user_id, email, name, origin_url):
                      f"<p><a href='{link}' style='background:#0a2540;color:#fff;padding:10px 18px;"
                      f"border-radius:6px;text-decoration:none;display:inline-block'>E-Mail bestätigen</a></p>"
                      f"<p style='color:#94a3b8;font-size:12px'>Oder Link kopieren: {link}</p>")
-    print(f"[EMAIL VERIFY] {email}: verify token = {token}")
 
 
 @router.post("/register")
@@ -443,7 +442,6 @@ async def forgot_password(req: ForgotRequest):
                          f"<p><a href='{link}' style='background:#0a2540;color:#fff;padding:10px 18px;"
                          f"border-radius:6px;text-decoration:none;display:inline-block'>Passwort zurücksetzen</a></p>"
                          f"<p style='color:#94a3b8;font-size:12px'>Oder Link kopieren: {link}</p>")
-        print(f"[PASSWORD RESET] {req.email}: reset token = {token}")
     return {"ok": True, "message": "Falls die E-Mail existiert, wurde ein Link versendet."}
 
 

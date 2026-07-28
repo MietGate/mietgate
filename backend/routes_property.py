@@ -10,7 +10,8 @@ from typing import Optional, List, Dict, Any
 from database import db, NO_ID
 from security import get_current_user
 from helpers import new_id, now_iso, log_activity, get_plan_limit, active_property_count, plan_supports_team
-from storage import put_object, get_object, get_object_ranged, delete_object, guess_mime, APP_NAME
+from storage import (put_object, get_object, get_object_ranged, delete_object, guess_mime,
+                     safe_inline_response, APP_NAME)
 from constants import FORM_FIELDS, DEFAULT_FORM_CONFIG, DOCUMENT_TYPES, DOC_RELEASE_STAGE
 import stripe_service
 
@@ -255,6 +256,9 @@ async def regenerate_link(pid: str, user: dict = Depends(get_current_user)):
     prop = await db.properties.find_one({"id": pid})
     if not prop or prop["org_id"] != user.get("org_id"):
         raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    # Rotating the code invalidates a link that may already be live in a public listing —
+    # that is a modification, so read-only assistants must not be able to trigger it.
+    await _require_manage_role(prop["org_id"], user)
     code = gen_code()
     while await db.properties.find_one({"application_code": code}):
         code = gen_code()
@@ -405,6 +409,7 @@ async def delete_property_image(pid: str, img_id: str, user: dict = Depends(get_
 @router.post("/properties/{pid}/images/{img_id}/set-title")
 async def set_title_image(pid: str, img_id: str, user: dict = Depends(get_current_user)):
     prop = await _owned_property(pid, user)
+    await _require_manage_role(prop["org_id"], user)
     if not any(i["id"] == img_id for i in prop.get("images", [])):
         raise HTTPException(status_code=404, detail="Bild nicht gefunden")
     await db.properties.update_one({"id": pid}, {"$set": {"title_image_id": img_id}})
@@ -420,8 +425,11 @@ async def serve_property_image(pid: str, img_id: str):
     if not img:
         raise HTTPException(status_code=404, detail="Bild nicht gefunden")
     data, ct = await run_in_threadpool(get_object, img["storage_path"])
-    return Response(content=data, media_type=img.get("content_type", ct),
-                    headers={"Cache-Control": "public, max-age=86400"})
+    # The content type came from the uploading client, so it is not trusted to be an image.
+    media_type, disposition = safe_inline_response(img.get("content_type") or ct, "bild")
+    return Response(content=data, media_type=media_type,
+                    headers={"Cache-Control": "public, max-age=86400",
+                             "Content-Disposition": disposition})
 
 
 async def _serve_ranged(request: Request, path: str, default_content_type: str):

@@ -5,7 +5,8 @@ from starlette.concurrency import run_in_threadpool
 from typing import Optional
 from database import db, NO_ID
 from security import get_current_user, resolve_user_by_token
-from storage import put_object, get_object, delete_object, guess_mime, APP_NAME
+from storage import (put_object, get_object, delete_object, guess_mime,
+                     safe_inline_response, APP_NAME)
 from helpers import new_id, now_iso, log_activity, notify
 from constants import (DOCUMENT_TYPES, doc_released_to_landlord, doc_release_hint,
                        redact_doc_for_landlord)
@@ -124,8 +125,10 @@ async def download_document(doc_id: str, authorization: Optional[str] = Header(N
     if rec.get("org_id") and is_landlord:
         await log_activity(rec["org_id"], user["id"], "document_view", "document", doc_id)
     data, content_type = await run_in_threadpool(get_object, rec["storage_path"])
-    return Response(content=data, media_type=rec.get("content_type", content_type),
-                    headers={"Content-Disposition": f'inline; filename="{rec.get("original_filename","file")}"'})
+    media_type, disposition = safe_inline_response(
+        rec.get("content_type") or content_type, rec.get("original_filename", "datei"))
+    return Response(content=data, media_type=media_type,
+                    headers={"Content-Disposition": disposition})
 
 
 @router.delete("/documents/{doc_id}")

@@ -492,7 +492,9 @@ async def remove_member(member_id: str, user: dict = Depends(get_current_user)):
     member = await db.org_members.find_one({"org_id": user["org_id"], "user_id": user["id"]})
     if not member or member["role"] not in ("owner", "admin"):
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
-    target = await db.org_members.find_one({"id": member_id})
+    # Scope the lookup to the caller's own org — without it, an owner/admin could delete a
+    # membership out of a different organization by guessing/replaying its member id.
+    target = await db.org_members.find_one({"id": member_id, "org_id": user["org_id"]})
     if target and target["role"] == "owner":
         raise HTTPException(status_code=400, detail="Owner kann nicht entfernt werden")
     if target:

@@ -93,8 +93,8 @@ async def admin_search(q: str = "", user: dict = Depends(admin)):
 async def admin_users(q: Optional[str] = None, user: dict = Depends(admin)):
     query = {}
     if q:
-        query = {"$or": [{"email": {"$regex": q, "$options": "i"}},
-                         {"name": {"$regex": q, "$options": "i"}}]}
+        rx = {"$regex": re.escape(q), "$options": "i"}
+        query = {"$or": [{"email": rx}, {"name": rx}]}
     users = await db.users.find(query, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
     for u in users:
         if u.get("org_id"):

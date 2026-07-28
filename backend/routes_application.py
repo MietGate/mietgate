@@ -68,7 +68,7 @@ async def public_property(code: str):
 @router.get("/public/org-logo/{code}")
 async def public_org_logo(code: str):
     from fastapi import Response
-    from storage import get_object
+    from storage import get_object, safe_inline_response
     prop = await db.properties.find_one({"application_code": code})
     if not prop:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
@@ -81,7 +81,10 @@ async def public_org_logo(code: str):
     if not rec:
         raise HTTPException(status_code=404, detail="Kein Logo")
     data, content_type = get_object(rec["storage_path"])
-    return Response(content=data, media_type=rec.get("content_type", content_type))
+    media_type, disposition = safe_inline_response(
+        rec.get("content_type") or content_type, rec.get("original_filename", "logo"))
+    return Response(content=data, media_type=media_type,
+                    headers={"Content-Disposition": disposition})
 
 
 class ApplyRequest(BaseModel):
