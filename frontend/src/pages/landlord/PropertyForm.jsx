@@ -82,6 +82,7 @@ export default function PropertyForm() {
   const [saving, setSaving] = useState(false);
   const [fields, setFields] = useState([]);
   const [step, setStep] = useState(0);
+  const [errors, setErrors] = useState({});
   const [imageFiles, setImageFiles] = useState([]); // { file, previewUrl } — uploaded only after the property exists
   const imageInputRef = useRef(null);
   const [warmRentTouched, setWarmRentTouched] = useState(false);
@@ -111,8 +112,30 @@ export default function PropertyForm() {
     }
   }, [id, isEdit, navigate]);
 
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const set = (k) => (e) => {
+    setForm({ ...form, [k]: e.target.value });
+    if (errors[k]) setErrors({ ...errors, [k]: null });
+  };
   const num = (v) => (v === "" || v == null ? null : Number(v));
+
+  const validateStep = (stepIdx) => {
+    const newErrors = {};
+    if (stepIdx === 0) {
+      // Basisdaten — nur title ist erforderlich
+      if (!form.title || !form.title.trim()) newErrors.title = "Titel ist erforderlich";
+    } else if (stepIdx === 1) {
+      // Wohnungsdaten — optional, keine Validierung nötig
+    } else if (stepIdx === 2) {
+      // Mietdaten — optional
+    } else if (stepIdx === 3) {
+      // Weitere Informationen — date validation
+      if (form.earliest_move_in && !/^\d{4}-\d{2}-\d{2}$/.test(form.earliest_move_in)) {
+        newErrors.earliest_move_in = "Ungültiges Datumsformat";
+      }
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   /* Warmmiete is Kaltmiete + Nebenkosten in practice, so we fill it in instead of making the
      landlord add it up. Once they type their own value we stop overwriting it. */
@@ -188,7 +211,13 @@ export default function PropertyForm() {
   const basisdatenSection = (
     <Section title="Basisdaten">
       <div className="grid gap-4">
-        <div><FieldLabel required>Titel der Wohnung</FieldLabel><Input required value={form.title} onChange={set("title")} className="mt-1.5" data-testid="prop-title" placeholder="z.B. Helle 3-Zimmer-Altbauwohnung" /></div>
+        <div>
+          <div className="flex items-center justify-between">
+            <FieldLabel required>Titel der Wohnung</FieldLabel>
+            {errors.title && <span className="text-sm text-red-600">{errors.title}</span>}
+          </div>
+          <Input required value={form.title} onChange={set("title")} className={`mt-1.5 ${errors.title ? "border-red-600 focus:border-red-600" : ""}`} data-testid="prop-title" placeholder="z.B. Helle 3-Zimmer-Altbauwohnung" />
+        </div>
         <div><FieldLabel>Interne Bezeichnung</FieldLabel><Input value={form.internal_name} onChange={set("internal_name")} className="mt-1.5" placeholder="nur für Sie sichtbar" /></div>
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2"><FieldLabel>Straße</FieldLabel><Input value={form.street} onChange={set("street")} className="mt-1.5" /></div>
@@ -246,7 +275,13 @@ export default function PropertyForm() {
   const weitereInfosSection = (
     <Section title="Weitere Informationen">
       <div className="grid gap-4">
-        <div><FieldLabel>Frühester Einzugstermin</FieldLabel><Input type="date" value={form.earliest_move_in || ""} onChange={set("earliest_move_in")} className="mt-1.5" /></div>
+        <div>
+          <div className="flex items-center justify-between">
+            <FieldLabel>Frühester Einzugstermin</FieldLabel>
+            {errors.earliest_move_in && <span className="text-sm text-red-600">{errors.earliest_move_in}</span>}
+          </div>
+          <Input type="date" value={form.earliest_move_in || ""} onChange={set("earliest_move_in")} className={`mt-1.5 ${errors.earliest_move_in ? "border-red-600 focus:border-red-600" : ""}`} />
+        </div>
         <div><FieldLabel>Beschreibung</FieldLabel><Textarea rows={4} value={form.description} onChange={set("description")} className="mt-1.5" placeholder="Öffentlich sichtbare Beschreibung" /></div>
         <div><FieldLabel>Interne Notizen</FieldLabel><Textarea rows={2} value={form.internal_notes} onChange={set("internal_notes")} className="mt-1.5" placeholder="nur für Sie sichtbar" /></div>
         <div><FieldLabel>Externer Inseratslink</FieldLabel><Input value={form.external_listing_url} onChange={set("external_listing_url")} className="mt-1.5" placeholder="https://www.immobilienscout24.de/..." /><p className="text-xs text-muted-foreground mt-1">Erscheint als Button „Wohnungsanzeige ansehen" auf der Bewerbungsseite.</p></div>
@@ -389,9 +424,11 @@ export default function PropertyForm() {
 
   // Create mode: guided multi-step wizard.
   const lastStep = WIZARD_STEPS.length - 1;
-  const canProceed = step !== 0 || form.title.trim().length > 0;
   const goNext = () => {
-    if (!canProceed) { toast.error("Bitte geben Sie einen Titel für die Wohnung an."); return; }
+    if (!validateStep(step)) {
+      toast.error("Bitte füllen Sie alle erforderlichen Felder korrekt aus");
+      return;
+    }
     setStep((s) => Math.min(s + 1, lastStep));
   };
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
