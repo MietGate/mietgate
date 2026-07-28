@@ -120,13 +120,18 @@ export function CreateViewingDialog({ propertyId, properties, defaultDate, onCre
 function RescheduleRequest({ viewing, participant, onDone }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [newDatetime, setNewDatetime] = useState("");
+  const needsDatetime = viewing.type !== "slots";
 
   const respond = async (action) => {
+    if (action === "reoffer" && needsDatetime && !newDatetime) {
+      toast.error("Bitte einen neuen Termin auswählen."); return;
+    }
     setBusy(true);
     try {
       await api.post(`/viewings/${viewing.id}/participants/${participant.application_id}/reschedule-response`,
-        { action, message: message.trim() || null });
-      toast.success(action === "reoffer" ? "Bewerber kann neuen Termin wählen" : "Umbuchung abgelehnt");
+        { action, message: message.trim() || null, new_datetime: action === "reoffer" ? newDatetime || null : null });
+      toast.success(action === "reoffer" ? "Neuer Termin vorgeschlagen" : "Umbuchung abgelehnt");
       onDone();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setBusy(false); }
@@ -137,6 +142,12 @@ function RescheduleRequest({ viewing, participant, onDone }) {
       <p className="text-sm font-medium text-amber-900">
         ↻ {participant.applicant_email} bittet um einen anderen Termin
       </p>
+      {/* Slot-type viewings let the applicant pick any free slot themselves; a single/group
+          viewing has one shared datetime that only the landlord can move here. */}
+      {needsDatetime && (
+        <Input type="datetime-local" value={newDatetime} onChange={(e) => setNewDatetime(e.target.value)}
+          className="mt-2 bg-white" data-testid={`reschedule-newtime-${participant.application_id}`} />
+      )}
       <Input value={message} onChange={(e) => setMessage(e.target.value)} className="mt-2 bg-white"
         placeholder="Optionale Nachricht an den Bewerber" data-testid={`reschedule-msg-${participant.application_id}`} />
       <div className="flex gap-2 mt-2">

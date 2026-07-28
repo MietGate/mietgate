@@ -216,6 +216,7 @@ async def respond_viewing(vid: str, payload: RespondPayload, user: dict = Depend
 class RescheduleResponsePayload(BaseModel):
     action: str  # reoffer | decline
     message: Optional[str] = None
+    new_datetime: Optional[str] = None  # reoffer on a single/group viewing: the actual new time
 
 
 @router.post("/viewings/{vid}/participants/{application_id}/reschedule-response")
@@ -243,11 +244,22 @@ async def respond_to_reschedule(vid: str, application_id: str, payload: Reschedu
             s["application_id"] = None
     target["slot"] = None
 
+    new_datetime = None
     if payload.action == "reoffer":
         target["status"] = "invited"
-        title, body = "Neuer Termin möglich", "Der Vermieter hat Ihre Umbuchungsanfrage angenommen."
-        html = ("<p>Ihre Umbuchungsanfrage für die Besichtigung <b>%s</b> wurde angenommen.</p>"
-                "<p>Bitte wählen Sie in Ihrem MietGate-Konto einen neuen Termin.</p>" % viewing["title"])
+        title = "Neuer Termin möglich"
+        # Slot-type viewings already let the applicant pick any free slot themselves — only
+        # single/group viewings share one fixed datetime that only the landlord can move.
+        if payload.new_datetime and viewing.get("type") != "slots":
+            new_datetime = payload.new_datetime
+            body = f"Der Vermieter schlägt einen neuen Termin vor: {new_datetime}"
+            html = ("<p>Der Vermieter hat Ihre Umbuchungsanfrage für die Besichtigung <b>%s</b> angenommen "
+                    "und einen neuen Termin vorgeschlagen:</p><p><b>%s</b></p>"
+                    "<p>Bitte bestätigen Sie den Termin in Ihrem MietGate-Konto.</p>" % (viewing["title"], new_datetime))
+        else:
+            body = "Der Vermieter hat Ihre Umbuchungsanfrage angenommen."
+            html = ("<p>Ihre Umbuchungsanfrage für die Besichtigung <b>%s</b> wurde angenommen.</p>"
+                    "<p>Bitte wählen Sie in Ihrem MietGate-Konto einen neuen Termin.</p>" % viewing["title"])
     elif payload.action == "decline":
         target["status"] = "declined"
         title, body = "Umbuchung nicht möglich", "Der Vermieter kann Ihre Umbuchungsanfrage nicht erfüllen."
@@ -259,7 +271,10 @@ async def respond_to_reschedule(vid: str, application_id: str, payload: Reschedu
     if payload.message:
         html += f"<p>Nachricht vom Vermieter: {payload.message}</p>"
 
-    await db.viewings.update_one({"id": vid}, {"$set": {"participants": parts, "slots": slots}})
+    update = {"participants": parts, "slots": slots}
+    if new_datetime:
+        update["datetime"] = new_datetime
+    await db.viewings.update_one({"id": vid}, {"$set": update})
     await notify(target["applicant_user_id"], "viewing_reschedule_response", title, body, "/bewerber/termine")
     if target.get("applicant_email") and await email_enabled(target["applicant_user_id"], "viewings"):
         await send_email(target["applicant_email"], title, title, html)

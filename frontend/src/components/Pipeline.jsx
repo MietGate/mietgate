@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import api, { openDocument } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -244,6 +245,7 @@ export function Pipeline({ propertyId }) {
   const [activeId, setActiveId] = useState(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("new");
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const load = useCallback(async () => {
     const { data } = await api.get(`/applications?property_id=${propertyId}`);
@@ -251,6 +253,17 @@ export function Pipeline({ propertyId }) {
   }, [propertyId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Deep-link from the "Bewerbungen" list: ?open=<applicationId> jumps straight to the
+  // applicant's card instead of leaving them to find it again in the board.
+  useEffect(() => {
+    const open = searchParams.get("open");
+    if (open) {
+      setActiveId(open);
+      const next = new URLSearchParams(searchParams); next.delete("open");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const onDragEnd = async (result) => {
     const { destination, draggableId, source } = result;

@@ -56,7 +56,17 @@ export default function ApplicantDocuments() {
     if (err) { toast.error(err); input.value = ""; return; }
     setUploading(true);
     const fd = new FormData(); fd.append("file", file); fd.append("doc_type", forcedType || docType);
-    try { await api.post("/documents/upload", fd); toast.success("Dokument hochgeladen"); load(); }
+    try {
+      const { data } = await api.post("/documents/upload", fd);
+      // A document sitting unattached in the personal library never reaches the landlord
+      // (no application_id -> no notification, invisible in the pipeline). With exactly one
+      // application there's no ambiguity, so link it right away instead of relying on the
+      // applicant to notice the separate "verknüpfen" icon afterwards.
+      toast.success("Dokument hochgeladen");
+      if (apps.length === 1) await attach(data.id, apps[0].id);
+      else if (apps.length > 1) setAttaching(data.id);
+      load();
+    }
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
     finally { setUploading(false); input.value = ""; }
   };

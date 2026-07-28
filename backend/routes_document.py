@@ -52,8 +52,11 @@ async def public_upload(code: str = Form(...), application_id: str = Form(...),
         {"application_id": application_id, "is_deleted": False})
     if existing >= MAX_DOCS_PER_APPLICATION:
         raise HTTPException(status_code=400, detail="Maximale Anzahl Dokumente für diese Bewerbung erreicht")
-    return await _store_document(file, doc_type, app["applicant_user_id"],
-                                 application_id, app["org_id"], app["property_id"])
+    rec = await _store_document(file, doc_type, app["applicant_user_id"],
+                                application_id, app["org_id"], app["property_id"])
+    await notify(prop.get("created_by"), "new_document", "Neues Dokument",
+                f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).", f"/objekte/{app['property_id']}")
+    return rec
 
 
 @router.post("/documents/upload")

@@ -144,7 +144,7 @@ export default function Applications() {
           {visible.map((a) => {
             const st = STATUS[a.status] || STATUS.neu;
             return (
-              <Link key={a.id} to={`/objekte/${a.property_id}`} data-testid={`application-${a.id}`}
+              <Link key={a.id} to={`/objekte/${a.property_id}?open=${a.id}`} data-testid={`application-${a.id}`}
                 className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 hover:bg-secondary/40 transition-colors">
                 <div className="min-w-[180px] flex-1">
                   <p className="font-medium">{applicantName(a)}</p>

@@ -228,8 +228,10 @@ async def delete_my_account(user: dict = Depends(get_current_user)):
 @router.post("/me/password")
 async def change_password(body: PasswordChange, user: dict = Depends(get_current_user)):
     full = await db.users.find_one({"id": user["id"]})
-    if full.get("password_hash") and body.current_password is not None:
-        if not verify_password(body.current_password, full["password_hash"]):
+    if full.get("password_hash"):
+        # Require and verify current_password whenever a password is already set, regardless
+        # of whether the caller bothered to send it — an omitted field must not skip the check.
+        if not body.current_password or not verify_password(body.current_password, full["password_hash"]):
             raise HTTPException(status_code=400, detail="Aktuelles Passwort falsch")
     await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(body.new_password), "is_active": True}})
     return {"ok": True}

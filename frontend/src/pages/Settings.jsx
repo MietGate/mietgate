@@ -169,6 +169,7 @@ export default function Settings() {
     catch (e) { toast.error(formatApiError(e.response?.data?.detail)); } finally { setSaving(false); }
   };
   const changePw = async () => {
+    if (!isGoogleUser && !pw.current_password) { toast.error("Bitte geben Sie Ihr aktuelles Passwort ein."); return; }
     if (pw.new_password.length < 8) { toast.error("Das neue Passwort muss mindestens 8 Zeichen lang sein."); return; }
     if (pw.new_password !== confirmPw) { toast.error("Die Passwörter stimmen nicht überein."); return; }
     try {
@@ -248,11 +249,11 @@ export default function Settings() {
             {isGoogleUser ? (
               <p className="text-sm text-muted-foreground">Sie sind mit Google angemeldet. Hier können Sie zusätzlich ein Passwort für den direkten Login vergeben.</p>
             ) : (
-              <div><Label>Aktuelles Passwort</Label><Input type="password" value={pw.current_password} onChange={(e) => setPw({ ...pw, current_password: e.target.value })} className="mt-1.5" /></div>
+              <div><Label>Aktuelles Passwort</Label><Input type="password" required value={pw.current_password} onChange={(e) => setPw({ ...pw, current_password: e.target.value })} className="mt-1.5" data-testid="current-password" /></div>
             )}
             <div><Label>Neues Passwort</Label><Input type="password" minLength={8} value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} className="mt-1.5" data-testid="new-password" /><p className="text-xs text-muted-foreground mt-1">Mindestens 8 Zeichen.</p></div>
             <div><Label>Neues Passwort bestätigen</Label><Input type="password" minLength={8} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="mt-1.5" data-testid="confirm-password" /></div>
-            <Button onClick={changePw} disabled={!pw.new_password || !confirmPw}>Passwort ändern</Button>
+            <Button onClick={changePw} disabled={!pw.new_password || !confirmPw || (!isGoogleUser && !pw.current_password)}>Passwort ändern</Button>
           </div>
 
           {!isLandlord && (

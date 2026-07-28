@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
+import { validateFile } from "@/lib/validateFile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, ArrowRight, Save, AlertTriangle } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, Save, AlertTriangle, ImagePlus, Trash2 } from "lucide-react";
 
 const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis", "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
 /* Mirrors constants.DOC_RELEASE_STAGE on the backend — documents the authorities only
@@ -74,7 +75,7 @@ function SliderField({ label, value, onValueChange, min, max, step, format }) {
   );
 }
 
-const WIZARD_STEPS = ["Basisdaten", "Wohnungsdaten", "Mietdaten", "Weitere Informationen", "Formular-Builder", "Zusammenfassung"];
+const WIZARD_STEPS = ["Basisdaten", "Wohnungsdaten", "Mietdaten", "Weitere Informationen", "Bilder", "Formular-Builder", "Zusammenfassung"];
 
 export default function PropertyForm() {
   const { id } = useParams();
@@ -84,6 +85,8 @@ export default function PropertyForm() {
   const [saving, setSaving] = useState(false);
   const [fields, setFields] = useState([]);
   const [step, setStep] = useState(0);
+  const [imageFiles, setImageFiles] = useState([]); // { file, previewUrl } — uploaded only after the property exists
+  const imageInputRef = useRef(null);
   const [form, setForm] = useState({
     title: "", internal_name: "", street: "", house_number: "", zip: "", city: "", district: "",
     area: "", rooms: "", bathrooms: "", floor: "", balcony: false, cellar: false, parking: false,
@@ -110,6 +113,22 @@ export default function PropertyForm() {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const num = (v) => (v === "" || v == null ? null : Number(v));
 
+  const addImages = (e) => {
+    const picked = Array.from(e.target.files || []);
+    const accepted = [];
+    for (const file of picked) {
+      const err = validateFile(file, { maxMB: 10, extensions: ["jpg", "jpeg", "png", "webp"] });
+      if (err) toast.error(`${file.name}: ${err}`);
+      else accepted.push({ file, previewUrl: URL.createObjectURL(file) });
+    }
+    setImageFiles((prev) => [...prev, ...accepted]);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+  const removeImage = (idx) => setImageFiles((prev) => {
+    URL.revokeObjectURL(prev[idx].previewUrl);
+    return prev.filter((_, i) => i !== idx);
+  });
+
   /* Bonity documents may not be demanded before the viewing, so they aren't offered as
      mandatory in that mode. The backend strips them again regardless. */
   const selectableDocTypes = form.document_timing === "before"
@@ -131,7 +150,20 @@ export default function PropertyForm() {
     };
     try {
       if (isEdit) { await api.put(`/properties/${id}`, payload); toast.success("Objekt gespeichert"); navigate(`/objekte/${id}`); }
-      else { const { data } = await api.post("/properties", payload); toast.success("Objekt erstellt"); navigate(`/objekte/${data.id}`); }
+      else {
+        const { data } = await api.post("/properties", payload);
+        // Images need the property id, so they can only go up once it exists. A failed image
+        // must not discard the property the landlord just filled in — report and move on.
+        let failed = 0;
+        for (const { file } of imageFiles) {
+          const fd = new FormData(); fd.append("file", file);
+          try { await api.post(`/properties/${data.id}/images`, fd, { headers: { "Content-Type": "multipart/form-data" } }); }
+          catch { failed += 1; }
+        }
+        if (failed) toast.warning(`Objekt erstellt — ${failed} Bild(er) konnten nicht hochgeladen werden. Sie können sie unter „Bilder" nachtragen.`);
+        else toast.success("Objekt erstellt");
+        navigate(`/objekte/${data.id}`);
+      }
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || err.message);
     } finally { setSaving(false); }
@@ -255,6 +287,34 @@ export default function PropertyForm() {
     </Section>
   );
 
+  const bilderSection = (
+    <Section title="Bilder">
+      <p className="text-sm text-muted-foreground mb-4">
+        Optional. Objekte mit Fotos bekommen deutlich mehr Bewerbungen. Das erste Bild wird
+        automatisch zum Titelbild — Sie können das später jederzeit ändern.
+      </p>
+      <input ref={imageInputRef} type="file" accept="image/*" multiple hidden onChange={addImages} data-testid="wizard-image-input" />
+      <Button type="button" variant="outline" onClick={() => imageInputRef.current?.click()} data-testid="wizard-add-image">
+        <ImagePlus className="h-4 w-4 mr-2" /> Bilder auswählen
+      </Button>
+      <p className="text-xs text-muted-foreground mt-2">JPG, PNG oder WEBP · max. 10 MB pro Bild.</p>
+      {imageFiles.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+          {imageFiles.map((img, i) => (
+            <div key={img.previewUrl} className="relative group rounded-lg overflow-hidden border border-border aspect-[4/3] bg-secondary">
+              <img src={img.previewUrl} alt="" className="w-full h-full object-cover" />
+              {i === 0 && <span className="absolute top-2 left-2 text-[11px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">Titelbild</span>}
+              <button type="button" onClick={() => removeImage(i)} data-testid={`wizard-del-image-${i}`}
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+
   const formBuilderSection = (
     <Section title="Bewerbungsformular-Builder">
       <p className="text-sm text-muted-foreground mb-4">Legen Sie fest, welche Angaben Bewerber machen müssen.</p>
@@ -316,7 +376,7 @@ export default function PropertyForm() {
   };
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
-  const stepContent = [basisdatenSection, wohnungsdatenSection, mietdatenSection, weitereInfosSection, formBuilderSection, null][step];
+  const stepContent = [basisdatenSection, wohnungsdatenSection, mietdatenSection, weitereInfosSection, bilderSection, formBuilderSection, null][step];
 
   return (
     <form onSubmit={submit} className="space-y-6 animate-fade-up max-w-3xl mx-auto">
@@ -343,6 +403,7 @@ export default function PropertyForm() {
             <div className="flex items-start justify-between gap-3 px-4 py-2.5"><span className="text-muted-foreground">Adresse</span><span className="font-medium text-right">{[[form.street, form.house_number].filter(Boolean).join(" "), [form.zip, form.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "—"}</span></div>
             <div className="flex items-start justify-between gap-3 px-4 py-2.5"><span className="text-muted-foreground">Wohnfläche / Zimmer</span><span className="font-medium text-right">{[form.area && `${form.area} m²`, form.rooms && `${form.rooms} Zi.`].filter(Boolean).join(" · ") || "—"}</span></div>
             <div className="flex items-start justify-between gap-3 px-4 py-2.5"><span className="text-muted-foreground">Kaltmiete</span><span className="font-medium text-right">{form.cold_rent ? `${form.cold_rent} €` : "—"}</span></div>
+            <div className="flex items-start justify-between gap-3 px-4 py-2.5"><span className="text-muted-foreground">Bilder</span><span className="font-medium text-right">{imageFiles.length || "—"}</span></div>
             <div className="flex items-start justify-between gap-3 px-4 py-2.5"><span className="text-muted-foreground">Status</span><span className="font-medium text-right">{form.status === "active" ? "Aktiv" : form.status === "inactive" ? "Inaktiv" : "Vermietet"}</span></div>
           </div>
         </Section>
