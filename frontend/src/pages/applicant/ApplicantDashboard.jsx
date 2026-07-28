@@ -96,7 +96,7 @@ function PremiumCard() {
   }
 
   return (
-    <div className="hero-glow relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark to-[hsl(214,60%,7%)] text-white p-7 shadow-lg" data-testid="premium-upsell">
+    <div className="hero-glow animate-float relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark/85 to-[hsl(214,60%,7%)]/85 backdrop-blur-sm text-white p-7 shadow-xl" data-testid="premium-upsell">
       <div className="relative flex items-start gap-4">
         <div className="h-12 w-12 shrink-0 rounded-xl bg-premium/15 ring-1 ring-premium/30 text-premium flex items-center justify-center">
           <Crown className="h-6 w-6" />

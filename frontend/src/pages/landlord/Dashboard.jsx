@@ -112,7 +112,7 @@ export default function LandlordDashboard() {
         ) : (
           /* Same dark-card upsell language as the "verifiziertes Mieterprofil" pitch on
              ApplicantDocuments — one visual system for "here's a paid feature" everywhere. */
-          <div className="hero-glow relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark to-[hsl(214,60%,7%)] text-white p-7 shadow-lg" data-testid="dashboard-premium-upsell">
+          <div className="hero-glow animate-float relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-dark/85 to-[hsl(214,60%,7%)]/85 backdrop-blur-sm text-white p-7 shadow-xl" data-testid="dashboard-premium-upsell">
             <div className="relative flex items-start gap-4">
               <div className="h-12 w-12 shrink-0 rounded-xl bg-primary/15 ring-1 ring-primary/30 text-primary flex items-center justify-center">
                 <Zap className="h-6 w-6" />
