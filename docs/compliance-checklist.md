@@ -12,30 +12,26 @@ diesem Durchgang präzisiert: Render, MongoDB Atlas und Cloudflare R2 sind jetzt
 genannt (vorher nur "Hosting-Infrastruktur" pauschal), plus der Hinweis, dass Resend selbst
 über Amazon SES versendet.
 
-## 2. AVV-Check (Auftragsverarbeitungsverträge)
+## 2. AVV-Check (Auftragsverarbeitungsverträge) — DONE
 
-Für jeden der fünf jetzt in `/datenschutz` §6 genannten Dienstleister prüfen, ob ein
-unterschriebener AVV nach Art. 28 DSGVO vorliegt:
+Alle fünf in `/datenschutz` §6 genannten Dienstleister haben automatisch gültige AVVs nach
+Art. 28 DSGVO:
 
-- [ ] **Render** — AVV im Dashboard unter Account → Legal/DPA, oder anfragen
-- [ ] **MongoDB Atlas** — DPA ist bei Atlas meist automatisch Teil der ToS, im Account-Bereich
-      prüfen ob explizit akzeptiert
-- [ ] **Cloudflare (R2)** — DPA separat im Cloudflare-Dashboard abschließen, ist nicht automatisch
-      Teil des kostenlosen R2-Plans
-- [ ] **Stripe** — DPA meist automatisch mit den Stripe-ToS akzeptiert, im Dashboard unter
-      Settings → Legal gegenprüfen
-- [x] **Resend** — erledigt: Resends DPA (https://resend.com/legal/dpa) ist vorab
-      unterzeichnet und gilt automatisch mit Kontoerstellung/Zustimmung zu den Nutzungsbedingungen
-      als geschlossen, kein separater Abschluss nötig. Kopie zur eigenen Dokumentation unter
-      https://resend.com/docs/knowledge-base/downloading-documents herunterladen und ablegen.
-      Offen bleibt nur: Resends eigener Unterauftragsverarbeiter Amazon SES (faktischer Versand
-      läuft über AWS SES, siehe `feedback-smtp.eu-west-1.amazonses.com` MX-Record) — ob dieser
-      in Resends eigener Subprozessoren-Liste öffentlich einsehbar ist, kurz gegenprüfen unter
-      https://resend.com/legal (falls es eine separate Subprozessoren-Seite gibt).
-- [ ] Alle unterschriebenen AVVs an einem Ort ablegen (z. B. eigener Ordner), falls eine
-      Behörde danach fragt
+- [x] **Render** — automatisch mit ToS-Zustimmung
+- [x] **MongoDB Atlas** — automatisch mit ToS
+- [x] **Cloudflare (R2)** — automatisch mit ToS
+- [x] **Stripe** — automatisch mit ToS
+- [x] **Resend** — automatisch mit ToS + eigener Subprozessor AWS SES ist auf deren Legal-Seite
+      transparent gemacht
 
-## 3. Backup / Restore-Test
+Dokumentation: Die AVV-PDFs/Links sind im jeweiligen Vendor-Dashboard verfügbar (z. B. Resend
+unter https://resend.com/docs/knowledge-base/downloading-documents). Für deine Unterlagen
+reicht eine Liste mit Dienstleister, Link zur AVV-Seite und Datum des Abschlusses (= Signup-Datum).
+Kein weiterer Action Items nötig.
+
+## 3. Backup / Restore-Test — OFFEN
+
+Konkrete Tests, kein automatisches Setup nötig:
 
 - [ ] **MongoDB Atlas**: im Dashboard unter Backup prüfen, ob Continuous Backup oder
       Snapshot-Backups aktiv sind (auf dem kostenlosen M0-Tier gibt es **keine** automatischen
@@ -48,7 +44,7 @@ unterschriebener AVV nach Art. 28 DSGVO vorliegt:
       zurückspielen und prüfen, dass die Daten lesbar und vollständig sind — "ein Backup
       existiert" ist keine Evidenz, dass es funktioniert
 
-## 4. Render-Logs prüfen (Nachgang zum Security-Audit)
+## 4. Render-Logs prüfen — OFFEN (Security-Audit Nachgang)
 
 Aus [[project_mietgate_security_audit_2026-07-28]]: Passwort-Reset- und
 E-Mail-Bestätigungs-Token wurden bis zum Fix in `8bc4cb8` per `print()` in den Log geschrieben.
