@@ -293,8 +293,9 @@ export default function Help() {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} className="pl-9"
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)}
+          className="h-14 pl-12 pr-4 text-base rounded-xl border-2 shadow-sm transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:scale-[1.01] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:scale-[1.01]"
           placeholder="Problem mit Stichwort suchen, z.B. „schufa“ oder „absagen“…" data-testid="help-search" />
       </div>
 

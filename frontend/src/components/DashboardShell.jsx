@@ -151,10 +151,10 @@ function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="relative p-2 rounded-md hover:bg-secondary transition-colors" data-testid="notification-bell">
-          <Bell className="h-5 w-5 text-muted-foreground" />
+        <button className="relative p-2.5 rounded-md hover:bg-secondary transition-colors" data-testid="notification-bell">
+          <Bell className="h-6 w-6 text-muted-foreground" />
           {count > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[10px] font-bold h-4 min-w-4 px-1 rounded-full flex items-center justify-center">
+            <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-xs font-bold h-5 min-w-5 px-1 rounded-full flex items-center justify-center">
               {count}
             </span>
           )}
@@ -227,9 +227,8 @@ export function DashboardShell() {
           "Zur Website"/"Abmelden" below the fold on any page longer than one screen. */}
       <aside className={`fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="h-16 flex items-center px-5 border-b border-white/10">
-          <Link to="/" className="flex items-center gap-2">
-            <img src="/mietgate-logo.png" alt="MietGate" className="h-8 bg-white rounded-md p-0.5" />
-            <span className="font-display font-extrabold text-lg">MietGate</span>
+          <Link to="/" className="flex items-center">
+            <img src="/mietgate-logo-wide.png" alt="MietGate" className="h-7 w-auto" />
           </Link>
         </div>
         <nav className="flex-1 flex flex-col p-3 overflow-y-auto">
@@ -298,11 +297,11 @@ export function DashboardShell() {
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-md hover:bg-secondary transition-colors" data-testid="user-menu">
-                  <div className="h-8 w-8 rounded-full bg-primary/15 text-primary flex items-center justify-center font-semibold text-sm">
+                <button className="flex items-center gap-2.5 pl-2.5 pr-2 py-1.5 rounded-md hover:bg-secondary transition-colors" data-testid="user-menu">
+                  <div className="h-10 w-10 rounded-full bg-primary/15 text-primary flex items-center justify-center font-semibold text-base">
                     {(user?.first_name?.[0] || user?.name?.[0] || "U").toUpperCase()}
                   </div>
-                  <span className="hidden md:block text-sm font-medium max-w-[140px] truncate">{user?.name}</span>
+                  <span className="hidden md:block text-base font-medium max-w-[160px] truncate">{user?.name}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
