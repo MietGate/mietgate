@@ -291,7 +291,9 @@ export function Pipeline({ propertyId }) {
           const col = COLUMNS.find((c) => c.key === a.status);
           return (
             <div key={a.id} onClick={() => setActiveId(a.id)} data-testid={`mobile-app-card-${a.id}`}
-              className="rounded-lg border border-border bg-card p-3 cursor-pointer active:bg-secondary/50 transition-colors">
+              role="button" tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActiveId(a.id); } }}
+              className="rounded-lg border border-border bg-card p-3 cursor-pointer active:bg-secondary/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">{getApplicantName(a)}</p>

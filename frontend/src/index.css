@@ -30,7 +30,11 @@ h1, h2, h3, h4, .font-display {
         --card-foreground: 220 30% 10%;
         --popover: 0 0% 100%;
         --popover-foreground: 220 30% 10%;
-        --primary: 179 66% 36%;
+        /* 30% (not the brand-teal 36%) so white button/link text clears WCAG AA
+           (4.5:1) — at 36% it was 3.49:1, a real contrast failure on every primary
+           button and text-primary link in the app. --brand-teal keeps the lighter,
+           truer brand hue for decorative/logo-adjacent use where contrast doesn't apply. */
+        --primary: 179 66% 30%;
         --primary-foreground: 0 0% 100%;
         --secondary: 210 20% 96%;
         --secondary-foreground: 214 74% 15%;
@@ -38,7 +42,9 @@ h1, h2, h3, h4, .font-display {
         --muted-foreground: 215 16% 47%;
         --accent: 179 55% 94%;
         --accent-foreground: 179 66% 20%;
-        --destructive: 0 84% 60%;
+        /* 48% (not 60%) for the same reason — white text on destructive buttons was
+           3.61:1, below AA. */
+        --destructive: 0 84% 48%;
         --destructive-foreground: 210 40% 98%;
         --success: 142 72% 29%;
         --success-foreground: 210 40% 98%;
@@ -52,7 +58,9 @@ h1, h2, h3, h4, .font-display {
            state. Was previously freehand amber-400/amber-500/amber-600 per usage site;
            consolidated to one token so every premium touchpoint matches exactly. */
         --premium: 38 92% 50%;
-        --premium-foreground: 0 0% 100%;
+        /* White text here fails WCAG AA (2.1:1) — amber-500 is too light a background for
+           white. Reusing the brand-dark hue gets 8.8:1. */
+        --premium-foreground: 224 40% 8%;
         --radius: 0.4rem;
     }
     .dark {
@@ -80,7 +88,7 @@ h1, h2, h3, h4, .font-display {
         --brand-dark: 224 40% 4%;
         --brand-teal: 179 66% 42%;
         --premium: 38 92% 54%;
-        --premium-foreground: 224 25% 6%;
+        --premium-foreground: 224 40% 4%;
         --radius: 0.4rem;
     }
 }
@@ -110,6 +118,16 @@ html { scroll-behavior: smooth; }
 
 @media (prefers-reduced-motion: reduce) {
     .bg-dots-dark { animation: none; }
+    /* Global fallback: of the 15 keyframe animations in this file, only bg-dots-dark had
+       its own reduced-motion guard. A vestibular-disorder user with the OS setting on got
+       full-strength marquee/float/glow-pulse/ken-burns everywhere else. One rule covers all
+       of them instead of guarding each utility class individually. */
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* Infinite marquee ribbon */

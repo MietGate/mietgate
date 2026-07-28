@@ -27,10 +27,10 @@ function NewsletterForm() {
   if (done) return <p className="text-sm text-white/70" data-testid="newsletter-done">✓ Bitte bestätigen Sie die E-Mail, die wir Ihnen gerade geschickt haben.</p>;
   return (
     <form onSubmit={submit} className="flex gap-2 max-w-sm" data-testid="newsletter-form">
-      <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+      <Input type="email" required name="email" aria-label="E-Mail-Adresse" value={email} onChange={(e) => setEmail(e.target.value)}
         placeholder="Ihre E-Mail" data-testid="newsletter-email"
         className="bg-white/10 border-white/20 text-white placeholder:text-white/40" />
-      <Button type="submit" disabled={loading} variant="secondary" data-testid="newsletter-submit">
+      <Button type="submit" disabled={loading} variant="secondary" aria-label="Newsletter abonnieren" data-testid="newsletter-submit">
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
       </Button>
     </form>
