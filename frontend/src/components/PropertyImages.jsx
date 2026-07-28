@@ -41,7 +41,7 @@ export function PropertyImages({ property, onChanged }) {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 max-w-3xl" data-testid="property-images">
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 max-w-3xl" data-testid="property-images">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display font-bold text-lg">Objektbilder</h2>

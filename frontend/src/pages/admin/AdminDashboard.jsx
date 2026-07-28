@@ -3,7 +3,7 @@ import api from "@/lib/api";
 import { Loader2, Users, Building2, FileText, CreditCard, TrendingUp, XCircle, LifeBuoy, Clock, AlertTriangle } from "lucide-react";
 
 const Card = ({ icon: Icon, label, value, accent }) => (
-  <div className="rounded-xl border border-border bg-card p-5" data-testid={`admin-stat-${label.toLowerCase().replace(/[^a-z]/g, "")}`}>
+  <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5" data-testid={`admin-stat-${label.toLowerCase().replace(/[^a-z]/g, "")}`}>
     <div className="flex items-center justify-between">
       <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${accent || "bg-accent text-primary"}`}><Icon className="h-5 w-5" /></div>
       <span className="font-mono text-3xl font-extrabold">{value}</span>
@@ -31,7 +31,7 @@ function Funnel() {
   ];
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-4" data-testid="admin-funnel">
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 space-y-4" data-testid="admin-funnel">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display font-bold text-lg">Vermieter-Trichter</h2>
@@ -132,7 +132,7 @@ export default function AdminDashboard() {
         <Card icon={XCircle} label="Gekündigte Abos" value={s.cancelled_subscriptions} />
       </div>
       <Funnel />
-      <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-3 max-w-sm">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 flex items-center gap-3 max-w-sm">
         <LifeBuoy className="h-5 w-5 text-primary" />
         <div><p className="text-sm text-muted-foreground">Offene Supportfälle</p><p className="font-mono text-2xl font-bold">{s.open_tickets}</p></div>
       </div>

@@ -64,7 +64,7 @@ export default function AdminOutreach() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5 grid sm:grid-cols-2 gap-4">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 grid sm:grid-cols-2 gap-4">
         <div>
           <Label>Ort des Inserats</Label>
           <Input value={ort} onChange={(e) => setOrt(e.target.value)} className="mt-1.5" placeholder="z.B. Hamburg-Altona" data-testid="outreach-ort" />
@@ -79,7 +79,7 @@ export default function AdminOutreach() {
       </div>
 
       {templates.map((t) => (
-        <div key={t.key} className="rounded-xl border border-border bg-card overflow-hidden" data-testid={`outreach-${t.key}`}>
+        <div key={t.key} className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden" data-testid={`outreach-${t.key}`}>
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
             <h2 className="font-display font-bold flex items-center gap-2"><Megaphone className="h-4 w-4 text-primary" /> {t.name}</h2>
             <Button size="sm" onClick={() => copy(t)} data-testid={`copy-${t.key}`}>

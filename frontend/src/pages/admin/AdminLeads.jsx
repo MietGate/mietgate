@@ -388,7 +388,7 @@ export default function AdminLeads() {
                           {(prov) => (
                             <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps}
                               onClick={() => setActiveId(l.id)} data-testid={`lead-card-${l.id}`}
-                              className="rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all">
+                              className="rounded-xl border border-border/70 bg-card shadow-soft p-3 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all">
                               <p className="font-medium text-sm truncate">{l.name}</p>
                               {l.company && <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-1"><Building2 className="h-3 w-3" />{l.company}</p>}
                               {(l.zip || l.city) && <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" />{[l.zip, l.city].filter(Boolean).join(" ")}</p>}

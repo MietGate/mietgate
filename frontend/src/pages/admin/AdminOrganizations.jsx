@@ -46,7 +46,7 @@ export default function AdminOrganizations() {
   return (
     <div className="space-y-6 animate-fade-up">
       <h1 className="font-display text-3xl font-bold">Organisationen</h1>
-      <div className="rounded-xl border border-border bg-card overflow-x-auto">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-x-auto">
         <Table>
           <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Typ</TableHead><TableHead>Mitglieder</TableHead><TableHead>Objekte</TableHead><TableHead>Paket</TableHead><TableHead>White-Label</TableHead><TableHead></TableHead></TableRow></TableHeader>
           <TableBody>

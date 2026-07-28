@@ -132,7 +132,7 @@ export default function ApplicantDocuments() {
               {requested.map((t) => {
                 const open = missing.includes(t);
                 return (
-                  <div key={t} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
+                  <div key={t} className="flex items-center gap-3 rounded-lg border border-border/70 bg-card shadow-soft px-3 py-2 text-sm">
                     <span className={`h-5 w-5 shrink-0 rounded-full border flex items-center justify-center ${
                       open ? "border-border" : "bg-success border-success text-success-foreground"}`}>
                       {!open && <Check className="h-3 w-3" />}
@@ -156,7 +156,7 @@ export default function ApplicantDocuments() {
       <input ref={requestFileRef} type="file" onChange={(e) => upload(e, requestedTypeRef.current)}
         className="hidden" accept=".pdf,.jpg,.jpeg,.png" data-testid="requested-file-input" />
 
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[180px]">
             <label className="text-sm font-medium">Dokumententyp</label>
@@ -176,7 +176,7 @@ export default function ApplicantDocuments() {
       {/* Guided bonity step. Only shown while no SCHUFA document exists — afterwards it's
           just noise. The applicant picks their route instead of being pushed at a link. */}
       {!hasSchufa && !bonityDismissed && (
-        <div className="rounded-xl border border-border bg-card p-6" data-testid="bonity-step">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6" data-testid="bonity-step">
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center text-primary shrink-0"><ShieldCheck className="h-5 w-5" /></div>
             <div className="min-w-0">
@@ -250,7 +250,7 @@ export default function ApplicantDocuments() {
       <div className="space-y-2">
         {docs.length === 0 && <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">Noch keine Dokumente hochgeladen.</div>}
         {docs.map((d) => (
-          <div key={d.id} className="rounded-lg border border-border bg-card p-4" data-testid={`mydoc-${d.id}`}>
+          <div key={d.id} className="rounded-xl border border-border/70 bg-card shadow-soft p-4" data-testid={`mydoc-${d.id}`}>
             <div className="flex items-center justify-between gap-3">
               <button onClick={() => preview(d)} className="flex items-center gap-3 truncate text-left flex-1 min-w-0" data-testid={`mydoc-preview-${d.id}`}>
                 <FileText className="h-5 w-5 text-primary shrink-0" />

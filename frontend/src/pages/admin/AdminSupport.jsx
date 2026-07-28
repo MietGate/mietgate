@@ -179,7 +179,7 @@ export default function AdminSupport() {
         <TabsContent value="tickets" className="mt-6 space-y-2">
           {tickets.length === 0 && <p className="text-sm text-muted-foreground">Keine Anfragen.</p>}
           {tickets.map((t) => (
-            <div key={t.id} className="rounded-lg border border-border bg-card p-4">
+            <div key={t.id} className="rounded-xl border border-border/70 bg-card shadow-soft p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-medium flex items-center gap-2 flex-wrap">
                   {t.name} · <a href={`mailto:${t.email}`} className="text-primary hover:underline inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{t.email}</a>

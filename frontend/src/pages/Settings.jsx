@@ -38,7 +38,7 @@ function NotificationSettings() {
   if (!categories) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 space-y-5">
       <div>
         <h2 className="font-display font-bold text-lg flex items-center gap-2"><Mail className="h-4 w-4" /> E-Mail-Benachrichtigungen</h2>
         <p className="text-sm text-muted-foreground mt-1">
@@ -100,7 +100,7 @@ function OrgEmailTemplates() {
   if (!templates) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 space-y-4 mt-6">
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 space-y-4 mt-6">
       <div>
         <h3 className="font-display font-bold flex items-center gap-2"><Mail className="h-4 w-4" /> E-Mail-Vorlagen</h3>
         <p className="text-sm text-muted-foreground mt-1">
@@ -233,7 +233,7 @@ export default function Settings() {
         </TabsList>
 
         <TabsContent value="profile" className="mt-6 space-y-4">
-          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+          <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Vorname</Label><Input value={profile.first_name} onChange={(e) => setProfile({ ...profile, first_name: e.target.value })} className="mt-1.5" data-testid="profile-firstname" /></div>
               <div><Label>Nachname</Label><Input value={profile.last_name} onChange={(e) => setProfile({ ...profile, last_name: e.target.value })} className="mt-1.5" /></div>
@@ -249,7 +249,7 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="password" className="mt-6">
-          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+          <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 space-y-4">
             {isGoogleUser ? (
               <p className="text-sm text-muted-foreground">Sie sind mit Google angemeldet. Hier können Sie zusätzlich ein Passwort für den direkten Login vergeben.</p>
             ) : (
@@ -287,7 +287,7 @@ export default function Settings() {
 
         {isLandlord && org && (
           <TabsContent value="org" className="mt-6">
-            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+            <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 space-y-4">
               <div><Label>Firmenname</Label><Input value={org.name || ""} onChange={(e) => setOrg({ ...org, name: e.target.value })} className="mt-1.5" data-testid="org-name" /></div>
               <div><Label>Beschreibung</Label><Textarea rows={3} value={org.description || ""} onChange={(e) => setOrg({ ...org, description: e.target.value })} className="mt-1.5" /></div>
               <div><Label>Adresse</Label><Input value={org.address || ""} onChange={(e) => setOrg({ ...org, address: e.target.value })} className="mt-1.5" /></div>
@@ -305,7 +305,7 @@ export default function Settings() {
 
         {isLandlord && org && (
           <TabsContent value="whitelabel" className="mt-6">
-            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+            <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 space-y-4">
               {!wlAddon && (
                 <div className="rounded-lg border border-dashed border-primary/40 bg-accent/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3" data-testid="wl-upsell">
                   <div>

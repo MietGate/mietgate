@@ -119,7 +119,7 @@ export default function AdminPlans() {
           </Dialog>
         </div>
         {plans.map((p, i) => (
-          <div key={p.key} className="rounded-xl border border-border bg-card p-5" data-testid={`admin-plan-${p.key}`}>
+          <div key={p.key} className="rounded-2xl border border-border/70 bg-card shadow-soft p-5" data-testid={`admin-plan-${p.key}`}>
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-40"><Label>Name</Label><Input value={p.name} onChange={(e) => setPlanField(i, "name", e.target.value)} className="mt-1.5" /></div>
               <div className="w-28"><Label>Monatlich €</Label><Input type="number" value={p.price_monthly} onChange={(e) => setPlanField(i, "price_monthly", e.target.value)} className="mt-1.5" /></div>
@@ -175,7 +175,7 @@ export default function AdminPlans() {
         {promos.length === 0 ? <p className="text-sm text-muted-foreground">Keine Aktionen.</p> : (
           <div className="space-y-2">
             {promos.map((pr) => (
-              <div key={pr.id} className="rounded-lg border border-border bg-card p-4 flex items-center justify-between">
+              <div key={pr.id} className="rounded-xl border border-border/70 bg-card shadow-soft p-4 flex items-center justify-between">
                 <div>
                   <p className="font-medium">{pr.name} <Badge variant="secondary" className="ml-2">{pr.plan_key === "all" ? "Alle Pakete" : plans.find((p) => p.key === pr.plan_key)?.name || pr.plan_key}</Badge></p>
                   <p className="text-sm text-muted-foreground">{pr.discount_percent ? `−${pr.discount_percent}%` : `${pr.fixed_price} €`} · {new Date(pr.start).toLocaleDateString("de-DE")} – {new Date(pr.end).toLocaleDateString("de-DE")}</p>

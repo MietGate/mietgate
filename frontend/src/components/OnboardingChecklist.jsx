@@ -53,7 +53,7 @@ export function OnboardingChecklist() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6" data-testid="onboarding-checklist">
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6" data-testid="onboarding-checklist">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           {data.complete && <PartyPopper className="h-5 w-5 text-primary mt-0.5 shrink-0" />}

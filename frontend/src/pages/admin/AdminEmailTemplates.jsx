@@ -39,7 +39,7 @@ export default function AdminEmailTemplates() {
       </div>
 
       {templates.map((t, i) => (
-        <details key={t.key} className="rounded-xl border border-border bg-card overflow-hidden group" data-testid={`template-${t.key}`}>
+        <details key={t.key} className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden group" data-testid={`template-${t.key}`}>
           <summary className="px-5 py-4 cursor-pointer font-medium flex items-center gap-2 list-none">
             <Mail className="h-4 w-4 text-primary shrink-0" /> {t.name}
           </summary>

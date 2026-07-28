@@ -73,7 +73,7 @@ export function InseratTemplates({ property, appLink, onCopied }) {
   if (!templates) return null;
 
   return (
-    <div className="mt-4 rounded-xl border border-border bg-card p-6 max-w-2xl" data-testid="inserat-templates">
+    <div className="mt-4 rounded-2xl border border-border/70 bg-card shadow-soft p-6 max-w-2xl" data-testid="inserat-templates">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-display font-bold">Textbausteine für Ihr Inserat</h3>

@@ -51,21 +51,21 @@ export default function AdminNewsletter() {
       <div><h1 className="font-display text-3xl font-bold">Newsletter</h1></div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-4 flex items-center gap-3">
           <MailCheck className="h-5 w-5 text-success shrink-0" />
           <div><p className="text-xs text-muted-foreground">Bestätigt</p><p className="font-mono text-xl font-bold">{counts.confirmed}</p></div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-4 flex items-center gap-3">
           <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
           <div><p className="text-xs text-muted-foreground">Ausstehend</p><p className="font-mono text-xl font-bold">{counts.pending}</p></div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-4 flex items-center gap-3">
           <MailX className="h-5 w-5 text-destructive shrink-0" />
           <div><p className="text-xs text-muted-foreground">Abgemeldet</p><p className="font-mono text-xl font-bold">{counts.unsubscribed}</p></div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 space-y-4">
         <h2 className="font-display font-bold text-lg">Newsletter versenden</h2>
         <p className="text-sm text-muted-foreground">
           Geht an alle <b>{counts.confirmed}</b> bestätigten Abonnenten. Jede E-Mail enthält automatisch einen Abmeldelink.
@@ -81,7 +81,7 @@ export default function AdminNewsletter() {
       <div className="space-y-3">
         <h2 className="font-display font-bold text-lg flex items-center gap-2"><Users className="h-4 w-4" /> Abonnenten ({subs.length})</h2>
         {subs.length === 0 ? <p className="text-sm text-muted-foreground">Noch keine Abonnenten.</p> : (
-          <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden max-h-96 overflow-y-auto">
+          <div className="rounded-2xl border border-border/70 bg-card shadow-soft divide-y divide-border overflow-hidden max-h-96 overflow-y-auto">
             {subs.map((s) => {
               const st = STATUS[s.status] || STATUS.pending;
               return (

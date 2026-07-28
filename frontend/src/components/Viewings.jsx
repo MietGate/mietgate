@@ -372,7 +372,7 @@ export function Viewings({ propertyId, property }) {
       ) : (
         <div className="space-y-3">
           {views.map((v) => (
-            <div key={v.id} className="rounded-xl border border-border bg-card p-5" data-testid={`viewing-${v.id}`}>
+            <div key={v.id} className="rounded-2xl border border-border/70 bg-card shadow-soft p-5" data-testid={`viewing-${v.id}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">

@@ -92,7 +92,7 @@ export default function Team() {
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-card divide-y divide-border">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft divide-y divide-border">
         {members.map((m) => (
           <div key={m.id} className="flex items-center justify-between p-4" data-testid={`member-${m.id}`}>
             <div className="flex items-center gap-3">
@@ -117,7 +117,7 @@ export default function Team() {
       {invites.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-muted-foreground">Ausstehende Einladungen</h2>
-          <div className="rounded-xl border border-dashed border-border bg-card divide-y divide-border">
+          <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card divide-y divide-border">
             {invites.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between p-4" data-testid={`invite-${inv.id}`}>
                 <div className="flex items-center gap-3">

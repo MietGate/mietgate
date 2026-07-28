@@ -62,7 +62,7 @@ export default function AdminInseratTemplates() {
       <div className="space-y-4 max-w-3xl">
         {templates.length === 0 && <p className="text-sm text-muted-foreground">Keine Vorlagen. Beim Speichern ohne Vorlagen greifen die eingebauten Standardtexte.</p>}
         {templates.map((t, i) => (
-          <div key={t.key || i} className="rounded-xl border border-border bg-card p-5" data-testid={`admin-template-${i}`}>
+          <div key={t.key || i} className="rounded-2xl border border-border/70 bg-card shadow-soft p-5" data-testid={`admin-template-${i}`}>
             <div><Label>Bezeichnung</Label><Input value={t.label} onChange={setField(i, "label")} className="mt-1.5" data-testid={`admin-template-label-${i}`} /></div>
             <div className="mt-3"><Label>Text</Label><Textarea rows={5} value={t.text} onChange={setField(i, "text")} className="mt-1.5 font-mono text-sm" data-testid={`admin-template-text-${i}`} /></div>
             <div className="flex justify-end mt-3">

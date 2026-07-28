@@ -155,7 +155,7 @@ export default function PropertyDetail() {
             <div className="relative">
               <div className="pointer-events-none select-none blur-sm opacity-60"><Pipeline propertyId={id} /></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="rounded-xl border border-border bg-card/95 shadow-lg p-6 text-center max-w-sm">
+                <div className="rounded-2xl border border-border/70 bg-card/95 shadow-soft-lg p-6 text-center max-w-sm">
                   <Lock className="h-6 w-6 text-destructive mx-auto mb-2" />
                   <p className="font-semibold text-sm">Bewerber-Ansicht gesperrt</p>
                   <p className="text-sm text-muted-foreground mt-1 mb-4">Aktualisieren Sie Ihre Zahlungsmethode, um wieder Zugriff auf Ihre Bewerber zu erhalten.</p>
@@ -171,7 +171,7 @@ export default function PropertyDetail() {
         <TabsContent value="link" className="mt-6">
           {prop.link_active ? (
             <>
-              <div className="rounded-xl border border-border bg-card p-6 max-w-2xl">
+              <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 max-w-2xl">
                 <div className="flex items-center gap-2 mb-2"><Link2 className="h-5 w-5 text-primary" /><h2 className="font-display font-bold text-lg">Ihr Bewerbungslink</h2></div>
                 <p className="text-sm text-muted-foreground mb-4">Teilen Sie diesen Link auf ImmoScout, Kleinanzeigen, Social Media oder Ihrer Website. Keine Adresse sichtbar, sicher & teilbar.</p>
                 <div className="flex gap-2">
@@ -198,7 +198,7 @@ export default function PropertyDetail() {
                 onCopied={() => api.post("/onboarding/flag", { key: "inserat_kopiert" }).catch(() => {})} />
             </>
           ) : (
-            <div className="rounded-xl border border-dashed border-border bg-card p-8 max-w-2xl text-center" data-testid="link-activate-panel">
+            <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card p-8 max-w-2xl text-center" data-testid="link-activate-panel">
               <Zap className="h-8 w-8 text-primary mx-auto mb-3" />
               <h2 className="font-display font-bold text-lg">Bewerbungslink aktivieren</h2>
               <p className="text-sm text-muted-foreground mt-1 mb-5">
@@ -221,7 +221,7 @@ export default function PropertyDetail() {
 
         <TabsContent value="overview" className="mt-6">
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
-            <div className="rounded-xl border border-border bg-card p-6">
+            <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6">
               <h3 className="font-display font-bold mb-3">Wohnung</h3>
               <Row label="Wohnfläche" value={prop.area && `${prop.area} m²`} />
               <Row label="Zimmer" value={prop.rooms} />
@@ -231,7 +231,7 @@ export default function PropertyDetail() {
               <Row label="Keller" value={prop.cellar ? "Ja" : null} />
               <Row label="Stellplatz" value={prop.parking ? "Ja" : null} />
             </div>
-            <div className="rounded-xl border border-border bg-card p-6">
+            <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6">
               <h3 className="font-display font-bold mb-3">Miete</h3>
               <Row label="Kaltmiete" value={prop.cold_rent && `${prop.cold_rent} €`} />
               <Row label="Nebenkosten" value={prop.extra_costs && `${prop.extra_costs} €`} />
@@ -240,7 +240,7 @@ export default function PropertyDetail() {
               <Row label="Frühester Einzug" value={prop.earliest_move_in} />
             </div>
             {prop.description && (
-              <div className="rounded-xl border border-border bg-card p-6 md:col-span-2">
+              <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 md:col-span-2">
                 <h3 className="font-display font-bold mb-2">Beschreibung</h3>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{prop.description}</p>
               </div>

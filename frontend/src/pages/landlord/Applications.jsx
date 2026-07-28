@@ -88,7 +88,7 @@ export default function Applications() {
           ["In Besichtigung", counts.besichtigung, "text-foreground"],
           ["Zusagen", counts.zusage, "text-success"],
         ].map(([label, value, cls]) => (
-          <div key={label} className="rounded-xl border border-border bg-card p-4">
+          <div key={label} className="rounded-2xl border border-border/70 bg-card shadow-soft p-4">
             <p className="text-sm text-muted-foreground">{label}</p>
             <p className={`font-mono text-2xl font-extrabold mt-1 ${cls}`}>{value}</p>
           </div>
@@ -140,7 +140,7 @@ export default function Applications() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden" data-testid="applications-list">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-soft divide-y divide-border overflow-hidden" data-testid="applications-list">
           {visible.map((a) => {
             const st = STATUS[a.status] || STATUS.neu;
             return (

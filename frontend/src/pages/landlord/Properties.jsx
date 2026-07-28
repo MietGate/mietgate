@@ -36,7 +36,7 @@ export default function Properties() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {props.map((p) => (
             <Link key={p.id} to={`/objekte/${p.id}`} data-testid={`property-card-${p.id}`}
-              className="rounded-xl border border-border bg-card overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all">
+              className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all">
               <div className="h-28 bg-brand-dark relative flex items-end p-4 gap-1.5 flex-wrap">
                 <Building2 className="absolute top-4 right-4 h-6 w-6 text-white/20" />
                 <Badge className={`${p.status === "active" ? "bg-success text-success-foreground" : "bg-white/20 text-white"}`}>

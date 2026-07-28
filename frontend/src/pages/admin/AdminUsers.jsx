@@ -38,7 +38,7 @@ export default function AdminUsers() {
         <Input placeholder="Name oder E-Mail suchen…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load(q)} data-testid="user-search" />
         <Button onClick={() => load(q)}><Search className="h-4 w-4" /></Button>
       </div>
-      <div className="rounded-xl border border-border bg-card overflow-x-auto">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow><TableHead>Name</TableHead><TableHead>E-Mail</TableHead><TableHead>Rolle</TableHead><TableHead>Organisation</TableHead><TableHead>Paket</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow>

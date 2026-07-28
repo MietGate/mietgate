@@ -163,7 +163,7 @@ function ProfileLinkCard() {
   if (!link) return null;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6" data-testid="profile-link-card">
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6" data-testid="profile-link-card">
       <div className="flex items-center gap-3">
         <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary shrink-0"><Link2 className="h-5 w-5" /></div>
         <div>
@@ -220,7 +220,7 @@ function InquiriesList() {
   const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString("de-DE") : null);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6" data-testid="inquiries-card">
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6" data-testid="inquiries-card">
       <div className="flex items-center gap-3">
         <div className="h-11 w-11 rounded-xl bg-accent flex items-center justify-center text-primary shrink-0"><UserCheck className="h-5 w-5" /></div>
         <h2 className="font-display text-xl font-bold">Anfragen von Vermietern</h2>
@@ -330,7 +330,7 @@ export default function ApplicantDashboard() {
                 const Icon = OFFER_ICON[o.category] || Sparkles;
                 return (
                   <a key={i} href={o.url} target="_blank" rel="noreferrer" data-testid={`offer-${o.category}`}
-                    className="rounded-xl border border-border bg-card p-4 hover:-translate-y-0.5 hover:shadow-md transition-all group">
+                    className="rounded-2xl border border-border/70 bg-card shadow-soft p-4 hover:-translate-y-0.5 hover:shadow-md transition-all group">
                     <div className="flex items-center justify-between">
                       <div className="h-9 w-9 rounded-lg bg-accent flex items-center justify-center text-primary"><Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} /></div>
                       <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
@@ -356,7 +356,7 @@ export default function ApplicantDashboard() {
         <div className="space-y-3">
           {apps.map((a) => (
             <Link key={a.id} to={`/bewerber/bewerbung/${a.id}`} data-testid={`my-app-${a.id}`}
-              className="rounded-xl border border-border bg-card p-5 flex flex-wrap items-center justify-between gap-3 hover:border-primary/40 hover:bg-secondary/30 transition-colors">
+              className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 flex flex-wrap items-center justify-between gap-3 hover:border-primary/40 hover:bg-secondary/30 transition-colors">
               <div>
                 <h3 className="font-semibold">{a.property_title}</h3>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">

@@ -90,7 +90,7 @@ export default function ApplicantMessages() {
           <p className="text-sm mt-1">Sobald Sie sich beworben haben, können Sie hier mit Vermietern schreiben.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card overflow-hidden grid lg:grid-cols-[340px_1fr] h-[calc(100vh-260px)] min-h-[420px]">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden grid lg:grid-cols-[340px_1fr] h-[calc(100vh-260px)] min-h-[420px]">
           <div className={`border-r border-border flex flex-col min-h-0 ${active ? "hidden lg:flex" : "flex"}`}>
             <div className="p-3 border-b border-border shrink-0">
               <div className="relative">

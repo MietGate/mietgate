@@ -28,7 +28,7 @@ function ViewingCard({ v, onChanged }) {
   const badge = v.cancelled ? { v: "destructive", t: "Vom Vermieter abgesagt" } : v.my_status === "confirmed" ? { v: "default", t: "Bestätigt" } : v.my_status === "declined" ? { v: "destructive", t: "Abgesagt" } : v.my_status === "reschedule_requested" ? { v: "secondary", t: "Umbuchung angefragt" } : { v: "secondary", t: "Eingeladen" };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5" data-testid={`myviewing-${v.id}`}>
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5" data-testid={`myviewing-${v.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -104,7 +104,7 @@ function CalendarView({ views, onChanged }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-4">
         <div className="flex items-center justify-between mb-3">
           <Button variant="ghost" size="icon" onClick={() => shift(-1)} aria-label="Vorheriger Monat" data-testid="cal-prev">
             <ChevronLeft className="h-4 w-4" />

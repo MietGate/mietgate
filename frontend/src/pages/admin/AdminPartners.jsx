@@ -62,7 +62,7 @@ export default function AdminPartners() {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4 max-w-2xl">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 space-y-4 max-w-2xl">
         <div className="flex items-center gap-2"><Link2 className="h-4 w-4 text-primary" /><h2 className="font-display font-bold text-lg">Bonitätsauskunft (bonify)</h2></div>
         <p className="text-sm text-muted-foreground">
           Wird Bewerbern auf „Meine Dokumente" als kostenlose Alternative zur SCHUFA angeboten.
@@ -101,7 +101,7 @@ export default function AdminPartners() {
         </div>
         {data.offers.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Angebote. Fügen Sie ein Partnerangebot hinzu.</p>}
         {data.offers.map((o, i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-5" data-testid={`offer-row-${i}`}>
+          <div key={i} className="rounded-2xl border border-border/70 bg-card shadow-soft p-5" data-testid={`offer-row-${i}`}>
             <div className="grid sm:grid-cols-2 gap-4">
               <div><Label>Kategorie</Label><Input value={o.category} onChange={setOffer(i, "category")} placeholder="Strom / Internet / Umzug…" className="mt-1.5" data-testid={`offer-category-${i}`} /></div>
               <div><Label>Name</Label><Input value={o.name} onChange={setOffer(i, "name")} placeholder="Anbietername" className="mt-1.5" data-testid={`offer-name-${i}`} /></div>

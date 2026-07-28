@@ -43,7 +43,7 @@ export default function Billing({ embedded = false }) {
       {!embedded && <div><h1 className="font-display text-3xl font-bold">Abo & Zahlungen</h1><p className="text-muted-foreground mt-1">Verwalten Sie Ihr Paket und Ihre Zahlungen.</p></div>}
 
       <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
-        <div className="rounded-xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6">
           <div className="flex items-center gap-2 mb-4"><CreditCard className="h-5 w-5 text-primary" /><h2 className="font-display font-bold text-lg">Aktuelles Paket</h2></div>
           {["active", "trialing"].includes(sub.subscription?.status) ? (
             <>
@@ -63,7 +63,7 @@ export default function Billing({ embedded = false }) {
             <p className="text-muted-foreground">Kein aktives Abo. Wählen Sie unten ein Paket.</p>
           )}
         </div>
-        <div className="rounded-xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6">
           <h2 className="font-display font-bold text-lg mb-4">Objekt-Nutzung</h2>
           <div className="flex justify-between text-sm mb-2"><span>Aktive Objekte</span><span className="font-mono font-bold">{sub.usage?.used} / {sub.usage?.limit}</span></div>
           <Progress value={usePct} />

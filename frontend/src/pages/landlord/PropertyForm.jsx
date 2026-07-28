@@ -22,7 +22,7 @@ const STATE_OPTS = [
 
 function Section({ title, children }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6">
       <h2 className="font-display font-bold text-lg mb-4">{title}</h2>
       {children}
     </div>
