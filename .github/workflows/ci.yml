@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: mietgate_ci
+      JWT_SECRET: ci-only-test-secret-not-used-anywhere-real
+      ADMIN_EMAIL: admin@mietgate.de
+      ADMIN_PASSWORD: ci-only-test-admin-password
+      CORS_ORIGINS: http://localhost:3000
+      REACT_APP_BACKEND_URL: http://localhost:8000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          nohup uvicorn server:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/api/partners > /dev/null && exit 0
+            sleep 1
+          done
+          echo "Backend did not become healthy in time"; cat /tmp/backend.log; exit 1
+
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest tests/
+
+      - name: Show backend logs on failure
+        if: failure()
+        run: cat /tmp/backend.log || true
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    env:
+      REACT_APP_BACKEND_URL: http://localhost:8000
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Build (catches syntax/import errors — no frontend test suite exists yet)
+        working-directory: frontend
+        run: npx craco build

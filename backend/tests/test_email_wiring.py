@@ -19,6 +19,8 @@ import uuid
 import pytest
 import requests
 
+from conftest import activate_user
+
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL")
 assert BASE_URL, "REACT_APP_BACKEND_URL must be set"
 BASE_URL = BASE_URL.rstrip("/")
@@ -56,11 +58,15 @@ class TestSetup:
     def test_register_landlord(self, http, state):
         r = http.post(f"{API}/auth/register", json={
             "email": LL_EMAIL, "password": LL_PASS,
-            "first_name": "Em", "last_name": "Ll",
-            "role": "landlord", "org_name": f"EmailOrg-{_RUN}",
+            "first_name": "Em", "last_name": "Ll", "phone": "+4915112340004",
+            "role": "landlord", "org_name": f"EmailOrg-{_RUN}", "agreed_terms": True,
         })
         assert r.status_code == 200, r.text
-        j = r.json()
+        assert r.json().get("requires_verification") is True
+        activate_user(LL_EMAIL)
+        login = http.post(f"{API}/auth/login", json={"email": LL_EMAIL, "password": LL_PASS})
+        assert login.status_code == 200, login.text
+        j = login.json()
         state["ll_token"] = j["token"]
         state["ll_user"] = j["user"]
 
@@ -81,6 +87,7 @@ class TestSetup:
             "code": state["code"], "email": APP_EMAIL,
             "form_data": {"vorname": "Max", "nachname": "Muster",
                           "telefon": "+491700000000", "anzahl_personen": 2,
+                          "beschaeftigungsstatus": "Angestellt",
                           "nettoeinkommen": "3000_plus",
                           "gewuenschter_einzugstermin": "2026-03-01"},
             "consent": True,

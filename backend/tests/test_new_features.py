@@ -11,11 +11,15 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or "").rstrip("/")
+from conftest import activate_user
+
+BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or "http://localhost:8000").rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "admin@mietgate.de"
-ADMIN_PASSWORD = "MietGate2026!"
+# See backend_test.py for why there's no hardcoded default: seed.py refuses to start
+# without ADMIN_PASSWORD set, so a guessed constant here is never guaranteed correct.
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@mietgate.de")
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
 
 _RUN = uuid.uuid4().hex[:6]
 LANDLORD_EMAIL = f"nf-landlord-{_RUN}@example.com"
@@ -47,12 +51,16 @@ class TestSetup:
     def test_landlord_register(self, s, state):
         r = s.post(f"{API}/auth/register", json={
             "email": LANDLORD_EMAIL, "password": LANDLORD_PASSWORD,
-            "first_name": "NF", "last_name": "Landlord",
-            "role": "landlord", "org_name": f"NFOrg-{_RUN}",
+            "first_name": "NF", "last_name": "Landlord", "phone": "+4915112340005",
+            "role": "landlord", "org_name": f"NFOrg-{_RUN}", "agreed_terms": True,
         })
         assert r.status_code == 200, r.text
-        state["landlord_token"] = r.json()["token"]
-        state["landlord_user"] = r.json()["user"]
+        assert r.json().get("requires_verification") is True
+        activate_user(LANDLORD_EMAIL)
+        login = s.post(f"{API}/auth/login", json={"email": LANDLORD_EMAIL, "password": LANDLORD_PASSWORD})
+        assert login.status_code == 200, login.text
+        state["landlord_token"] = login.json()["token"]
+        state["landlord_user"] = login.json()["user"]
 
     def test_seed_applicant(self, s, state):
         """Create a real applicant via public apply flow (produces activation token)."""
@@ -69,7 +77,9 @@ class TestSetup:
         # Apply publicly
         r2 = s.post(f"{API}/public/apply", json={
             "code": code, "email": APPLICANT_EMAIL,
-            "form_data": {"vorname": "Nina", "nachname": "Test"},
+            "form_data": {"vorname": "Nina", "nachname": "Test", "telefon": "+491700000001",
+                          "anzahl_personen": 1, "beschaeftigungsstatus": "Angestellt",
+                          "nettoeinkommen": 2800, "gewuenschter_einzugstermin": "2026-09-01"},
             "consent": True,
         })
         assert r2.status_code == 200, r2.text

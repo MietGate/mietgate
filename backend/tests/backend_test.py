@@ -6,12 +6,17 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL") or "https://property-manager-373.preview.emergentagent.com"
+from conftest import activate_user, test_db
+
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL") or "http://localhost:8000"
 BASE_URL = BASE_URL.rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "admin@mietgate.de"
-ADMIN_PASSWORD = "MietGate2026!"
+# No hardcoded default: seed.py refuses to start without ADMIN_PASSWORD set, so there is no
+# fixed value that's ever correct to guess here. Whatever backend this suite runs against
+# must have been seeded with these same two env vars.
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@mietgate.de")
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
 
 # Unique landlord / applicant per test run to keep the suite idempotent.
 _RUN = uuid.uuid4().hex[:6]
@@ -52,13 +57,18 @@ class TestAuth:
     def test_register_landlord(self, session_client, state):
         payload = {
             "email": LANDLORD_EMAIL, "password": LANDLORD_PASSWORD,
-            "first_name": "Test", "last_name": "Landlord",
-            "role": "landlord", "org_name": f"TestOrg-{_RUN}",
+            "first_name": "Test", "last_name": "Landlord", "phone": "+4915112340001",
+            "role": "landlord", "org_name": f"TestOrg-{_RUN}", "agreed_terms": True,
         }
         r = session_client.post(f"{API}/auth/register", json=payload)
         assert r.status_code == 200, r.text
-        data = r.json()
-        assert "token" in data and data["user"]["role"] == "landlord"
+        assert r.json().get("requires_verification") is True
+        activate_user(LANDLORD_EMAIL)
+        login = session_client.post(f"{API}/auth/login",
+                                    json={"email": LANDLORD_EMAIL, "password": LANDLORD_PASSWORD})
+        assert login.status_code == 200, login.text
+        data = login.json()
+        assert data["user"]["role"] == "landlord"
         assert data["user"]["org_id"]
         state["landlord_token"] = data["token"]
         state["landlord_user"] = data["user"]
@@ -147,7 +157,7 @@ class TestProperties:
         paid link-activation and public-application flow without a real Stripe
         checkout, which can't be driven headlessly."""
         h = {"Authorization": f"Bearer {state['admin_token']}"}
-        r = session_client.post(f"{API}/organizations/{state['landlord_user']['org_id']}/subscription",
+        r = session_client.post(f"{API}/admin/organizations/{state['landlord_user']['org_id']}/subscription",
                                 json={"plan_key": "starter", "status": "active"}, headers=h)
         assert r.status_code == 200, r.text
         assert r.json()["status"] == "active"
@@ -197,7 +207,9 @@ class TestPublicApplication:
     def test_public_apply_ok(self, session_client, state):
         payload = {"code": state["application_code"], "email": APPLICANT_EMAIL,
                    "form_data": {"vorname": "Max", "nachname": "Mustermann",
-                                 "telefon": "+491700000000", "einkommen": "3500"},
+                                 "telefon": "+491700000000", "anzahl_personen": 2,
+                                 "beschaeftigungsstatus": "Angestellt", "nettoeinkommen": 3500,
+                                 "gewuenschter_einzugstermin": "2026-09-01"},
                    "consent": True}
         r = session_client.post(f"{API}/public/apply", json=payload)
         assert r.status_code == 200, r.text
@@ -296,12 +308,16 @@ class TestApplicantAndDocuments:
         # Create a second landlord (different org). Should be denied.
         other = {
             "email": f"other-{_RUN}@example.com", "password": "Test1234!",
-            "first_name": "Other", "last_name": "User",
-            "role": "landlord", "org_name": f"OtherOrg-{_RUN}",
+            "first_name": "Other", "last_name": "User", "phone": "+4915112340002",
+            "role": "landlord", "org_name": f"OtherOrg-{_RUN}", "agreed_terms": True,
         }
         r0 = session_client.post(f"{API}/auth/register", json=other)
         assert r0.status_code == 200
-        other_tok = r0.json()["token"]
+        activate_user(other["email"])
+        other_login = session_client.post(f"{API}/auth/login",
+                                          json={"email": other["email"], "password": other["password"]})
+        assert other_login.status_code == 200, other_login.text
+        other_tok = other_login.json()["token"]
         r = requests.get(f"{API}/documents/{state['document_id']}/download",
                          headers={"Authorization": f"Bearer {other_tok}"})
         assert r.status_code == 403
@@ -452,15 +468,6 @@ class TestAdmin:
 class TestGating:
     """Verifies fix #2 (team gating) and fix #3 (white-label gating)."""
 
-    def _mongo_shell(self, cmd: str) -> str:
-        """Run a mongosh eval command inside the DB_NAME database."""
-        import subprocess
-        r = subprocess.run(
-            ["mongosh", "--quiet", "mongodb://localhost:27017/mietgate", "--eval", cmd],
-            capture_output=True, text=True, timeout=15,
-        )
-        return (r.stdout or "") + (r.stderr or "")
-
     # --- FIX 2 negative: no subscription => 402 on invite_member ---
     def test_subscription_reports_no_team_without_plan(self, session_client, state):
         h = {"Authorization": f"Bearer {state['landlord_token']}"}
@@ -494,15 +501,14 @@ class TestGating:
     def test_activate_makler_sub_via_mongo(self, session_client, state):
         org_id = state["landlord_user"]["org_id"]
         # Upsert an active makler subscription for this org
-        cmd = (
-            f'db.subscriptions.updateOne({{org_id:"{org_id}"}}, '
-            f'{{$set:{{org_id:"{org_id}",plan_key:"makler",status:"active",'
-            f'stripe_customer_id:"cus_test",stripe_subscription_id:"sub_test"}}}}, '
-            f'{{upsert:true}}); '
-            f'db.subscriptions.findOne({{org_id:"{org_id}"}});'
+        test_db()["subscriptions"].update_one(
+            {"org_id": org_id},
+            {"$set": {"org_id": org_id, "plan_key": "makler", "status": "active",
+                      "stripe_customer_id": "cus_test", "stripe_subscription_id": "sub_test"}},
+            upsert=True,
         )
-        out = self._mongo_shell(cmd)
-        assert "makler" in out, f"Mongo shell did not confirm sub: {out[:400]}"
+        confirm = test_db()["subscriptions"].find_one({"org_id": org_id})
+        assert confirm and confirm.get("plan_key") == "makler"
         # Verify via API
         h = {"Authorization": f"Bearer {state['landlord_token']}"}
         r = session_client.get(f"{API}/subscription", headers=h)
@@ -525,8 +531,8 @@ class TestGating:
         invitee_email = f"invitee-real-{_RUN}@example.com"
         reg = session_client.post(f"{API}/auth/register", json={
             "email": invitee_email, "password": "Test1234!",
-            "first_name": "Inv", "last_name": "Itee",
-            "role": "landlord", "org_name": f"InviteeOrg-{_RUN}",
+            "first_name": "Inv", "last_name": "Itee", "phone": "+4915112340003",
+            "role": "landlord", "org_name": f"InviteeOrg-{_RUN}", "agreed_terms": True,
         })
         assert reg.status_code == 200, reg.text
         h = {"Authorization": f"Bearer {state['landlord_token']}"}
@@ -545,13 +551,9 @@ class TestGating:
     # --- FIX 3 positive: set add-on flag on org, then PUT WL succeeds ---
     def test_white_label_positive_success(self, session_client, state):
         org_id = state["landlord_user"]["org_id"]
-        cmd = (
-            f'db.organizations.updateOne({{id:"{org_id}"}}, '
-            f'{{$set:{{white_label_addon:true}}}}); '
-            f'db.organizations.findOne({{id:"{org_id}"}});'
-        )
-        out = self._mongo_shell(cmd)
-        assert "white_label_addon" in out, out[:400]
+        test_db()["organizations"].update_one({"id": org_id}, {"$set": {"white_label_addon": True}})
+        confirm = test_db()["organizations"].find_one({"id": org_id})
+        assert confirm and confirm.get("white_label_addon") is True
         h = {"Authorization": f"Bearer {state['landlord_token']}"}
         # /subscription now reports flag
         r_sub = session_client.get(f"{API}/subscription", headers=h)
