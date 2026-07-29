@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import {
-  Building2, Inbox, FileText, CalendarDays, MessageSquare, Plus, ArrowRight, Loader2, Zap, AlertTriangle
+  Building2, Inbox, FileText, CalendarDays, MessageSquare, Plus, ArrowRight, Loader2, Zap, AlertTriangle, Users
 } from "lucide-react";
 
 /* A rotating accent per stat instead of one flat teal everywhere, but pulled from the
@@ -59,9 +59,11 @@ export default function LandlordDashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Building2} label="Aktive Objekte" value={data.active_properties} to="/objekte" tone={0} />
-        <StatCard icon={Inbox} label="Neue Bewerbungen" value={data.new_applications} to="/objekte" tone={1} />
-        <StatCard icon={FileText} label="Dokumente" value={data.open_documents} tone={2} />
+        <StatCard icon={Users} label="Bewerbungen gesamt" value={data.total_applications} to="/bewerbungen" tone={1} />
+        <StatCard icon={Inbox} label="Neue Bewerbungen" value={data.new_applications} to="/objekte" tone={2} />
         <StatCard icon={CalendarDays} label="Anstehende Besichtigungen" value={data.upcoming_viewings} tone={3} />
+        {/* Dokumente-Kachel bewusst hier draußen gelassen (nicht gelöscht) — wird bald wieder
+            gebraucht: <StatCard icon={FileText} label="Dokumente" value={data.open_documents} tone={2} /> */}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
