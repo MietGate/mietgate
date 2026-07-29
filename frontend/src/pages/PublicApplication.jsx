@@ -300,7 +300,13 @@ export default function PublicApplication() {
           <>
             {/* Property header */}
             <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6 animate-fade-up">
-              <div className="bg-brand-dark text-white p-6">
+              {/* Uses the property's own uploaded title photo as a hero background when set —
+                  otherwise falls back to the flat brand-dark block. Dark gradient keeps the
+                  white heading/stats legible over any photo. */}
+              <div className="relative text-white p-6 bg-brand-dark bg-cover bg-center"
+                style={p.image_url ? {
+                  backgroundImage: `linear-gradient(180deg, rgba(10,20,30,0.35), rgba(10,20,30,0.8)), url(${BACKEND}${p.image_url})`,
+                } : undefined}>
                 <span className="text-xs uppercase tracking-wider text-primary font-semibold">Bewerbung</span>
                 <h1 className="font-display text-2xl font-bold mt-1">{p.title}</h1>
                 <p className="text-white/70 text-sm flex items-center gap-1 mt-1"><MapPin className="h-3.5 w-3.5" /> {[p.district, p.city].filter(Boolean).join(", ") || "Lage auf Anfrage"}</p>

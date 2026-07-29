@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Plus, MapPin, Users, Loader2, ExternalLink } from "lucide-react";
 
+const BACKEND = process.env.REACT_APP_BACKEND_URL;
+const titleImageUrl = (p) => p.title_image_id ? `${BACKEND}/api/public/properties/${p.id}/images/${p.title_image_id}` : null;
+
 export default function Properties() {
   const [props, setProps] = useState(null);
   const [error, setError] = useState(false);
@@ -37,8 +40,11 @@ export default function Properties() {
           {props.map((p) => (
             <Link key={p.id} to={`/objekte/${p.id}`} data-testid={`property-card-${p.id}`}
               className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all">
-              <div className="h-28 bg-brand-dark relative flex items-end p-4 gap-1.5 flex-wrap">
-                <Building2 className="absolute top-4 right-4 h-6 w-6 text-white/20" />
+              <div className="h-28 bg-brand-dark bg-cover bg-center relative flex items-end p-4 gap-1.5 flex-wrap"
+                style={titleImageUrl(p) ? {
+                  backgroundImage: `linear-gradient(180deg, rgba(10,20,30,0.15), rgba(10,20,30,0.55)), url(${titleImageUrl(p)})`,
+                } : undefined}>
+                {!titleImageUrl(p) && <Building2 className="absolute top-4 right-4 h-6 w-6 text-white/20" />}
                 <Badge className={`${p.status === "active" ? "bg-success text-success-foreground" : "bg-white/20 text-white"}`}>
                   {p.status === "active" ? "Aktiv" : p.status === "rented" ? "Vermietet" : "Inaktiv"}
                 </Badge>
