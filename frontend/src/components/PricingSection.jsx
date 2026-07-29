@@ -145,7 +145,9 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
           <motion.div key={p.key} data-testid={`plan-${p.key}`}
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }}
             className={`relative rounded-2xl border p-7 bg-card flex flex-col hover:-translate-y-1.5 hover:shadow-xl transition-all ${p.highlight ? "border-primary shadow-lg shadow-primary/10 ring-1 ring-primary/20" : "border-border hover:border-primary/40"}`}>
-            {p.highlight && <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 animate-glow-pulse">Beliebt</Badge>}
+            {/* Left when a promo badge is also present (top-right) so the two never collide -
+                centered only looked right when it was the sole badge on the card. */}
+            {p.highlight && <Badge className={`absolute -top-3 animate-glow-pulse ${p.promo ? "left-4" : "left-1/2 -translate-x-1/2"}`}>Beliebt</Badge>}
             {p.promo && (
               <Badge className="absolute -top-3 right-4 bg-gradient-to-r from-amber-300 to-orange-300 text-orange-950 border-0 shadow-sm font-semibold">
                 −{percentOff(p)}% bis {new Date(p.promo.end).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
