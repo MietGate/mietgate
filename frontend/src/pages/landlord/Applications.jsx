@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import api from "@/lib/api";
+import { Pipeline } from "@/components/Pipeline";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Inbox, Loader2, Search, FileText, Star, Building2, ArrowUpDown, Sparkles, CalendarCheck, CheckCircle2 } from "lucide-react";
+import {
+  Inbox, Loader2, Search, FileText, Star, Building2, ArrowUpDown, Sparkles, CalendarCheck,
+  CheckCircle2, List as ListIcon, LayoutGrid
+} from "lucide-react";
 
 /* Mirrors the pipeline columns so a status means the same thing everywhere. */
 const STATUS = {
@@ -40,6 +44,21 @@ export default function Applications() {
   const [propFilter, setPropFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("newest");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { setFullWidth } = useOutletContext() || {};
+
+  // URL-driven like the object detail tabs, so a bookmarked/shared link opens on the same view.
+  const view = searchParams.get("view") === "kanban" ? "kanban" : "list";
+  const setView = (v) => {
+    const next = new URLSearchParams(searchParams); next.set("view", v);
+    setSearchParams(next, { replace: true });
+  };
+  // The kanban board wants more than the page's normal 1400px cap, same reasoning as the
+  // old per-object pipeline tab.
+  useEffect(() => {
+    setFullWidth?.(view === "kanban");
+    return () => setFullWidth?.(false);
+  }, [view, setFullWidth]);
 
   const load = useCallback(async () => {
     try {
@@ -75,9 +94,21 @@ export default function Applications() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <div>
-        <h1 className="font-display text-3xl font-bold">Bewerbungen</h1>
-        <p className="text-muted-foreground mt-1">Alle Bewerbungen über alle Objekte hinweg.</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold">Bewerbungen</h1>
+          <p className="text-muted-foreground mt-1">Alle Bewerbungen über alle Objekte hinweg.</p>
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1" data-testid="applications-view-toggle">
+          <button onClick={() => setView("list")} data-testid="applications-view-list"
+            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${view === "list" ? "bg-background shadow-soft text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            <ListIcon className="h-4 w-4" /> Liste
+          </button>
+          <button onClick={() => setView("kanban")} data-testid="applications-view-kanban"
+            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${view === "kanban" ? "bg-background shadow-soft text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            <LayoutGrid className="h-4 w-4" /> Kanban
+          </button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -98,13 +129,16 @@ export default function Applications() {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Object filter — shared between Liste and Kanban. Search/status/sort only make sense
+          for the flat list; the kanban board has its own search+sort and status is the column. */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Bewerber oder Objekt suchen…"
-            className="pl-8" data-testid="applications-search" />
-        </div>
+        {view === "list" && (
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Bewerber oder Objekt suchen…"
+              className="pl-8" data-testid="applications-search" />
+          </div>
+        )}
         <Select value={propFilter} onValueChange={setPropFilter}>
           <SelectTrigger className="w-[190px]" data-testid="applications-property"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -112,25 +146,34 @@ export default function Applications() {
             {properties.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]" data-testid="applications-status"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle Status</SelectItem>
-            {Object.entries(STATUS).map(([k, s]) => <SelectItem key={k} value={k}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={sort} onValueChange={setSort}>
-          <SelectTrigger className="w-[170px]" data-testid="applications-sort">
-            <ArrowUpDown className="h-3.5 w-3.5 mr-1 shrink-0" /><SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(SORTS).map(([k, s]) => <SelectItem key={k} value={k}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {view === "list" && (
+          <>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px]" data-testid="applications-status"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Status</SelectItem>
+                {Object.entries(STATUS).map(([k, s]) => <SelectItem key={k} value={k}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={sort} onValueChange={setSort}>
+              <SelectTrigger className="w-[170px]" data-testid="applications-sort">
+                <ArrowUpDown className="h-3.5 w-3.5 mr-1 shrink-0" /><SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(SORTS).map(([k, s]) => <SelectItem key={k} value={k}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </>
+        )}
       </div>
 
+      {/* Kanban */}
+      {view === "kanban" && (
+        <Pipeline propertyId={propFilter === "all" ? undefined : propFilter} />
+      )}
+
       {/* List */}
-      {visible.length === 0 ? (
+      {view === "list" && (visible.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center text-muted-foreground" data-testid="applications-empty">
           <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-4"><Inbox className="h-6 w-6" /></div>
           <p className="font-display font-bold text-lg text-foreground">
@@ -147,7 +190,7 @@ export default function Applications() {
           {visible.map((a) => {
             const st = STATUS[a.status] || STATUS.neu;
             return (
-              <Link key={a.id} to={`/objekte/${a.property_id}?tab=pipeline&open=${a.id}`} data-testid={`application-${a.id}`}
+              <Link key={a.id} to={`/bewerbungen?view=kanban&open=${a.id}`} data-testid={`application-${a.id}`}
                 className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 hover:bg-secondary/40 transition-colors">
                 <div className="min-w-[180px] flex-1">
                   <p className="font-medium">{applicantName(a)}</p>
@@ -177,7 +220,7 @@ export default function Applications() {
             );
           })}
         </div>
-      )}
+      ))}
     </div>
   );
 }

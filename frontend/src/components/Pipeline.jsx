@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChatThread } from "@/components/ChatThread";
 import { STATUS_COLUMNS, ACTIVE_COLUMNS, ACTIVE_STAGES, confirmStatusChange } from "@/lib/applicationStatus";
 import { toast } from "sonner";
-import { Star, FileText, Download, Loader2, User, CalendarPlus, Lock, Check, PartyPopper, Maximize2, Minimize2 } from "lucide-react";
+import { Star, FileText, Download, Loader2, User, CalendarPlus, Lock, Check, PartyPopper, Maximize2, Minimize2, Building2 } from "lucide-react";
 
 const DOC_TYPES = ["BonitÃ¤tsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
   "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "BÃ¼rgschaft", "Sonstiges"];
@@ -391,9 +391,12 @@ export function Pipeline({ propertyId }) {
   const [showArchive, setShowArchive] = useState(false);
 
   const load = useCallback(async () => {
+    // No propertyId = the cross-property board on /bewerbungen: both endpoints already
+    // support an unfiltered "everything in my org" query, same as the Bewerbungen list uses.
+    const qs = propertyId ? `?property_id=${propertyId}` : "";
     const [appsRes, viewRes] = await Promise.all([
-      api.get(`/applications?property_id=${propertyId}`),
-      api.get(`/viewings?property_id=${propertyId}`).catch(() => ({ data: [] })),
+      api.get(`/applications${qs}`),
+      api.get(`/viewings${qs}`).catch(() => ({ data: [] })),
     ]);
     setApps(appsRes.data);
     // application_id -> the appointment that applicant is on, so the card in the
@@ -421,8 +424,14 @@ export function Pipeline({ propertyId }) {
     }
   }, [searchParams, setSearchParams]);
 
-  const otherActiveCount = (excludeId) =>
-    apps.filter((a) => a.id !== excludeId && ACTIVE_STAGES.includes(a.status)).length;
+  // Scoped to the same property as the excluded application — on the cross-property board
+  // `apps` holds every property's applications, and "other active applicants" for a Zusage
+  // warning must only ever mean "for this flat", never across unrelated properties.
+  const otherActiveCount = (excludeId) => {
+    const target = apps.find((a) => a.id === excludeId);
+    return apps.filter((a) => a.id !== excludeId && a.property_id === target?.property_id
+      && ACTIVE_STAGES.includes(a.status)).length;
+  };
 
   const onDragEnd = async (result) => {
     const { destination, draggableId, source } = result;
@@ -444,7 +453,9 @@ export function Pipeline({ propertyId }) {
   if (apps.length === 0) return (
     <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center text-muted-foreground">
       <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-4"><User className="h-6 w-6" /></div>
-      <p className="font-display font-bold text-lg text-foreground">Noch keine Bewerbungen für dieses Objekt.</p>
+      <p className="font-display font-bold text-lg text-foreground">
+        {propertyId ? "Noch keine Bewerbungen für dieses Objekt." : "Noch keine Bewerbungen."}
+      </p>
     </div>
   );
 
@@ -529,6 +540,13 @@ export function Pipeline({ propertyId }) {
                                 <span className={`font-mono text-[11px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${scoreColor(a.matching_score)}`}
                                   title="Automatische Einschätzung als Entscheidungshilfe, keine Garantie. Details beim Öffnen der Bewerbung.">{a.matching_score}</span>
                               </div>
+                              {/* Only on the cross-property board — inside a single object's tab
+                                  the property is already obvious from context. */}
+                              {!propertyId && a.property_title && (
+                                <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1 truncate">
+                                  <Building2 className="h-3 w-3 shrink-0" />{a.property_title}
+                                </p>
+                              )}
                               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                                 {a.stars > 0 && <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{a.stars}</span>}
                                 <span className="flex items-center gap-0.5"><FileText className="h-3 w-3" />{a.document_count}</span>
@@ -547,7 +565,10 @@ export function Pipeline({ propertyId }) {
           })}
         </div>
       </DragDropContext>
-      <ApplicationSheet appId={activeId} propertyId={propertyId} otherActiveCount={otherActiveCount(activeId)}
+      {/* On the cross-property board propertyId is undefined, so resolve the sheet's property
+          from the active card itself — every application already carries its own property_id. */}
+      <ApplicationSheet appId={activeId} propertyId={propertyId || apps.find((a) => a.id === activeId)?.property_id}
+        otherActiveCount={otherActiveCount(activeId)}
         open={!!activeId} onClose={() => setActiveId(null)} onChanged={load} />
     </>
   );
