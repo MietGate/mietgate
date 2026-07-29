@@ -94,12 +94,12 @@ export default function Team() {
 
       <div className="rounded-2xl border border-border/70 bg-card shadow-soft divide-y divide-border">
         {members.map((m) => (
-          <div key={m.id} className="flex items-center justify-between p-4" data-testid={`member-${m.id}`}>
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-semibold">{(m.name?.[0] || "?").toUpperCase()}</div>
-              <div><p className="font-medium">{m.name}</p><p className="text-sm text-muted-foreground">{m.email}</p></div>
+          <div key={m.id} className="flex items-center justify-between gap-3 p-4" data-testid={`member-${m.id}`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-semibold shrink-0">{(m.name?.[0] || "?").toUpperCase()}</div>
+              <div className="min-w-0"><p className="font-medium truncate">{m.name}</p><p className="text-sm text-muted-foreground truncate">{m.email}</p></div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               {m.role !== "owner" && canManage ? (
                 <Select value={m.role} onValueChange={(v) => changeRole(m.id, v)}>
                   <SelectTrigger className="w-36 h-8" data-testid={`role-select-${m.id}`}><SelectValue /></SelectTrigger>
@@ -119,12 +119,12 @@ export default function Team() {
           <h2 className="text-sm font-semibold text-muted-foreground">Ausstehende Einladungen</h2>
           <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card divide-y divide-border">
             {invites.map((inv) => (
-              <div key={inv.id} className="flex items-center justify-between p-4" data-testid={`invite-${inv.id}`}>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-accent text-primary flex items-center justify-center"><Mail className="h-4 w-4" /></div>
-                  <div><p className="font-medium">{inv.email}</p><p className="text-sm text-muted-foreground">Wartet auf Registrierung — Rolle: {ROLE_LABEL[inv.role] || inv.role}</p></div>
+              <div key={inv.id} className="flex items-center justify-between gap-3 p-4" data-testid={`invite-${inv.id}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-9 w-9 rounded-full bg-accent text-primary flex items-center justify-center shrink-0"><Mail className="h-4 w-4" /></div>
+                  <div className="min-w-0"><p className="font-medium truncate">{inv.email}</p><p className="text-sm text-muted-foreground truncate">Wartet auf Registrierung — Rolle: {ROLE_LABEL[inv.role] || inv.role}</p></div>
                 </div>
-                {canManage && <Button variant="ghost" size="icon" onClick={() => cancelInvite(inv.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                {canManage && <Button variant="ghost" size="icon" className="shrink-0" onClick={() => cancelInvite(inv.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
               </div>
             ))}
           </div>

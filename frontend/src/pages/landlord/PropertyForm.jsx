@@ -360,7 +360,7 @@ export default function PropertyForm() {
               <img src={img.previewUrl} alt="" className="w-full h-full object-cover" />
               {i === 0 && <span className="absolute top-2 left-2 text-[11px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">Titelbild</span>}
               <button type="button" onClick={() => removeImage(i)} data-testid={`wizard-del-image-${i}`}
-                className="absolute top-2 right-2 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-black/60 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 transition-opacity">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>

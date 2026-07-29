@@ -102,14 +102,14 @@ export function ChatThread({ applicationId, myRole, onSent, quickActions, testId
               {/* Actions sit outside the bubble so they never cover the text. */}
               {mine && !m.retracted && (
                 <button onClick={() => retract(m)} title="Zurückziehen" data-testid={`retract-${m.id}`}
-                  className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-secondary text-muted-foreground">
+                  className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-secondary text-muted-foreground">
                   <Undo2 className="h-3.5 w-3.5" />
                 </button>
               )}
               {!m.retracted && (
                 <button onClick={() => { setReplyTo(m); inputRef.current?.focus(); }} title="Antworten"
                   data-testid={`reply-${m.id}`}
-                  className={`opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-secondary text-muted-foreground ${mine ? "order-first" : "order-last"}`}>
+                  className={`opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-secondary text-muted-foreground ${mine ? "order-first" : "order-last"}`}>
                   <Reply className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -144,7 +144,7 @@ export function ChatThread({ applicationId, myRole, onSent, quickActions, testId
               <p className="font-semibold truncate">Antwort an {replyTo.sender_name}</p>
               <p className="truncate text-muted-foreground">{replyTo.body}</p>
             </div>
-            <button onClick={() => setReplyTo(null)} className="p-0.5 rounded hover:bg-background" aria-label="Antwort verwerfen">
+            <button onClick={() => setReplyTo(null)} className="p-2 -m-1.5 rounded hover:bg-background" aria-label="Antwort verwerfen">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>

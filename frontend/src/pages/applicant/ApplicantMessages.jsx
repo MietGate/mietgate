@@ -75,9 +75,9 @@ export default function ApplicantMessages() {
 
   return (
     <div className="lg:space-y-6 animate-fade-up">
-      {/* Hidden on mobile once a thread is open — the chat needs the screen, not a page title
-          it's already obvious the user navigated past. */}
-      <div className={active ? "hidden lg:block" : undefined}>
+      {/* Hidden on mobile entirely — the sidebar nav already shows "Nachrichten" as active, so
+          repeating it as a page title just eats screen space on small viewports. */}
+      <div className="hidden lg:block">
         <h1 className="font-display text-3xl font-bold flex items-center gap-3">
           Nachrichten
           {totalUnread > 0 && <Badge data-testid="applicant-inbox-unread">{totalUnread} ungelesen</Badge>}

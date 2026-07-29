@@ -180,9 +180,9 @@ export default function AdminSupport() {
           {tickets.length === 0 && <p className="text-sm text-muted-foreground">Keine Anfragen.</p>}
           {tickets.map((t) => (
             <div key={t.id} className="rounded-xl border border-border/70 bg-card shadow-soft p-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-medium flex items-center gap-2 flex-wrap">
-                  {t.name} · <a href={`mailto:${t.email}`} className="text-primary hover:underline inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{t.email}</a>
+                  {t.name} · <a href={`mailto:${t.email}`} className="text-primary hover:underline inline-flex items-center gap-1 break-all"><Mail className="h-3.5 w-3.5 shrink-0" />{t.email}</a>
                   {t.source === "telefon" && <Badge variant="outline" className="text-xs font-normal gap-1"><Phone className="h-3 w-3" /> Telefon</Badge>}
                   {t.linked_label && (
                     <a href={t.linked_org_id ? "/admin/organisationen" : "/admin/nutzer"} className="text-xs">

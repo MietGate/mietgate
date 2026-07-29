@@ -62,7 +62,7 @@ export function PropertyImages({ property, onChanged }) {
               {titleId === img.id && (
                 <span className="absolute top-2 left-2 text-[11px] font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full flex items-center gap-1"><Star className="h-3 w-3 fill-current" /> Titelbild</span>
               )}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <div className="absolute inset-x-0 bottom-0 sm:inset-0 bg-gradient-to-t from-black/70 sm:from-black/40 sm:bg-none sm:bg-black/40 p-2 sm:p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-end sm:items-center justify-center gap-2">
                 {titleId !== img.id && (
                   <Button size="sm" variant="secondary" onClick={() => setTitle(img.id)} data-testid={`set-title-${img.id}`}><Star className="h-3.5 w-3.5 mr-1" /> Titel</Button>
                 )}

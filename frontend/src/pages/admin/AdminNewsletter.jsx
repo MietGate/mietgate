@@ -50,7 +50,7 @@ export default function AdminNewsletter() {
     <div className="space-y-8 animate-fade-up max-w-4xl">
       <div><h1 className="font-display text-3xl font-bold">Newsletter</h1></div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-4 flex items-center gap-3">
           <MailCheck className="h-5 w-5 text-success shrink-0" />
           <div><p className="text-xs text-muted-foreground">Bestätigt</p><p className="font-mono text-xl font-bold">{counts.confirmed}</p></div>
@@ -85,9 +85,9 @@ export default function AdminNewsletter() {
             {subs.map((s) => {
               const st = STATUS[s.status] || STATUS.pending;
               return (
-                <div key={s.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                  <span>{s.email}</span>
-                  <div className="flex items-center gap-3">
+                <div key={s.id} className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                  <span className="truncate min-w-0">{s.email}</span>
+                  <div className="flex items-center gap-3 shrink-0">
                     <Badge variant="secondary" className={`font-normal ${st.cls}`}>{st.label}</Badge>
                     <span className="text-xs text-muted-foreground w-20 text-right">
                       {new Date(s.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}

@@ -133,6 +133,7 @@ function NotificationBell() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [count, setCount] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
   const load = async () => {
     try {
       const [n, c] = await Promise.all([
@@ -146,11 +147,12 @@ function NotificationBell() {
   useEffect(() => { load(); const i = setInterval(load, 30000); return () => clearInterval(i); }, []);
   const markAll = async () => { await api.post("/notifications/read-all"); load(); };
   const openNotification = async (n) => {
+    setMenuOpen(false);
     if (!n.read) { try { await api.post(`/notifications/${n.id}/read`); load(); } catch {} }
     if (n.link) navigate(n.link);
   };
   return (
-    <DropdownMenu>
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
       <DropdownMenuTrigger asChild>
         <button className="relative p-2.5 rounded-full hover:bg-secondary transition-colors" data-testid="notification-bell">
           <Bell className="h-6 w-6 text-muted-foreground" />

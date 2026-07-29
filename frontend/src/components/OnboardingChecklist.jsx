@@ -69,11 +69,11 @@ export function OnboardingChecklist() {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setMin(true)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+          <button onClick={() => setMin(true)} className="p-2.5 rounded-md hover:bg-secondary text-muted-foreground"
             title="Minimieren" data-testid="minimize-onboarding">
             <Minus className="h-4 w-4" />
           </button>
-          <button onClick={dismiss} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+          <button onClick={dismiss} className="p-2.5 rounded-md hover:bg-secondary text-muted-foreground"
             title="Dauerhaft ausblenden" data-testid="dismiss-onboarding">
             <X className="h-4 w-4" />
           </button>

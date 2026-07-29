@@ -282,7 +282,7 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
                           <FileText className="h-4 w-4 text-primary shrink-0" /> <span className="truncate">{d.doc_type}</span>
                         </button>
                         <button onClick={() => downloadDocument(d.id, d.original_filename).catch(() => toast.error("Download fehlgeschlagen"))}
-                          className="p-1 rounded hover:bg-background text-muted-foreground shrink-0 ml-2" title="Herunterladen" data-testid={`doc-download-${d.id}`}>
+                          className="p-2 rounded hover:bg-background text-muted-foreground shrink-0 ml-2" title="Herunterladen" data-testid={`doc-download-${d.id}`}>
                           <Download className="h-4 w-4" />
                         </button>
                       </div>
