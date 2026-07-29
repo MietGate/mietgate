@@ -107,6 +107,42 @@ async def list_documents(application_id: Optional[str] = None, user: dict = Depe
     return await db.documents.find(q, NO_ID).sort("created_at", -1).to_list(200)
 
 
+@router.get("/documents/landlord")
+async def list_documents_landlord(user: dict = Depends(get_current_user)):
+    """All documents across every applicant/property in the landlord's org — the
+    aggregate view behind the "Dokumente" nav item, same staged-release redaction
+    as the per-application view so a landlord still can't see a document before its
+    application reaches the stage the applicant's data protection allows."""
+    org_id = user.get("org_id")
+    if not org_id:
+        return []
+    docs = await db.documents.find({"org_id": org_id, "is_deleted": False}, NO_ID).sort("created_at", -1).to_list(500)
+    if not docs:
+        return []
+    app_ids = list({d["application_id"] for d in docs if d.get("application_id")})
+    apps = await db.applications.find({"id": {"$in": app_ids}}, NO_ID).to_list(len(app_ids) or 1)
+    apps_by_id = {a["id"]: a for a in apps}
+    prop_ids = list({a["property_id"] for a in apps if a.get("property_id")})
+    props = await db.properties.find({"id": {"$in": prop_ids}}, NO_ID).to_list(len(prop_ids) or 1)
+    props_by_id = {p["id"]: p for p in props}
+
+    out = []
+    for d in docs:
+        app = apps_by_id.get(d.get("application_id"))
+        if not app:
+            continue
+        status = app.get("status", "neu")
+        rec = redact_doc_for_landlord(d, status)
+        fd = app.get("form_data") or {}
+        rec["applicant_name"] = " ".join(filter(None, [fd.get("vorname"), fd.get("nachname")])) or app.get("applicant_email")
+        rec["applicant_email"] = app.get("applicant_email")
+        rec["application_status"] = status
+        prop = props_by_id.get(app.get("property_id"))
+        rec["property_title"] = prop.get("title") if prop else None
+        out.append(rec)
+    return out
+
+
 @router.get("/documents/{doc_id}/download")
 async def download_document(doc_id: str, authorization: Optional[str] = Header(None)):
     token = authorization[7:] if authorization and authorization.startswith("Bearer ") else None

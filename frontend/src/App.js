@@ -25,6 +25,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import CompletePhone from "@/pages/CompletePhone";
 import LandlordDashboard from "@/pages/landlord/Dashboard";
 import Applications from "@/pages/landlord/Applications";
+import Documents from "@/pages/landlord/Documents";
 import Messages from "@/pages/landlord/Messages";
 import Calendar from "@/pages/landlord/Calendar";
 import Properties from "@/pages/landlord/Properties";
@@ -110,6 +111,7 @@ function AppRouter() {
       <Route element={<ProtectedRoute roles={["landlord"]}><DashboardShell /></ProtectedRoute>}>
         <Route path="/dashboard" element={<LandlordDashboard />} />
         <Route path="/bewerbungen" element={<Applications />} />
+        <Route path="/dokumente" element={<Documents />} />
         <Route path="/nachrichten" element={<Messages />} />
         <Route path="/kalender" element={<Calendar />} />
         <Route path="/objekte" element={<Properties />} />

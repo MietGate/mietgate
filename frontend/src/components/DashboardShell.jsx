@@ -19,6 +19,7 @@ import {
 const landlordNav = [
   { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
   { to: "/bewerbungen", label: "Bewerbungen", icon: Inbox, badge: "applications" },
+  { to: "/dokumente", label: "Dokumente", icon: FileText },
   { to: "/nachrichten", label: "Nachrichten", icon: MessageSquare, badge: "messages" },
   { to: "/kalender", label: "Kalender", icon: CalendarDays, badge: "calendar" },
   { to: "/objekte", label: "Objekte", icon: Building2 },
@@ -232,7 +233,10 @@ export function DashboardShell() {
             <img src="/mietgate-logo-wide.png" alt="MietGate" className="h-10 w-auto" />
           </Link>
         </div>
-        <nav className="flex-1 flex flex-col p-3 overflow-y-auto">
+        {/* pt-9 (not p-3's default top) nudges the first item down to roughly the vertical
+            centre of the page h1 on the right, instead of hugging the logo header — makes
+            "Übersicht" read as aligned with the page title rather than just "top of box". */}
+        <nav className="flex-1 flex flex-col px-3 pb-3 pt-9 overflow-y-auto">
           <div className="space-y-1">
             {nav.map((item) => {
               const active = location.pathname === item.to || (item.to !== "/dashboard" && item.to !== "/admin" && item.to !== "/bewerber" && location.pathname.startsWith(item.to));
