@@ -335,7 +335,7 @@ export function DashboardShell() {
             </DropdownMenu>
           </div>
         </header>
-        <main className={`flex-1 p-4 lg:p-8 w-full mx-auto ${fullWidth ? "max-w-none" : "max-w-[1400px]"}`}>
+        <main className={`flex-1 lg:p-8 w-full mx-auto ${headerHidden ? "p-0" : "p-4"} ${fullWidth ? "max-w-none" : "max-w-[1400px]"}`}>
           <Outlet context={{ setFullWidth, setHeaderHidden }} />
         </main>
       </div>

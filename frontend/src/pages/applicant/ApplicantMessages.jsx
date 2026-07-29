@@ -20,11 +20,17 @@ const relTime = (iso) => {
   return d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
 };
 
-function Thread({ conversation, onSent }) {
+function Thread({ conversation, onSent, onBack }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border px-5 py-3 shrink-0">
-        <p className="font-semibold">{conversation.property_title || "Vermieter"}</p>
+      <div className="border-b border-border px-4 py-2.5 shrink-0 flex items-center justify-between gap-3">
+        <p className="font-semibold truncate">{conversation.property_title || "Vermieter"}</p>
+        {onBack && (
+          <button onClick={onBack} className="lg:hidden shrink-0 p-2.5 -m-1 rounded-md hover:bg-secondary text-muted-foreground"
+            aria-label="Zurück zur Übersicht" data-testid="applicant-thread-back">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
       </div>
       <div className="flex-1 min-h-0">
         <ChatThread applicationId={conversation.application_id} myRole="applicant"
@@ -101,7 +107,7 @@ export default function ApplicantMessages() {
           <p className="text-sm mt-1.5">Sobald Sie sich beworben haben, können Sie hier mit Vermietern schreiben.</p>
         </div>
       ) : (
-        <div className={`-mx-4 lg:mx-0 ${active ? "-mt-4" : "mt-4"} lg:mt-0 rounded-none lg:rounded-2xl border-0 lg:border border-border/70 bg-card shadow-none lg:shadow-soft overflow-hidden grid lg:grid-cols-[340px_1fr] ${active ? "h-[100dvh]" : "h-[calc(100dvh-116px)]"} lg:h-[calc(100vh-260px)] min-h-[420px]`}>
+        <div className={`${active ? "" : "-mx-4 mt-4"} lg:mx-0 lg:mt-0 rounded-none lg:rounded-2xl border-0 lg:border border-border/70 bg-card shadow-none lg:shadow-soft overflow-hidden grid lg:grid-cols-[340px_1fr] ${active ? "h-[100dvh]" : "h-[calc(100dvh-116px)]"} lg:h-[calc(100vh-260px)] min-h-[420px]`}>
           <div className={`border-r border-border flex flex-col min-h-0 ${active ? "hidden lg:flex" : "flex"}`}>
             <div className="p-3 border-b border-border shrink-0">
               <div className="relative">
@@ -140,14 +146,9 @@ export default function ApplicantMessages() {
 
           <div className={`min-h-0 ${active ? "flex flex-col" : "hidden lg:flex"}`}>
             {active ? (
-              <>
-                <button onClick={() => setActiveId(null)} className="lg:hidden flex items-center gap-1 text-sm text-muted-foreground px-4 py-2 border-b border-border">
-                  <ArrowLeft className="h-4 w-4" /> Zurück
-                </button>
-                <div className="flex-1 min-h-0">
-                  <Thread conversation={active} onSent={load} />
-                </div>
-              </>
+              <div className="flex-1 min-h-0">
+                <Thread conversation={active} onSent={load} onBack={() => setActiveId(null)} />
+              </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
                 <MessageSquare className="h-10 w-10 mb-3" />
