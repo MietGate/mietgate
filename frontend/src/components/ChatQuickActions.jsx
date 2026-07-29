@@ -50,17 +50,18 @@ export function ChatQuickActions({ conversation, onChanged }) {
 
   return (
     <div className="mb-2" data-testid="chat-quick-actions">
-      <div className="flex flex-wrap gap-1.5">
-        <Button size="sm" variant="outline" onClick={inviteToViewing} data-testid="qa-invite">
-          <CalendarPlus className="h-3.5 w-3.5 mr-1" /> Zu Besichtigung einladen
+      <div className="grid grid-cols-3 gap-1.5">
+        <Button size="sm" variant="outline" onClick={inviteToViewing} data-testid="qa-invite"
+          className="h-auto min-h-9 py-1.5 px-1.5 whitespace-normal leading-tight text-center">
+          <CalendarPlus className="h-3.5 w-3.5 mr-1 shrink-0" /> Zu Besichtigung einladen
         </Button>
         <Button size="sm" variant="outline" onClick={() => setOpenPanel(openPanel === "status" ? null : "status")}
-          data-testid="qa-status">
+          data-testid="qa-status" className="h-auto min-h-9 py-1.5 px-1.5 whitespace-normal leading-tight text-center">
           Phase ändern
         </Button>
         <Button size="sm" variant="outline" onClick={() => setOpenPanel(openPanel === "stars" ? null : "stars")}
-          data-testid="qa-stars">
-          <Star className="h-3.5 w-3.5 mr-1" /> Bewerten
+          data-testid="qa-stars" className="h-auto min-h-9 py-1.5 px-1.5 whitespace-normal leading-tight text-center">
+          <Star className="h-3.5 w-3.5 mr-1 shrink-0" /> Bewerten
         </Button>
       </div>
 
