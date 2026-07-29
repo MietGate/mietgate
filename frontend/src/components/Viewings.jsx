@@ -366,8 +366,9 @@ export function Viewings({ propertyId, property }) {
         )}
       </div>
       {views.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground">
-          <CalendarDays className="h-10 w-10 mx-auto mb-3" />Noch keine Besichtigungen geplant.
+        <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center text-muted-foreground">
+          <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-4"><CalendarDays className="h-6 w-6" /></div>
+          Noch keine Besichtigungen geplant.
         </div>
       ) : (
         <div className="space-y-3">

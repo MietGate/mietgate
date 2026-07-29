@@ -84,10 +84,10 @@ export default function ApplicantMessages() {
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground" data-testid="applicant-inbox-empty">
-          <Inbox className="h-10 w-10 mx-auto mb-3" />
-          <p className="font-medium text-foreground">Noch keine Bewerbungen</p>
-          <p className="text-sm mt-1">Sobald Sie sich beworben haben, können Sie hier mit Vermietern schreiben.</p>
+        <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center text-muted-foreground" data-testid="applicant-inbox-empty">
+          <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-4"><Inbox className="h-6 w-6" /></div>
+          <p className="font-display font-bold text-lg text-foreground">Noch keine Bewerbungen</p>
+          <p className="text-sm mt-1.5">Sobald Sie sich beworben haben, können Sie hier mit Vermietern schreiben.</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden grid lg:grid-cols-[340px_1fr] h-[calc(100vh-260px)] min-h-[420px]">

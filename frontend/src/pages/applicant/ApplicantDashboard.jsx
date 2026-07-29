@@ -347,8 +347,8 @@ export default function ApplicantDashboard() {
       )}
 
       {apps.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-16 text-center">
-          <Inbox className="h-10 w-10 text-muted-foreground mx-auto" />
+        <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center">
+          <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-1"><Inbox className="h-6 w-6" /></div>
           <h3 className="font-display font-bold text-lg mt-4">Noch keine Bewerbungen</h3>
           <p className="text-muted-foreground mt-1">Bewerben Sie sich über einen MietGate-Bewerbungslink.</p>
         </div>

@@ -26,8 +26,8 @@ export default function Properties() {
       </div>
 
       {props.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-16 text-center">
-          <Building2 className="h-10 w-10 text-muted-foreground mx-auto" />
+        <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center">
+          <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto"><Building2 className="h-6 w-6" /></div>
           <h3 className="font-display font-bold text-lg mt-4">Noch keine Objekte</h3>
           <p className="text-muted-foreground mt-1 max-w-sm mx-auto">Erstellen Sie Ihr erstes Objekt, um einen Bewerbungslink zu generieren.</p>
           <Button asChild className="mt-6"><Link to="/objekte/neu">Objekt erstellen</Link></Button>

@@ -167,8 +167,9 @@ export default function ApplicantViewings() {
         )}
       </div>
       {views.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground">
-          <CalendarDays className="h-10 w-10 mx-auto mb-3" />Keine Termine.
+        <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center text-muted-foreground">
+          <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-4"><CalendarDays className="h-6 w-6" /></div>
+          Keine Termine.
         </div>
       ) : mode === "calendar" ? (
         <CalendarView views={views} onChanged={load} />

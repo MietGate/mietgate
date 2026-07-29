@@ -248,7 +248,12 @@ export default function ApplicantDocuments() {
       )}
 
       <div className="space-y-2">
-        {docs.length === 0 && <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">Noch keine Dokumente hochgeladen.</div>}
+        {docs.length === 0 && (
+          <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-12 text-center text-muted-foreground">
+            <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-4"><FileText className="h-6 w-6" /></div>
+            Noch keine Dokumente hochgeladen.
+          </div>
+        )}
         {docs.map((d) => (
           <div key={d.id} className="rounded-xl border border-border/70 bg-card shadow-soft p-4" data-testid={`mydoc-${d.id}`}>
             <div className="flex items-center justify-between gap-3">
