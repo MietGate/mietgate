@@ -166,7 +166,7 @@ async def submit_application(req: ApplyRequest):
     # notify landlord
     # Deep-link straight to this application instead of the property page — otherwise the
     # landlord still has to hunt for the applicant that the notification is about.
-    app_link = f"/objekte/{prop['id']}?tab=pipeline&open={app_id}"
+    app_link = f"/bewerbungen?view=kanban&open={app_id}"
     await notify(prop.get("created_by"), "new_application", "Neue Bewerbung",
                  f"Neue Bewerbung für „{prop['title']}“", app_link)
     await email_user(prop.get("created_by"), "Neue Bewerbung eingegangen", "Neue Bewerbung",

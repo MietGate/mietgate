@@ -60,7 +60,7 @@ async def public_upload(code: str = Form(...), application_id: str = Form(...),
     # the notification lands on the Kanban board with no obvious next step.
     await notify(prop.get("created_by"), "new_document", "Neues Dokument",
                 f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).",
-                f"/objekte/{app['property_id']}?tab=pipeline&open={application_id}")
+                f"/bewerbungen?view=kanban&open={application_id}")
     return rec
 
 
@@ -81,7 +81,7 @@ async def upload_document(doc_type: str = Form("Sonstiges"),
         prop = await db.properties.find_one({"id": property_id}, NO_ID)
         await notify(prop.get("created_by"), "new_document", "Neues Dokument",
                      f"Ein Bewerber hat ein Dokument hochgeladen ({doc_type}).",
-                     f"/objekte/{property_id}?tab=pipeline&open={application_id}")
+                     f"/bewerbungen?view=kanban&open={application_id}")
     return rec
 
 
@@ -202,7 +202,7 @@ async def attach_document(doc_id: str, application_id: str = Form(...),
     if prop:
         await notify(prop.get("created_by"), "new_document", "Neues Dokument",
                      f"Ein Bewerber hat ein Dokument verknüpft ({rec.get('doc_type', 'Sonstiges')}).",
-                     f"/objekte/{app['property_id']}?tab=pipeline&open={application_id}")
+                     f"/bewerbungen?view=kanban&open={application_id}")
     return {"ok": True}
 
 

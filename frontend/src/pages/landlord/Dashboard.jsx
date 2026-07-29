@@ -81,7 +81,7 @@ export default function LandlordDashboard() {
             {data.recent_applications.map((a) => (
               /* The whole row is the target — it looked clickable (hover highlight) but wasn't,
                  so the obvious next action from the dashboard was a dead end. */
-              <Link key={a.id} to={`/objekte/${a.property_id}?tab=pipeline&open=${a.id}`}
+              <Link key={a.id} to={`/bewerbungen?view=kanban&open=${a.id}`}
                 data-testid={`dashboard-application-${a.id}`}
                 className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
                 <div>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams, useOutletContext, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
-import { Pipeline } from "@/components/Pipeline";
 import { Viewings } from "@/components/Viewings";
 import { PropertyImages } from "@/components/PropertyImages";
 import { PricingSection } from "@/components/PricingSection";
@@ -12,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check, Lock, CreditCard, Zap, Trash2
+  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check, Lock, CreditCard, Zap, Trash2, Users
 } from "lucide-react";
 
 export default function PropertyDetail() {
@@ -26,7 +25,6 @@ export default function PropertyDetail() {
   const [deleting, setDeleting] = useState(false);
   const [choosingPlan, setChoosingPlan] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { setFullWidth } = useOutletContext() || {};
 
   const load = () => api.get(`/properties/${id}`).then((r) => setProp(r.data)).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
   useEffect(() => {
@@ -35,15 +33,9 @@ export default function PropertyDetail() {
   }, [id]);
 
   /* The URL is the single source of truth for the active tab, so deep links from elsewhere
-     (onboarding, the handover block) still switch tabs after the landlord has clicked around. */
-  const tab = prop ? (searchParams.get("tab") || (prop.link_active ? "pipeline" : "link")) : null;
-  // The pipeline board wants the room a 1400px-capped, centered page doesn't give it — every
-  // other tab here keeps the normal max-width. Must run before the loading early-return below
-  // so hook order stays stable across the loading -> loaded transition.
-  useEffect(() => {
-    setFullWidth?.(tab === "pipeline");
-    return () => setFullWidth?.(false);
-  }, [tab, setFullWidth]);
+     (onboarding, the handover block) still switch tabs after the landlord has clicked around.
+     Bewerber/Pipeline lives on /bewerbungen now, not as a tab here. */
+  const tab = prop ? (searchParams.get("tab") || "link") : null;
 
   if (!prop) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
@@ -119,6 +111,13 @@ export default function PropertyDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Bewerber-Pipeline lebt jetzt zentral unter Bewerbungen, nicht mehr als Tab hier —
+              dieser Link filtert sie direkt auf dieses Objekt. */}
+          <Button asChild data-testid="view-applicants-link">
+            <Link to={`/bewerbungen?view=kanban&property=${id}`}>
+              <Users className="h-4 w-4 mr-1.5" /> Bewerber ansehen ({prop.application_count})
+            </Link>
+          </Button>
           <Button variant="outline" asChild data-testid="edit-property"><Link to={`/objekte/${id}/bearbeiten`}><Pencil className="h-4 w-4 mr-1" /> Bearbeiten</Link></Button>
           <Button variant="outline" className="text-destructive hover:text-destructive" onClick={deleteProperty} disabled={deleting} data-testid="delete-property-btn">
             {deleting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />} Löschen
@@ -143,30 +142,11 @@ export default function PropertyDetail() {
 
       <Tabs key={prop.id} value={tab} onValueChange={setTab}>
         <TabsList className="w-full h-auto justify-start gap-1 p-1.5">
-          <TabsTrigger value="pipeline" data-testid="tab-pipeline" className="px-5 py-2 text-base">Bewerber ({prop.application_count})</TabsTrigger>
           <TabsTrigger value="link" data-testid="tab-link" className="px-5 py-2 text-base">Bewerbungslink</TabsTrigger>
           <TabsTrigger value="viewings" data-testid="tab-viewings" className="px-5 py-2 text-base">Besichtigungen</TabsTrigger>
           <TabsTrigger value="images" data-testid="tab-images" className="px-5 py-2 text-base">Bilder</TabsTrigger>
           <TabsTrigger value="overview" data-testid="tab-overview" className="px-5 py-2 text-base">Details</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="pipeline" className="mt-6 relative">
-          {paymentLocked ? (
-            <div className="relative">
-              <div className="pointer-events-none select-none blur-sm opacity-60"><Pipeline propertyId={id} /></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="rounded-2xl border border-border/70 bg-card/95 shadow-soft-lg p-6 text-center max-w-sm">
-                  <Lock className="h-6 w-6 text-destructive mx-auto mb-2" />
-                  <p className="font-semibold text-sm">Bewerber-Ansicht gesperrt</p>
-                  <p className="text-sm text-muted-foreground mt-1 mb-4">Aktualisieren Sie Ihre Zahlungsmethode, um wieder Zugriff auf Ihre Bewerber zu erhalten.</p>
-                  <Button size="sm" onClick={openBillingPortal} disabled={portalLoading}>
-                    {portalLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />} Zahlungsmethode aktualisieren
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : <Pipeline propertyId={id} />}
-        </TabsContent>
 
         <TabsContent value="link" className="mt-6">
           {prop.link_active ? (

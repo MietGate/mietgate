@@ -41,10 +41,13 @@ export default function Applications() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [propFilter, setPropFilter] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Seeded from ?property=… once at mount — e.g. the "Bewerber ansehen" link on a property's
+  // own page. Plain useState after that; the object filter doesn't need to keep round-tripping
+  // through the URL the way `view` does.
+  const [propFilter, setPropFilter] = useState(() => searchParams.get("property") || "all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("newest");
-  const [searchParams, setSearchParams] = useSearchParams();
   const { setFullWidth } = useOutletContext() || {};
 
   // URL-driven like the object detail tabs, so a bookmarked/shared link opens on the same view.
