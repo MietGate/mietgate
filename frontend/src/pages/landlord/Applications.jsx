@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Inbox, Loader2, Search, FileText, Star, Building2, ArrowUpDown } from "lucide-react";
+import { Inbox, Loader2, Search, FileText, Star, Building2, ArrowUpDown, Sparkles, CalendarCheck, CheckCircle2 } from "lucide-react";
 
 /* Mirrors the pipeline columns so a status means the same thing everywhere. */
 const STATUS = {
@@ -83,14 +83,17 @@ export default function Applications() {
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          ["Gesamt", counts.total, "text-foreground"],
-          ["Neu", counts.neu, "text-primary"],
-          ["In Besichtigung", counts.besichtigung, "text-foreground"],
-          ["Zusagen", counts.zusage, "text-success"],
-        ].map(([label, value, cls]) => (
-          <div key={label} className="rounded-2xl border border-border/70 bg-card shadow-soft p-4">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className={`font-mono text-2xl font-extrabold mt-1 ${cls}`}>{value}</p>
+          { label: "Gesamt", value: counts.total, icon: Inbox, tone: "bg-accent text-primary" },
+          { label: "Neu", value: counts.neu, icon: Sparkles, tone: "bg-[hsl(38,70%,93%)] text-[hsl(32,55%,34%)]" },
+          { label: "In Besichtigung", value: counts.besichtigung, icon: CalendarCheck, tone: "bg-[hsl(214,45%,93%)] text-[hsl(214,55%,32%)]" },
+          { label: "Zusagen", value: counts.zusage, icon: CheckCircle2, tone: "bg-[hsl(142,40%,93%)] text-[hsl(142,45%,26%)]" },
+        ].map(({ label, value, icon: Icon, tone }) => (
+          <div key={label} className="rounded-2xl border border-border/70 bg-card shadow-soft p-4 hover:shadow-soft-lg hover:-translate-y-0.5 transition-all">
+            <div className="flex items-center justify-between">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${tone}`}><Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} /></div>
+              <span className="font-mono text-2xl font-extrabold">{value}</span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2.5">{label}</p>
           </div>
         ))}
       </div>
@@ -128,12 +131,12 @@ export default function Applications() {
 
       {/* List */}
       {visible.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground" data-testid="applications-empty">
-          <Inbox className="h-10 w-10 mx-auto mb-3" />
-          <p className="font-medium text-foreground">
+        <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center text-muted-foreground" data-testid="applications-empty">
+          <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-4"><Inbox className="h-6 w-6" /></div>
+          <p className="font-display font-bold text-lg text-foreground">
             {apps.length === 0 ? "Noch keine Bewerbungen" : "Keine Bewerbungen für diese Filter"}
           </p>
-          <p className="text-sm mt-1">
+          <p className="text-sm mt-1.5 max-w-sm mx-auto">
             {apps.length === 0
               ? "Teilen Sie Ihren Bewerbungslink, damit Interessenten sich bewerben können."
               : "Passen Sie Suche oder Filter an."}

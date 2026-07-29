@@ -441,7 +441,12 @@ export function Pipeline({ propertyId }) {
   };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
-  if (apps.length === 0) return <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground">Noch keine Bewerbungen für dieses Objekt.</div>;
+  if (apps.length === 0) return (
+    <div className="rounded-2xl border-2 border-dashed border-border/70 bg-card/50 p-16 text-center text-muted-foreground">
+      <div className="h-14 w-14 rounded-2xl bg-accent text-primary flex items-center justify-center mx-auto mb-4"><User className="h-6 w-6" /></div>
+      <p className="font-display font-bold text-lg text-foreground">Noch keine Bewerbungen für dieses Objekt.</p>
+    </div>
+  );
 
   const q = search.trim().toLowerCase();
   const visible = q ? apps.filter((a) => getApplicantName(a)?.toLowerCase().includes(q) || a.applicant_email?.toLowerCase().includes(q)) : apps;
