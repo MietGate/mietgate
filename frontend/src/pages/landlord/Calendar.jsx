@@ -257,18 +257,28 @@ export default function Calendar() {
             const isToday = sameDay(d, today);
             const dayEntries = byDay[toKey(d)] || [];
             return (
-              <button key={i} type="button" onClick={() => setCreateFor(toKey(d))}
+              <button key={i} type="button"
+                onClick={() => (dayEntries.length > 0 ? setSelected(dayEntries[0]) : setCreateFor(toKey(d)))}
                 data-testid={`calendar-day-${toKey(d)}`}
-                className={`group relative min-h-[104px] border-b border-r border-border p-1.5 text-left align-top transition-colors last-of-type:border-r-0
+                className={`group relative min-h-[52px] sm:min-h-[104px] border-b border-r border-border p-1 sm:p-1.5 text-left align-top transition-colors last-of-type:border-r-0
                   ${inMonth ? "bg-card hover:bg-secondary/40" : "bg-secondary/20 text-muted-foreground/60"}`}>
-                <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-semibold
+                <span className={`inline-flex items-center justify-center h-5 w-5 sm:h-6 sm:w-6 rounded-full text-[11px] sm:text-xs font-semibold
                   ${isToday ? "bg-primary text-primary-foreground" : inMonth ? "text-foreground" : ""}`}>
                   {d.getDate()}
                 </span>
-                <span className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground">
+                <span className="hidden sm:inline absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground">
                   <Plus className="h-3.5 w-3.5" />
                 </span>
-                <div className="mt-1 space-y-1">
+                {/* Mobile: dots only, no room for label/time text at this cell size — tap the
+                    day to open it, full detail lives in "Nächste Termine" below the grid. */}
+                {dayEntries.length > 0 && (
+                  <div className="flex sm:hidden flex-wrap gap-0.5 mt-1" data-testid={`calendar-day-dots-${toKey(d)}`}>
+                    {dayEntries.slice(0, 4).map((e) => (
+                      <span key={e.key} className={`h-1.5 w-1.5 rounded-full shrink-0 ${TYPE_DOT[e.viewing.type]}`} />
+                    ))}
+                  </div>
+                )}
+                <div className="hidden sm:block mt-1 space-y-1">
                   {dayEntries.slice(0, 3).map((e) => {
                     const c = countStatus(e.viewing);
                     return (
