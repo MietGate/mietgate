@@ -219,7 +219,7 @@ export default function PublicApplication() {
   const brandStyle = primaryHsl ? { "--primary": primaryHsl, "--ring": primaryHsl, "--brand-teal": primaryHsl } : {};
 
   return (
-    <div className="min-h-screen bg-secondary/40" style={brandStyle}>
+    <div className="app-shell min-h-screen bg-secondary/40" style={brandStyle}>
       <header className="bg-card border-b border-border">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
           {logoSrc ? <img src={logoSrc} alt={b.org_name} className="h-8" /> : <Logo />}
@@ -229,7 +229,7 @@ export default function PublicApplication() {
 
       <main className="max-w-3xl mx-auto px-6 py-10">
         {done ? (
-          <div className="rounded-2xl border border-border bg-card p-8 text-center animate-fade-up">
+          <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-8 text-center animate-fade-up">
             <CheckCircle2 className="h-14 w-14 text-success mx-auto" />
             <h1 className="font-display text-2xl font-bold mt-5">Bewerbung erfolgreich gesendet!</h1>
             <p className="text-muted-foreground mt-2">Wir haben ein MietGate-Konto für Sie angelegt. Prüfen Sie Ihre E-Mails, um es zu aktivieren und den Status zu verfolgen.</p>
@@ -270,7 +270,7 @@ export default function PublicApplication() {
 
             {/* No bonity link before the viewing — pushing one here would create exactly the
                 pressure that makes the applicant's later consent invalid. */}
-            <div className="mt-8 rounded-lg bg-accent/50 border border-accent p-4 text-left flex items-start gap-3">
+            <div className="mt-8 rounded-2xl bg-accent/50 border border-accent p-4 text-left flex items-start gap-3">
               <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-sm">Bonitätsauskunft erst später nötig</p>
@@ -282,14 +282,14 @@ export default function PublicApplication() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl bg-brand-dark text-white p-5 text-left" data-testid="premium-upsell">
+            <div className="mt-4 rounded-2xl bg-brand-dark text-white p-5 text-left shadow-soft-lg" data-testid="premium-upsell">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-primary" />
                 <p className="font-display font-bold">Verifiziertes Mieterprofil – schneller zur Wohnung</p>
               </div>
               <p className="text-sm text-white/70 mt-2">Erstellen Sie ein geprüftes Profil mit teilbarem Link und bewerben Sie sich mit einem Klick – auch außerhalb von MietGate. Vermieter sehen sofort, dass Ihre Angaben vollständig sind.</p>
               <div className="flex items-center gap-3 mt-4">
-                <a href="/fuer-mieter" className="inline-flex items-center gap-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity" data-testid="premium-upsell-cta">
+                <a href="/fuer-mieter" className="inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 hover:-translate-y-0.5 transition-all" data-testid="premium-upsell-cta">
                   Profil aktivieren – 4,99 €/Monat <ArrowRight className="h-4 w-4" />
                 </a>
                 <span className="text-xs text-white/50">Jederzeit kündbar</span>
@@ -299,7 +299,7 @@ export default function PublicApplication() {
         ) : (
           <>
             {/* Property header */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6 animate-fade-up">
+            <div className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden mb-6 animate-fade-up">
               {/* Uses the property's own uploaded title photo as a hero background when set —
                   otherwise falls back to the flat brand-dark block. Dark gradient keeps the
                   white heading/stats legible over any photo. */}
@@ -338,7 +338,7 @@ export default function PublicApplication() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-border bg-card p-6 min-h-[220px]">
+              <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6 min-h-[220px]">
                 {current.key === "__email" && (
                   <div>
                     <h2 className="font-display font-bold text-lg mb-1">Ihre Kontaktdaten</h2>
@@ -361,7 +361,7 @@ export default function PublicApplication() {
                   <div>
                     <h2 className="font-display font-bold text-lg mb-1">Ihre Angaben im Überblick</h2>
                     <p className="text-sm text-muted-foreground mb-4">Bitte prüfen Sie Ihre Angaben, bevor Sie die Bewerbung absenden.</p>
-                    <div className="rounded-xl border border-border divide-y divide-border mb-6" data-testid="summary-review">
+                    <div className="rounded-2xl border border-border/70 divide-y divide-border mb-6" data-testid="summary-review">
                       <div className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm">
                         <span className="text-muted-foreground">E-Mail-Adresse</span>
                         <span className="font-medium text-right break-all">{email || form.email || "—"}</span>
