@@ -140,7 +140,7 @@ export default function LandlordDashboard() {
               </div>
             </div>
             <Link to="/einstellungen?tab=abo" data-testid="dashboard-premium-cta"
-              className="relative inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 hover:shadow-primary/30 transition-all mt-5">
+              className="relative inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 hover:-translate-y-0.5 transition-all mt-5">
               Paket wählen
             </Link>
             <div className="relative mt-6 pt-5 border-t border-white/10">

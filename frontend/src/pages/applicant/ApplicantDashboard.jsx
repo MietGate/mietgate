@@ -172,7 +172,7 @@ function ProfileLinkCard() {
         </div>
       </div>
       <div className="flex items-center gap-2 mt-4">
-        <input readOnly value={link} className="flex-1 min-w-0 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground" data-testid="profile-link-input" />
+        <input readOnly value={link} className="flex-1 min-w-0 rounded-xl border border-border/70 bg-secondary/40 px-3 py-2 text-sm text-muted-foreground" data-testid="profile-link-input" />
         <Button onClick={copy} variant="outline" data-testid="copy-profile-link">
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         </Button>
@@ -231,7 +231,7 @@ function InquiriesList() {
       </p>
       <div className="mt-5 space-y-3">
         {pending.map((i) => (
-          <div key={i.id} className="rounded-xl border border-border bg-secondary/30 p-4" data-testid={`inquiry-${i.id}`}>
+          <div key={i.id} className="rounded-xl border border-border/70 bg-secondary/30 p-4" data-testid={`inquiry-${i.id}`}>
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
                 {i.property_label && <p className="font-semibold text-sm">{i.property_label}</p>}

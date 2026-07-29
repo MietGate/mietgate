@@ -309,7 +309,7 @@ export default function ApplicantDocuments() {
             </div>
           </div>
           <a href="/fuer-mieter" data-testid="documents-premium-cta"
-            className="relative inline-flex items-center gap-1.5 rounded-lg bg-premium px-5 py-2.5 text-sm font-semibold text-premium-foreground shadow-md shadow-premium/20 hover:bg-premium/90 hover:shadow-premium/30 transition-all mt-5">
+            className="relative inline-flex items-center gap-1.5 rounded-full bg-premium px-5 py-2.5 text-sm font-semibold text-premium-foreground shadow-soft hover:bg-premium/90 hover:-translate-y-0.5 transition-all mt-5">
             Profil aktivieren – 4,99 €/Monat
           </a>
         </div>
