@@ -193,6 +193,14 @@ export function DashboardShell() {
   // useOutletContext — it's still bounded by this flex column, not the raw viewport, so it
   // correctly stops short of the sidebar instead of running underneath it.
   const [fullWidth, setFullWidth] = useState(false);
+  // A page can hide the top app header on mobile via useOutletContext — used by the chat
+  // views so an open conversation gets the screen instead of stacking the global header
+  // (menu/search/bell) on top of the thread's own back button and name.
+  const [headerHidden, setHeaderHidden] = useState(false);
+
+  // Safety net: a fresh navigation always starts with the header visible, even if the
+  // previous page forgot to restore it on unmount.
+  useEffect(() => { setHeaderHidden(false); }, [location.pathname]);
 
   useEffect(() => {
     if (user?.role === "landlord" || (user?.role !== "admin" && user?.role !== "applicant" && user?.org_id)) {
@@ -287,7 +295,7 @@ export function DashboardShell() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 bg-background">
-        <header className="h-16 border-b border-border bg-card flex items-center gap-4 px-4 lg:px-8 sticky top-0 z-20">
+        <header className={`h-16 border-b border-border bg-card items-center gap-4 px-4 lg:px-8 sticky top-0 z-20 ${headerHidden ? "hidden lg:flex" : "flex"}`}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button className="lg:hidden p-2" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
             <div className="hidden sm:flex items-center text-sm text-muted-foreground truncate">
@@ -328,7 +336,7 @@ export function DashboardShell() {
           </div>
         </header>
         <main className={`flex-1 p-4 lg:p-8 w-full mx-auto ${fullWidth ? "max-w-none" : "max-w-[1400px]"}`}>
-          <Outlet context={{ setFullWidth }} />
+          <Outlet context={{ setFullWidth, setHeaderHidden }} />
         </main>
       </div>
     </div>

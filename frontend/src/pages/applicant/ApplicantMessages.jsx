@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useOutletContext } from "react-router-dom";
 import api from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ export default function ApplicantMessages() {
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(searchParams.get("application_id"));
   const [q, setQ] = useState("");
+  const { setHeaderHidden } = useOutletContext() || {};
 
   const load = useCallback(async () => {
     try {
@@ -71,6 +72,14 @@ export default function ApplicantMessages() {
   const active = items?.find((c) => c.application_id === activeId);
   const totalUnread = items?.reduce((s, c) => s + (c.unread || 0), 0) || 0;
 
+  // The chat needs the screen on mobile, so the global header (menu/search/bell) steps
+  // aside while a conversation is open — otherwise it stacks on top of the thread's own
+  // back button and name for no reason.
+  useEffect(() => {
+    setHeaderHidden?.(!!active);
+    return () => setHeaderHidden?.(false);
+  }, [active, setHeaderHidden]);
+
   if (!items) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
@@ -92,7 +101,7 @@ export default function ApplicantMessages() {
           <p className="text-sm mt-1.5">Sobald Sie sich beworben haben, können Sie hier mit Vermietern schreiben.</p>
         </div>
       ) : (
-        <div className={`-mx-4 lg:mx-0 ${active ? "mt-0" : "mt-4"} lg:mt-0 rounded-none lg:rounded-2xl border-0 lg:border border-border/70 bg-card shadow-none lg:shadow-soft overflow-hidden grid lg:grid-cols-[340px_1fr] h-[calc(100dvh-116px)] lg:h-[calc(100vh-260px)] min-h-[420px]`}>
+        <div className={`-mx-4 lg:mx-0 ${active ? "-mt-4" : "mt-4"} lg:mt-0 rounded-none lg:rounded-2xl border-0 lg:border border-border/70 bg-card shadow-none lg:shadow-soft overflow-hidden grid lg:grid-cols-[340px_1fr] ${active ? "h-[100dvh]" : "h-[calc(100dvh-116px)]"} lg:h-[calc(100vh-260px)] min-h-[420px]`}>
           <div className={`border-r border-border flex flex-col min-h-0 ${active ? "hidden lg:flex" : "flex"}`}>
             <div className="p-3 border-b border-border shrink-0">
               <div className="relative">
