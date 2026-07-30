@@ -198,6 +198,7 @@ export function PricingSection({ onSelect, ctaLabel = "Auswählen", disabled = f
             {p.billing_mode === "one_time" && !p.promo && (
               <p className="text-sm text-muted-foreground mt-1">Genug Zeit, um in Ruhe den passenden Mieter zu finden</p>
             )}
+            <p className="text-sm font-semibold text-success mt-2">✓ 3 Tage kostenlos testen</p>
             <ul className="mt-6 space-y-2.5 flex-1">
               {p.features?.map((f, i) => (
                 f.startsWith("Alles aus") ? (
