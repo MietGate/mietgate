@@ -231,7 +231,7 @@ export function DashboardShell() {
 
   return (
     <div className="app-shell min-h-screen flex bg-background text-foreground">
-      <div className="fixed top-0 inset-x-0 h-[3px] z-50 bg-gradient-to-r from-primary via-premium to-primary" />
+      <div className="fixed top-0 inset-x-0 h-[3px] z-50 bg-gradient-to-r from-primary via-primary/70 to-primary" />
       {/* Sidebar */}
       {/* lg:sticky + lg:h-screen (not lg:static) pins the sidebar to the viewport height on
           desktop — with plain `static` its box stretched to match the main column's full
