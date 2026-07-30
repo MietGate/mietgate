@@ -46,7 +46,7 @@ async def admin_stats(user: dict = Depends(admin)):
 
 
 @router.post("/track-link-click")
-async def track_link_click(ref: str = "", request: Request):
+async def track_link_click(request: Request, ref: str = ""):
     """Track clicks on outreach campaign links (?ref=...)."""
     if not ref or len(ref) > 100:
         return {"ok": True}

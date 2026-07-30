@@ -117,7 +117,10 @@ function CampaignStats() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    api.get("/admin/campaign-stats").then((r) => setCampaigns(r.data.campaigns)).catch(() => setError(true));
+    api.get("/admin/campaign-stats").then((r) => setCampaigns(r.data.campaigns)).catch((e) => {
+      console.error("Campaign stats error:", e.response?.status, e.response?.data?.detail);
+      setError(true);
+    });
   }, []);
 
   return (
