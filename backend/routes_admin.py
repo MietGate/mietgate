@@ -419,8 +419,21 @@ class LeadPatch(BaseModel):
     deal_value: Optional[float] = None
 
 
+class LeadImportRow(BaseModel):
+    name: str
+    email: str = ""
+    phone: str = ""
+    company: str = ""
+    address: str = ""
+    zip: str = ""
+    city: str = ""
+    source: str = ""
+    notes: str = ""
+    deal_value: Optional[float] = 0
+
+
 class LeadImport(BaseModel):
-    csv: str
+    leads: List[LeadImportRow]
 
 
 @router.get("/leads")
@@ -443,29 +456,28 @@ async def create_lead(body: LeadPayload, user: dict = Depends(admin)):
 
 @router.post("/leads/import")
 async def import_leads(body: LeadImport, user: dict = Depends(admin)):
-    import csv, io
-    reader = csv.DictReader(io.StringIO(body.csv.strip()))
+    """Rows arrive already mapped to Lead fields — the column-mapping step (upload, detect
+    delimiter, map each CSV column onto a field, preview) happens client-side in
+    ImportLeadsDialog, so this just validates and inserts."""
     docs = []
-    for row in reader:
-        low = {(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
-        name = low.get("name") or low.get("firma") or low.get("company") or ""
+    skipped = 0
+    for row in body.leads:
+        name = row.name.strip()
         if not name:
+            skipped += 1
             continue
         docs.append({
             "id": new_id(), "name": name,
-            "email": low.get("email") or low.get("e-mail") or "",
-            "phone": low.get("phone") or low.get("telefon") or low.get("tel") or "",
-            "company": low.get("company") or low.get("firma") or "",
-            "address": low.get("address") or low.get("adresse") or low.get("straße") or low.get("strasse") or "",
-            "zip": low.get("zip") or low.get("plz") or low.get("postleitzahl") or "",
-            "city": low.get("city") or low.get("ort") or low.get("stadt") or "",
-            "source": low.get("source") or low.get("quelle") or "CSV-Import",
-            "status": "neu", "notes": low.get("notes") or low.get("notiz") or "", "deal_value": 0,
+            "email": row.email.strip(), "phone": row.phone.strip(),
+            "company": row.company.strip(), "address": row.address.strip(),
+            "zip": row.zip.strip(), "city": row.city.strip(),
+            "source": row.source.strip() or "CSV-Import",
+            "status": "neu", "notes": row.notes.strip(), "deal_value": row.deal_value or 0,
             "created_at": now_iso(),
         })
     if docs:
         await db.leads.insert_many(docs)
-    return {"imported": len(docs)}
+    return {"imported": len(docs), "skipped": skipped}
 
 
 @router.patch("/leads/{lid}")

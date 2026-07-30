@@ -14,7 +14,239 @@ import { toast } from "sonner";
 import {
   Loader2, Plus, Trash2, Upload, Mail, Phone, Building2, MapPin, Save,
   Settings2, ArrowUp, ArrowDown, ListTodo, MessageSquare, PhoneCall, StickyNote, Bell,
+  FileUp, ArrowLeft, ArrowRight, CheckCircle2,
 } from "lucide-react";
+
+/* Target Lead fields a CSV column can be mapped onto — mirrors the shape /admin/leads/import expects. */
+const IMPORT_FIELDS = [
+  { key: "name", label: "Name", required: true },
+  { key: "email", label: "E-Mail" },
+  { key: "phone", label: "Telefon" },
+  { key: "company", label: "Firma" },
+  { key: "address", label: "Adresse" },
+  { key: "zip", label: "PLZ" },
+  { key: "city", label: "Ort" },
+  { key: "source", label: "Quelle" },
+  { key: "notes", label: "Notizen" },
+  { key: "deal_value", label: "Erwarteter Deal-Wert (€)" },
+];
+const FIELD_ALIASES = {
+  name: ["name", "vollname", "kontakt", "contact", "full name"],
+  email: ["email", "e-mail", "mail"],
+  phone: ["phone", "telefon", "tel", "handy", "mobil", "mobile", "telefonnummer"],
+  company: ["company", "firma", "unternehmen"],
+  address: ["address", "adresse", "straße", "strasse", "street"],
+  zip: ["zip", "plz", "postleitzahl", "postcode"],
+  city: ["city", "ort", "stadt"],
+  source: ["source", "quelle"],
+  notes: ["notes", "notiz", "notizen", "bemerkung", "comment"],
+  deal_value: ["deal_value", "dealvalue", "wert", "value", "betrag", "umsatz"],
+};
+
+/* Minimal RFC4180-ish parser — handles quoted fields (with embedded commas/newlines/escaped
+   quotes) and auto-detects comma vs. semicolon vs. tab, since a German Excel export defaults
+   to semicolons and a naive .split(",") would silently mis-split every row. */
+function detectDelimiter(firstLine) {
+  const counts = { ",": 0, ";": 0, "\t": 0 };
+  for (const c of firstLine) if (c in counts) counts[c] += 1;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][1] > 0
+    ? Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] : ",";
+}
+function parseCsv(text) {
+  const s = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const delim = detectDelimiter((s.split("\n")[0] || ""));
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inQuotes) {
+      if (c === '"' && s[i + 1] === '"') { field += '"'; i += 1; }
+      else if (c === '"') inQuotes = false;
+      else field += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === delim) { row.push(field); field = ""; }
+    else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else field += c;
+  }
+  if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  return rows.filter((r) => r.some((v) => v.trim() !== ""));
+}
+function guessMapping(headers) {
+  const used = new Set();
+  const mapping = {};
+  headers.forEach((h) => {
+    const norm = h.trim().toLowerCase();
+    const field = IMPORT_FIELDS.find((f) => !used.has(f.key) && FIELD_ALIASES[f.key].includes(norm));
+    mapping[h] = field ? field.key : "";
+    if (field) used.add(field.key);
+  });
+  return mapping;
+}
+
+/* Pipedrive-style import: upload/paste -> map each detected column onto a Lead field with a
+   live preview -> confirm. Parsing and mapping happen entirely client-side; the backend only
+   ever sees already-mapped rows, so it doesn't need to guess at column names anymore. */
+function ImportLeadsDialog({ onImported }) {
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState("upload"); // upload | map
+  const [fileName, setFileName] = useState("");
+  const [pasted, setPasted] = useState("");
+  const [headers, setHeaders] = useState([]);
+  const [dataRows, setDataRows] = useState([]);
+  const [mapping, setMapping] = useState({});
+  const [importing, setImporting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  const reset = () => {
+    setStep("upload"); setFileName(""); setPasted("");
+    setHeaders([]); setDataRows([]); setMapping({});
+  };
+
+  const parseText = (text) => {
+    const rows = parseCsv(text);
+    if (rows.length === 0) { toast.error("Keine Daten gefunden"); return; }
+    const [head, ...rest] = rows;
+    setHeaders(head);
+    setDataRows(rest);
+    setMapping(guessMapping(head));
+    setStep("map");
+  };
+
+  const handleFile = (file) => {
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => parseText(String(reader.result || ""));
+    reader.onerror = () => toast.error("Datei konnte nicht gelesen werden");
+    reader.readAsText(file, "utf-8");
+  };
+
+  const mappedField = (key) => Object.entries(mapping).find(([, v]) => v === key)?.[0];
+  const nameMapped = !!mappedField("name");
+
+  const buildLeads = () => dataRows.map((row) => {
+    const lead = {};
+    headers.forEach((h, i) => {
+      const field = mapping[h];
+      if (!field) return;
+      const raw = (row[i] || "").trim();
+      // Every other field is a plain string server-side, but deal_value is a number — an
+      // empty or non-numeric cell must become 0, not "", or the whole batch fails validation.
+      lead[field] = field === "deal_value" ? (Number(raw.replace(",", ".")) || 0) : raw;
+    });
+    return lead;
+  }).filter((l) => l.name);
+
+  const doImport = async () => {
+    const leads = buildLeads();
+    if (leads.length === 0) { toast.error("Keine Zeile mit einem gültigen Namen"); return; }
+    setImporting(true);
+    try {
+      const { data } = await api.post("/admin/leads/import", { leads });
+      toast.success(`${data.imported} Lead(s) importiert${data.skipped ? ` · ${data.skipped} übersprungen (kein Name)` : ""}`);
+      setOpen(false); reset(); onImported();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
+    finally { setImporting(false); }
+  };
+
+  const previewLeads = buildLeads().slice(0, 5);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+      <DialogTrigger asChild><Button variant="outline" data-testid="import-leads-btn"><Upload className="h-4 w-4 mr-2" /> CSV importieren</Button></DialogTrigger>
+      <DialogContent aria-describedby={undefined} className={step === "map" ? "max-w-3xl" : "max-w-lg"}>
+        <DialogHeader><DialogTitle>Leads per CSV importieren</DialogTitle></DialogHeader>
+
+        {step === "upload" && (
+          <div className="space-y-4">
+            <label
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]); }}
+              className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
+                dragOver ? "border-primary bg-accent/40" : "border-border hover:border-primary/40"}`}>
+              <FileUp className="h-8 w-8 text-primary" />
+              <p className="text-sm font-medium">{fileName || "CSV-Datei hierher ziehen oder klicken"}</p>
+              <p className="text-xs text-muted-foreground">Excel-Export, Komma oder Semikolon getrennt</p>
+              <input type="file" accept=".csv,text/csv,.txt" className="hidden"
+                onChange={(e) => handleFile(e.target.files?.[0])} data-testid="csv-file-input" />
+            </label>
+            <div className="relative text-center text-xs text-muted-foreground">
+              <span className="bg-background px-2 relative z-10">oder CSV-Text einfügen</span>
+              <div className="absolute inset-x-0 top-1/2 border-t border-border -z-0" />
+            </div>
+            <Textarea rows={5} value={pasted} onChange={(e) => setPasted(e.target.value)}
+              placeholder={"name,email,phone,company,zip,city\nMax Muster,max@firma.de,0170,Muster GmbH,10115,Berlin"}
+              className="font-mono text-xs" data-testid="csv-input" />
+            <DialogFooter>
+              <Button onClick={() => parseText(pasted)} disabled={!pasted.trim()} data-testid="csv-parse-btn">
+                Weiter <ArrowRight className="h-4 w-4 ml-1.5" />
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === "map" && (
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm font-medium mb-2">Spalten zuordnen</p>
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                {headers.map((h, i) => (
+                  <div key={i} className="flex items-center gap-2 rounded-md border border-border p-2 text-sm" data-testid={`csv-map-row-${i}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{h || `Spalte ${i + 1}`}</p>
+                      <p className="text-xs text-muted-foreground truncate">z.B. „{dataRows[0]?.[i] || "—"}"</p>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <Select value={mapping[h] || "__ignore"} onValueChange={(v) => setMapping({ ...mapping, [h]: v === "__ignore" ? "" : v })}>
+                      <SelectTrigger className="w-[210px] h-8 shrink-0" data-testid={`csv-map-select-${i}`}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__ignore">Ignorieren</SelectItem>
+                        {IMPORT_FIELDS.map((f) => <SelectItem key={f.key} value={f.key}>{f.label}{f.required ? " *" : ""}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+              {!nameMapped && <p className="text-xs text-destructive mt-2">Bitte eine Spalte auf „Name" zuordnen — ohne Name wird eine Zeile übersprungen.</p>}
+            </div>
+
+            <div>
+              <p className="text-sm font-medium mb-2">Vorschau ({dataRows.length} Zeile{dataRows.length === 1 ? "" : "n"} erkannt)</p>
+              <div className="rounded-md border border-border overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-secondary/50">
+                    <tr>{IMPORT_FIELDS.filter((f) => mappedField(f.key)).map((f) => (
+                      <th key={f.key} className="px-2.5 py-1.5 text-left font-medium whitespace-nowrap">{f.label}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {previewLeads.map((l, i) => (
+                      <tr key={i}>{IMPORT_FIELDS.filter((f) => mappedField(f.key)).map((f) => (
+                        <td key={f.key} className="px-2.5 py-1.5 truncate max-w-[160px]">{l[f.key] || "—"}</td>
+                      ))}</tr>
+                    ))}
+                    {previewLeads.length === 0 && (
+                      <tr><td className="px-2.5 py-3 text-muted-foreground" colSpan={IMPORT_FIELDS.length}>Keine gültigen Zeilen (Name fehlt überall).</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <DialogFooter className="justify-between sm:justify-between">
+              <Button variant="ghost" onClick={() => setStep("upload")}><ArrowLeft className="h-4 w-4 mr-1.5" /> Zurück</Button>
+              <Button onClick={doImport} disabled={importing || !nameMapped} data-testid="csv-import-confirm">
+                {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                {buildLeads().length} Lead{buildLeads().length === 1 ? "" : "s"} importieren
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const COLOR_OPTIONS = [
   { value: "bg-slate-400", label: "Grau" }, { value: "bg-blue-500", label: "Blau" },
@@ -263,10 +495,8 @@ export default function AdminLeads() {
   const [stages, setStages] = useState(null);
   const [dueTasks, setDueTasks] = useState([]);
   const [form, setForm] = useState({ ...EMPTY });
-  const [csv, setCsv] = useState("");
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const [activeId, setActiveId] = useState(null);
 
   const load = useCallback(() => api.get("/admin/leads").then((r) => setLeads(r.data)).catch(() => setLeads([])), []);
@@ -280,16 +510,6 @@ export default function AdminLeads() {
     try {
       await api.post("/admin/leads", { ...form, deal_value: form.deal_value === "" ? 0 : Number(form.deal_value) });
       toast.success("Lead angelegt"); setForm({ ...EMPTY }); setAddOpen(false); load();
-    } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
-    finally { setSaving(false); }
-  };
-
-  const importCsv = async () => {
-    if (!csv.trim()) { toast.error("Bitte CSV-Daten einfügen"); return; }
-    setSaving(true);
-    try {
-      const { data } = await api.post("/admin/leads/import", { csv });
-      toast.success(`${data.imported} Leads importiert`); setCsv(""); setImportOpen(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail) || e.message); }
     finally { setSaving(false); }
   };
@@ -317,17 +537,7 @@ export default function AdminLeads() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <StageManager stages={stages} onChanged={loadStages} />
-          <Dialog open={importOpen} onOpenChange={setImportOpen}>
-            <DialogTrigger asChild><Button variant="outline" data-testid="import-leads-btn"><Upload className="h-4 w-4 mr-2" /> CSV importieren</Button></DialogTrigger>
-            <DialogContent aria-describedby={undefined}>
-              <DialogHeader><DialogTitle>Leads per CSV importieren</DialogTitle></DialogHeader>
-              <p className="text-sm text-muted-foreground">Kopfzeile erforderlich. Spalten: <code>name, email, phone, company, address, zip, city, source, notes</code>.</p>
-              <Textarea rows={8} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={"name,email,phone,company,zip,city\nMax Muster,max@firma.de,0170,Muster GmbH,10115,Berlin"} className="font-mono text-xs" data-testid="csv-input" />
-              <DialogFooter>
-                <Button onClick={importCsv} disabled={saving} data-testid="csv-submit">{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Importieren</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <ImportLeadsDialog onImported={load} />
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild><Button data-testid="add-lead-btn"><Plus className="h-4 w-4 mr-2" /> Lead hinzufügen</Button></DialogTrigger>
             <DialogContent aria-describedby={undefined}>
