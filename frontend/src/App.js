@@ -1,5 +1,5 @@
 import "@/App.css";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -56,7 +56,14 @@ import NotFound from "@/pages/NotFound";
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
-  useEffect(() => {
+  // The browser's own scroll restoration otherwise fights this on push-navigation (most
+  // visible on mobile Safari) — a new route could keep the previous page's scroll offset
+  // instead of opening at the top. useLayoutEffect (not useEffect) so the jump happens
+  // before paint, not as a visible flash after the new page is already on screen.
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+  }, []);
+  useLayoutEffect(() => {
     if (hash) return;
     window.scrollTo(0, 0);
   }, [pathname, hash]);
