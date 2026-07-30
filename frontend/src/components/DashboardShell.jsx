@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";
@@ -197,6 +197,14 @@ export function DashboardShell() {
   // views so an open conversation gets the screen instead of stacking the global header
   // (menu/search/bell) on top of the thread's own back button and name.
   const [headerHidden, setHeaderHidden] = useState(false);
+  const activeNavRef = useRef(null);
+
+  // The admin nav alone has grown to 12 items — on a shorter window the sidebar scrolls
+  // internally, and without this the active page's own link can end up scrolled out of view
+  // above or below the visible strip, leaving only unrelated items showing.
+  useEffect(() => {
+    activeNavRef.current?.scrollIntoView({ block: "nearest" });
+  }, [location.pathname]);
 
   // Safety net: a fresh navigation always starts with the header visible, even if the
   // previous page forgot to restore it on unmount.
@@ -252,7 +260,7 @@ export function DashboardShell() {
               const active = location.pathname === item.to || (item.to !== "/dashboard" && item.to !== "/admin" && item.to !== "/bewerber" && location.pathname.startsWith(item.to));
               const Icon = item.icon;
               return (
-                <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
+                <Link key={item.to} to={item.to} onClick={() => setOpen(false)} ref={active ? activeNavRef : undefined}
                   data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z]/g, "")}`}
                   className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-medium transition-all duration-150 ${active ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:text-white hover:bg-white/10 hover:translate-x-0.5"}`}>
                   <span className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors duration-150 ${active ? "bg-primary text-primary-foreground shadow-[0_4px_12px_-2px_hsl(var(--primary)/0.6)]" : "bg-white/5 text-white/70 group-hover:bg-white/10 group-hover:text-white"}`}>
