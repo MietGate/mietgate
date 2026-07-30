@@ -35,8 +35,11 @@ export default function AdminOrganizations() {
 
   const save = async () => {
     try {
-      await api.post(`/admin/organizations/${editing.id}/subscription`, form);
-      toast.success("Abo aktualisiert"); setEditing(null); load();
+      const { data } = await api.post(`/admin/organizations/${editing.id}/subscription`, form);
+      toast.success(data.deactivated_links
+        ? `Abo aktualisiert — ${data.deactivated_links} Objekt(e) über dem neuen Limit wurden deaktiviert`
+        : "Abo aktualisiert");
+      setEditing(null); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
@@ -70,6 +73,13 @@ export default function AdminOrganizations() {
           <DialogHeader><DialogTitle>Abo für {editing?.name} setzen</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">Für manuell abgeschlossene Deals (z.B. Banküberweisung), ohne dass der Kunde den Stripe-Checkout durchläuft.</p>
+            {editing?.stripe_managed && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                ⚠ Diese Organisation hat bereits ein echtes Stripe-Abo. Eine manuelle Änderung hier läuft parallel dazu
+                und wird von der nächsten Stripe-Zahlung/Kündigung automatisch wieder überschrieben. Für laufende
+                Stripe-Kunden besser über das Stripe-Dashboard kündigen/ändern.
+              </p>
+            )}
             <div><Label>Paket</Label>
               <Select value={form.plan_key} onValueChange={(v) => setForm({ ...form, plan_key: v })}>
                 <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>

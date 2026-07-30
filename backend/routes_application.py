@@ -127,7 +127,12 @@ async def submit_application(req: ApplyRequest):
 
     email = req.email.lower().strip()
     existing_app = await db.applications.find_one({"property_id": prop["id"], "applicant_email": email}, NO_ID)
-    if existing_app:
+    # A rejected or withdrawn application is a dead end, not an active duplicate — both the
+    # rejection email and the UI explicitly invite the applicant to reapply, so treat this as
+    # a genuine new application on the same record (keeps their previously uploaded documents
+    # and message history attached) instead of silently no-op'ing on the old, closed one.
+    reapplying = existing_app and existing_app.get("status") in ("absage", "zurueckgezogen")
+    if existing_app and not reapplying:
         return {"application_id": existing_app["id"], "already_applied": True}
     # find or create applicant account
     user = await db.users.find_one({"email": email})
@@ -150,15 +155,27 @@ async def submit_application(req: ApplyRequest):
             "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
         })
         activation_link = token
-    app_id = new_id()
-    application = {
-        "id": app_id, "property_id": prop["id"], "org_id": prop["org_id"],
-        "applicant_user_id": user["id"], "applicant_email": email,
-        "form_data": req.form_data, "status": "neu", "stars": 0, "tags": [],
-        "internal_notes": "", "consent": True, "created_at": now_iso(),
-        "viewed_by_landlord": False,
-    }
-    await db.applications.insert_one(application)
+    if reapplying:
+        # Reuse the same record — keeps previously uploaded documents (attached by
+        # application_id) and the existing message thread intact instead of orphaning them
+        # under a dead application while a fresh one starts from zero.
+        app_id = existing_app["id"]
+        update = {
+            "form_data": req.form_data, "status": "neu", "stars": 0, "tags": [],
+            "consent": True, "created_at": now_iso(), "viewed_by_landlord": False,
+        }
+        await db.applications.update_one({"id": app_id}, {"$set": update})
+        application = {**existing_app, **update}
+    else:
+        app_id = new_id()
+        application = {
+            "id": app_id, "property_id": prop["id"], "org_id": prop["org_id"],
+            "applicant_user_id": user["id"], "applicant_email": email,
+            "form_data": req.form_data, "status": "neu", "stars": 0, "tags": [],
+            "internal_notes": "", "consent": True, "created_at": now_iso(),
+            "viewed_by_landlord": False,
+        }
+        await db.applications.insert_one(application)
     await log_activity(prop["org_id"], user["id"], "apply", "application", app_id, {"property": prop["title"]})
     # "Offene Besichtigung": anyone who applies is put on the guest list right away, the
     # invitation mail follows a few minutes later.
@@ -407,8 +424,11 @@ async def my_applications(user: dict = Depends(get_current_user)):
         requested = a.get("requested_documents") or []
         a["requested_documents"] = requested
         if requested:
+            # Scoped to documents actually attached to THIS application — a doc uploaded and
+            # attached elsewhere (e.g. for a different property) doesn't help the landlord
+            # reviewing this one, whose own view is likewise scoped by application_id.
             have = await db.documents.distinct(
-                "doc_type", {"applicant_user_id": user["id"], "is_deleted": False})
+                "doc_type", {"applicant_user_id": user["id"], "application_id": a["id"], "is_deleted": False})
             a["missing_documents"] = [d for d in requested if d not in have]
         else:
             a["missing_documents"] = []

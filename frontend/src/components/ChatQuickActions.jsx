@@ -25,7 +25,7 @@ export function ChatQuickActions({ conversation, onChanged }) {
   const changeStatus = async (status) => {
     // The inbox has no board to count against; the backend only mass-rejects on request,
     // so declining here simply leaves the other applicants untouched.
-    const opts = confirmStatusChange(status, 0);
+    const opts = confirmStatusChange(status, 0, conversation.application_status);
     if (!opts) return;
     setBusy(true);
     try {

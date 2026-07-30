@@ -18,8 +18,11 @@ export const ACTIVE_COLUMNS = STATUS_COLUMNS.filter((c) => c.key !== "archiv");
 export const ACTIVE_STAGES = ["neu", "pruefung", "interessant", "besichtigung", "favorit"];
 
 /* Every path that changes a status must ask before anything leaves the building.
+   `currentStatus` is optional (not every caller has it handy) — when it's known and the
+   applicant is being moved OUT of "zusage", that also needs a confirmation, since the
+   backend emails them "the flat is back up for grabs" the moment that happens.
    Returns the extra request options, or null when the landlord backed out. */
-export function confirmStatusChange(newStatus, otherActiveCount) {
+export function confirmStatusChange(newStatus, otherActiveCount, currentStatus) {
   if (newStatus === "absage") {
     return window.confirm("Status auf „Absage\" setzen? Der Bewerber erhält dadurch sofort eine Absage-E-Mail.")
       ? { reject_others: false } : null;
@@ -31,6 +34,11 @@ export function confirmStatusChange(newStatus, otherActiveCount) {
       `Sie werden auf „Absage\" gesetzt und erhalten eine E-Mail. Das lässt sich nicht rückgängig machen.\n\n` +
       `Abbrechen: Zusage wird trotzdem erteilt, die anderen bleiben unverändert.`);
     return { reject_others: rejectOthers };
+  }
+  if (currentStatus === "zusage") {
+    return window.confirm(
+      "Zusage zurücknehmen und Status ändern? Der Bewerber erhält dadurch sofort eine E-Mail, dass die " +
+      "Wohnung wieder im Verfahren ist.") ? { reject_others: false } : null;
   }
   return { reject_others: false };
 }

@@ -48,14 +48,21 @@ export default function ApplicantMessages() {
   const [q, setQ] = useState("");
   const { setHeaderHidden } = useOutletContext() || {};
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
       const [appsRes, convRes] = await Promise.all([api.get("/my/applications"), api.get("/conversations")]);
       setApplications(appsRes.data);
       setConversations(convRes.data);
-    } catch { toast.error("Nachrichten konnten nicht geladen werden"); }
+    } catch { if (!silent) toast.error("Nachrichten konnten nicht geladen werden"); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  // Landlord side already polls the conversation list every 30s (Messages.jsx) — this page
+  // was missing that, so a new message or reply never showed up here until a manual reload.
+  useEffect(() => {
+    const t = setInterval(() => load(true), 30000);
+    return () => clearInterval(t);
+  }, [load]);
 
   // Every application is a potential conversation, even before the first message is sent —
   // otherwise an applicant could never start a conversation, only reply to one the landlord began.

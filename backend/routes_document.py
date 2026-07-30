@@ -237,13 +237,13 @@ async def request_documents(payload: DocRequestPayload, user: dict = Depends(get
             detail=f"Diese Dokumente dürfen Sie in diesem Status noch nicht anfordern. "
                    f"{doc_release_hint(blocked[0])}.")
 
-    # Union with anything already requested — a follow-up request must not silently drop
-    # documents the applicant still owes from an earlier one.
-    already = app.get("requested_documents") or []
-    merged = already + [d for d in allowed if d not in already]
+    # $addToSet/$each unions atomically at the DB level — a plain read-modify-write here
+    # would let two concurrent requests (double-click, two org members) silently drop
+    # whichever one's write lands second.
     await db.applications.update_one(
         {"id": payload.application_id},
-        {"$set": {"requested_documents": merged, "documents_requested_at": now_iso()}})
+        {"$addToSet": {"requested_documents": {"$each": allowed}},
+         "$set": {"documents_requested_at": now_iso()}})
 
     listed = "".join(f"<li>{d}</li>" for d in allowed)
     intro = payload.message.strip() or "Der Vermieter bittet Sie, folgende Dokumente hochzuladen:"

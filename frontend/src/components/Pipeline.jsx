@@ -14,13 +14,13 @@ import { STATUS_COLUMNS, ACTIVE_COLUMNS, ACTIVE_STAGES, confirmStatusChange } fr
 import { toast } from "sonner";
 import { Star, FileText, Download, Loader2, User, CalendarPlus, Lock, Check, PartyPopper, Maximize2, Minimize2, Building2 } from "lucide-react";
 
-const DOC_TYPES = ["BonitÃ¤tsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
-  "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "BÃ¼rgschaft", "Sonstiges"];
-/* Mirrors constants.DOC_RELEASE_STAGE â the stage an application must reach before these
+const DOC_TYPES = ["Bonitätsauskunft", "Gehaltsnachweise", "Arbeitsvertrag", "Ausweis",
+  "Aufenthaltstitel", "Mietschuldenfreiheitsbescheinigung", "Bürgschaft", "Sonstiges"];
+/* Mirrors constants.DOC_RELEASE_STAGE - the stage an application must reach before these
    may be demanded. The backend enforces it; this only keeps the UI honest. */
 const DOC_STAGE = {
-  "BonitÃ¤tsauskunft": 4, "Gehaltsnachweise": 4, "Arbeitsvertrag": 4,
-  "Mietschuldenfreiheitsbescheinigung": 4, "BÃ¼rgschaft": 4, "Ausweis": 5, "Aufenthaltstitel": 5,
+  "Bonitätsauskunft": 4, "Gehaltsnachweise": 4, "Arbeitsvertrag": 4,
+  "Mietschuldenfreiheitsbescheinigung": 4, "Bürgschaft": 4, "Ausweis": 5, "Aufenthaltstitel": 5,
 };
 const STAGE_ORDER = { neu: 0, pruefung: 1, interessant: 2, besichtigung: 3, favorit: 4, zusage: 5 };
 const docRequestable = (type, status) =>
@@ -127,7 +127,7 @@ function ApplicationSheet({ appId, propertyId, otherActiveCount, open, onClose, 
   };
   const setStars = (n) => { setApp({ ...app, stars: n }); saveMeta({ stars: n }); };
   const changeStatus = async (s) => {
-    const opts = confirmStatusChange(s, otherActiveCount);
+    const opts = confirmStatusChange(s, otherActiveCount, app.status);
     if (!opts) return;
     const { data } = await api.patch(`/applications/${appId}/status`, { status: s, ...opts });
     toast.success(data.rejected_others
@@ -437,7 +437,7 @@ export function Pipeline({ propertyId }) {
     const { destination, draggableId, source } = result;
     if (!destination || destination.droppableId === source.droppableId) return;
     const newStatus = destination.droppableId;
-    const opts = confirmStatusChange(newStatus, otherActiveCount(draggableId));
+    const opts = confirmStatusChange(newStatus, otherActiveCount(draggableId), source.droppableId);
     if (!opts) return;
     setApps((prev) => prev.map((a) => (a.id === draggableId ? { ...a, status: newStatus } : a)));
     try {

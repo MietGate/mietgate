@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from database import db, NO_ID
 from security import require_roles
-from helpers import new_id, now_iso, notify, email_user, log_activity
+from helpers import new_id, now_iso, notify, email_user, log_activity, enforce_property_limit
 from email_service import send_email
 from constants import DEFAULT_BONIFY, DEFAULT_INSERAT_TEMPLATES
 
@@ -126,6 +126,9 @@ async def admin_orgs(user: dict = Depends(admin)):
         sub = await db.subscriptions.find_one({"org_id": o["id"]}, NO_ID)
         o["plan"] = (sub or {}).get("plan_key")
         o["subscription_status"] = (sub or {}).get("status")
+        # Lets the admin UI warn before a manual override silently fights a real,
+        # webhook-managed Stripe subscription instead of setting up a fresh manual deal.
+        o["stripe_managed"] = bool((sub or {}).get("stripe_subscription_id"))
     return orgs
 
 
@@ -158,9 +161,14 @@ async def set_manual_subscription(org_id: str, body: ManualSubscription, user: d
         await db.subscriptions.delete_one({"org_id": org_id})
     if body.white_label_addon is not None:
         await db.organizations.update_one({"id": org_id}, {"$set": {"white_label_addon": body.white_label_addon}})
+    # A downgrade, cancellation, or full removal must revisit already-active links —
+    # otherwise an org keeps more live application links than the new plan allows.
+    deactivated = await enforce_property_limit(org_id)
     await log_activity(org_id, user["id"], "manual_subscription_set", "subscription", body.plan_key,
-                       {"note": body.note} if body.note else None)
-    return await db.subscriptions.find_one({"org_id": org_id}, NO_ID) or {"org_id": org_id, "plan_key": "none"}
+                       {"note": body.note, "deactivated_links": deactivated} if body.note or deactivated else None)
+    result = await db.subscriptions.find_one({"org_id": org_id}, NO_ID) or {"org_id": org_id, "plan_key": "none"}
+    result["deactivated_links"] = deactivated
+    return result
 
 
 # ---------- Plans ----------

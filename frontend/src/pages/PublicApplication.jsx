@@ -190,7 +190,7 @@ export default function PublicApplication() {
       });
       setDone(res);
       try { localStorage.removeItem(draftKey); } catch { /* storage unavailable */ }
-      toast.success("Bewerbung gesendet!");
+      toast.success(res.already_applied ? "Sie haben sich bereits beworben" : "Bewerbung gesendet!");
       window.scrollTo(0, 0);
     } catch (err) {
       toast.error(err.response?.data?.detail || "Fehler beim Senden");
@@ -231,10 +231,19 @@ export default function PublicApplication() {
         {done ? (
           <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-8 text-center animate-fade-up">
             <CheckCircle2 className="h-14 w-14 text-success mx-auto" />
-            <h1 className="font-display text-2xl font-bold mt-5">Bewerbung erfolgreich gesendet!</h1>
-            <p className="text-muted-foreground mt-2">Wir haben ein MietGate-Konto für Sie angelegt. Prüfen Sie Ihre E-Mails, um es zu aktivieren und den Status zu verfolgen.</p>
+            {done.already_applied ? (
+              <>
+                <h1 className="font-display text-2xl font-bold mt-5">Sie haben sich bereits beworben</h1>
+                <p className="text-muted-foreground mt-2">Für diese Wohnung liegt bereits eine laufende Bewerbung von Ihnen vor. Der Vermieter prüft sie noch — den Status sehen Sie in Ihrem MietGate-Konto.</p>
+              </>
+            ) : (
+              <>
+                <h1 className="font-display text-2xl font-bold mt-5">Bewerbung erfolgreich gesendet!</h1>
+                <p className="text-muted-foreground mt-2">Wir haben ein MietGate-Konto für Sie angelegt. Prüfen Sie Ihre E-Mails, um es zu aktivieren und den Status zu verfolgen.</p>
+              </>
+            )}
 
-            {p.document_timing === "before" && (
+            {!done.already_applied && p.document_timing === "before" && (
               <div className="mt-8 text-left border-t border-border pt-6">
                 <h2 className="font-display font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Dokumente hochladen</h2>
                 <p className="text-sm text-muted-foreground mt-1">Vervollständigen Sie Ihre Bewerbung mit relevanten Dokumenten.</p>
@@ -259,7 +268,7 @@ export default function PublicApplication() {
               </div>
             )}
 
-            {p.document_timing !== "before" && (
+            {!done.already_applied && p.document_timing !== "before" && (
               <div className="mt-8 text-left border-t border-border pt-6">
                 <h2 className="font-display font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Dokumente später nachreichen</h2>
                 <p className="text-sm text-muted-foreground mt-1">

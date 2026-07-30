@@ -64,6 +64,15 @@ export default function ApplicantDocuments() {
     const input = e.target;
     const file = input.files?.[0];
     if (!file) return;
+    const type = forcedType || docType;
+    // The generic type dropdown defaults to "Bonitätsauskunft" too, so without this check
+    // the consent checkbox in the guided step below was easy to bypass entirely by just
+    // using the plain upload button instead.
+    if (type === "Bonitätsauskunft" && !hasSchufa && !bonityConsent) {
+      toast.error("Bitte erst der Einwilligung weiter unten zustimmen.");
+      input.value = "";
+      return;
+    }
     const err = validateFile(file, { maxMB: 15, extensions: ALLOWED_EXT });
     if (err) { toast.error(err); input.value = ""; return; }
     setUploading(true);

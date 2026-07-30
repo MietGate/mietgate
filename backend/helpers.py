@@ -112,6 +112,30 @@ async def plan_supports_team(org_id):
     return bool(plan and plan.get("supports_team"))
 
 
+async def enforce_property_limit(org_id):
+    """Deactivate the newest active links past whatever the org's current plan now allows.
+
+    Plan-limit checks otherwise only ever ran at activation time — a downgrade or manual
+    admin cutoff never revisited already-active links, so an org could keep more live
+    links than their (new, lower) plan allows indefinitely. Called after anything that
+    changes an org's effective plan/limit. Returns how many links were turned off.
+    """
+    if not org_id:
+        return 0
+    limit = await get_plan_limit(org_id)
+    active = await db.properties.find(
+        {"org_id": org_id, "link_active": True}, {"id": 1, "_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    excess = active[:max(0, len(active) - limit)]
+    if not excess:
+        return 0
+    await db.properties.update_many(
+        {"id": {"$in": [p["id"] for p in excess]}},
+        {"$set": {"link_active": False, "link_deactivated_by_payment": True}},
+    )
+    return len(excess)
+
+
 INCOME_BUCKETS = {
     "unter_1000": 800, "1000_2000": 1500, "2000_3000": 2500, "3000_plus": 4000,
 }
@@ -177,7 +201,7 @@ def compute_matching_score(application, prop):
 
     # 4. Document completeness — weight 25
     weights_total += 25
-    doc_count = application.get("_doc_count", 0)
+    doc_count = application.get("document_count", 0)
     if doc_count >= 3:
         score += 25
     elif doc_count == 2:
