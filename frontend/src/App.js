@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-route
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardShell } from "@/components/DashboardShell";
 import { CookieConsent } from "@/components/CookieConsent";
+import api from "@/lib/api";
 import { AuthCallback } from "@/pages/AuthCallback";
 import EmailVerify from "@/pages/EmailVerify";
 import Landing from "@/pages/Landing";
@@ -79,7 +80,7 @@ function CaptureSource() {
     const ref = new URLSearchParams(search).get("ref");
     if (ref) {
       localStorage.setItem("mg_signup_source", ref.slice(0, 40));
-      fetch(`/api/admin/track-link-click?ref=${encodeURIComponent(ref)}`, { method: "POST" }).catch(() => {});
+      api.post(`/admin/track-link-click`, null, { params: { ref } }).catch(() => {});
     }
   }, [search]);
   return null;
