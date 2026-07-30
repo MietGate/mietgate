@@ -79,7 +79,7 @@ function CaptureSource() {
     const ref = new URLSearchParams(search).get("ref");
     if (ref) {
       localStorage.setItem("mg_signup_source", ref.slice(0, 40));
-      fetch(`/api/admin/track-link-click?ref=${encodeURIComponent(ref)}`).catch(() => {});
+      fetch(`/api/admin/track-link-click?ref=${encodeURIComponent(ref)}`, { method: "POST" }).catch(() => {});
     }
   }, [search]);
   return null;
