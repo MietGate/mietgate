@@ -110,7 +110,7 @@ export default function PropertyDetail() {
             <p className="text-sm text-muted-foreground flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {[prop.street, prop.house_number, prop.zip, prop.city].filter(Boolean).join(" ") || "Keine Adresse"}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Bewerber-Pipeline lebt jetzt zentral unter Bewerbungen, nicht mehr als Tab hier —
               dieser Link filtert sie direkt auf dieses Objekt. */}
           <Button asChild data-testid="view-applicants-link">
