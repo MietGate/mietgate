@@ -44,6 +44,10 @@ CATALOG = [
      "prices": [
          {"lookup_key": "applicant_premium_monthly", "amount": 499, "currency": "eur", "interval": "month", "tax_behavior": "inclusive"},
      ]},
+    {"mietgate_product_id": "mietgate_addon_bewerber", "name": "MietGate Bewerberauswahl & Terminvergabe", "tax_code": "txcd_10103001",
+     "prices": [
+         {"lookup_key": "addon_bewerberauswahl_onetime", "amount": 4900, "currency": "eur", "interval": None, "tax_behavior": "inclusive"},
+     ]},
 ]
 
 
@@ -241,6 +245,31 @@ async def _mark_paid(session_id, subscription, payment_intent):
                           "Ihr White-Label Add-on ist aktiv",
                           "<p>Ihr White-Label Add-on wurde erfolgreich aktiviert. "
                           "Sie können nun Logo, Farben und Firmennamen in den Einstellungen anpassen.</p>")
+        return
+    # Bewerberauswahl Add-on: mark property as booked, notify admin
+    if tx.get("purpose") == "addon_bewerberauswahl":
+        if tx.get("property_id"):
+            prop = await db.properties.find_one({"id": tx["property_id"]})
+            if prop:
+                await db.properties.update_one(
+                    {"id": tx["property_id"]},
+                    {"$set": {
+                        "addon_bewerberauswahl_booked": True,
+                        "addon_bewerberauswahl_booking_date": datetime.now(timezone.utc).isoformat(),
+                    }})
+                owner_id = await _org_owner_user_id(tx["org_id"])
+                owner = await db.users.find_one({"id": owner_id}, {"email": 1, "_id": 0}) if owner_id else None
+                if owner and owner.get("email"):
+                    await send_email(
+                        owner["email"],
+                        "Neue Anfrage: Bewerberauswahl-Add-on",
+                        "Bewerberauswahl Add-on gebucht",
+                        f"<p>Ein Vermieter hat das Bewerberauswahl- und Terminvergabe-Add-on (49€) für folgende Wohnung gebucht:</p>"
+                        f"<p><b>{prop.get('title', 'Unbekannt')}</b><br>"
+                        f"{prop.get('street', '')} {prop.get('house_number', '')}<br>"
+                        f"{prop.get('zip', '')} {prop.get('city', '')}</p>"
+                        f"<p>Bitte kontaktieren Sie den Vermieter zur Abstimmung der nächsten Schritte.</p>"
+                    )
         return
     # Activate subscription for the org
     if tx.get("org_id"):

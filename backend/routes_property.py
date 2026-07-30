@@ -450,6 +450,47 @@ async def _serve_ranged(request: Request, path: str, default_content_type: str):
     return Response(content=result["data"], media_type=result["content_type"] or default_content_type, headers=headers)
 
 
+class AddonCheckoutRequest(BaseModel):
+    origin_url: str
+    withdrawal_consent: bool = False
+
+
+@router.post("/properties/{pid}/addon/checkout")
+async def addon_checkout(pid: str, req: AddonCheckoutRequest, request: Request, user: dict = Depends(get_current_user)):
+    prop = await db.properties.find_one({"id": pid})
+    if not prop or prop["org_id"] != user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Objekt nicht gefunden")
+    await _require_manage_role(prop["org_id"], user)
+
+    if prop.get("addon_bewerberauswahl_booked"):
+        raise HTTPException(status_code=400, detail="Addon bereits gebucht")
+
+    if not req.withdrawal_consent:
+        raise HTTPException(status_code=400,
+            detail="Bitte bestätigen Sie, dass die Leistung sofort beginnt und Sie Ihr Widerrufsrecht damit verlieren.")
+
+    try:
+        session, price = stripe_service.create_checkout_session(
+            "addon_bewerberauswahl_onetime", req.origin_url, user["id"], prop["org_id"],
+            purpose="addon_bewerberauswahl", property_id=pid, one_time=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Checkout fehlgeschlagen: {e}")
+
+    await db.payment_transactions.insert_one({
+        "id": new_id(), "session_id": session.id, "user_id": user["id"],
+        "org_id": prop["org_id"], "property_id": pid, "plan_key": "addon_bewerberauswahl",
+        "interval": "onetime", "lookup_key": "addon_bewerberauswahl_onetime",
+        "amount": (price.unit_amount or 0) / 100, "currency": price.currency,
+        "status": "initiated", "payment_status": "pending", "purpose": "addon_bewerberauswahl",
+        "created_at": now_iso(), "updated_at": now_iso(),
+        **stripe_service.tax_facts(session),
+        "withdrawal_consent_at": now_iso(),
+        "withdrawal_consent_ip": request.client.host if request.client else None,
+    })
+
+    return {"checkout_url": session.url, "session_id": session.id}
+
+
 @router.get("/public/marketing/erklaervideo.mp4")
 async def serve_explainer_video(request: Request):
     return await _serve_ranged(request, "mietgate/marketing/erklaervideo.mp4", "video/mp4")

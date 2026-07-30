@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check, Lock, CreditCard, Zap, Trash2, Users
+  ArrowLeft, Pencil, Copy, RefreshCw, ExternalLink, Loader2, MapPin, Link2, Check, Lock, CreditCard, Zap, Trash2, Users, Gift
 } from "lucide-react";
 
 export default function PropertyDetail() {
@@ -24,6 +24,8 @@ export default function PropertyDetail() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [choosingPlan, setChoosingPlan] = useState(false);
+  const [addonCheckingOut, setAddonCheckingOut] = useState(false);
+  const [addonConsent, setAddonConsent] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const load = () => api.get(`/properties/${id}`).then((r) => setProp(r.data)).catch(() => { toast.error("Objekt nicht gefunden"); navigate("/objekte"); });
@@ -92,6 +94,17 @@ export default function PropertyDetail() {
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); setPortalLoading(false); }
   };
 
+  const bookAddon = async () => {
+    if (!addonConsent) { toast.error("Bitte stimmen Sie den Bedingungen zu"); return; }
+    setAddonCheckingOut(true);
+    try {
+      const { data } = await api.post(`/properties/${id}/addon/checkout`, {
+        origin_url: window.location.origin, withdrawal_consent: true,
+      });
+      window.location.href = data.checkout_url;
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); setAddonCheckingOut(false); }
+  };
+
   const paymentLocked = !!prop.link_deactivated_by_payment;
 
   const Row = ({ label, value }) => value != null && value !== "" ? (
@@ -145,6 +158,7 @@ export default function PropertyDetail() {
           <TabsTrigger value="link" data-testid="tab-link" className="px-5 py-2 text-base">Bewerbungslink</TabsTrigger>
           <TabsTrigger value="viewings" data-testid="tab-viewings" className="px-5 py-2 text-base">Besichtigungen</TabsTrigger>
           <TabsTrigger value="images" data-testid="tab-images" className="px-5 py-2 text-base">Bilder</TabsTrigger>
+          <TabsTrigger value="addons" data-testid="tab-addons" className="px-5 py-2 text-base">Add-ons</TabsTrigger>
           <TabsTrigger value="overview" data-testid="tab-overview" className="px-5 py-2 text-base">Details</TabsTrigger>
         </TabsList>
 
@@ -198,6 +212,46 @@ export default function PropertyDetail() {
         <TabsContent value="viewings" className="mt-6"><Viewings propertyId={id} property={prop} /></TabsContent>
 
         <TabsContent value="images" className="mt-6"><PropertyImages property={prop} onChanged={load} /></TabsContent>
+
+        <TabsContent value="addons" className="mt-6">
+          <div className="max-w-2xl">
+            {prop.addon_bewerberauswahl_booked ? (
+              <div className="rounded-2xl border border-green-500/40 bg-green-500/5 p-6">
+                <div className="flex items-center gap-3 mb-2"><Check className="h-5 w-5 text-green-600" /><h3 className="font-display font-bold text-lg">Bewerberauswahl-Addon aktiv</h3></div>
+                <p className="text-sm text-muted-foreground">Das Addon wurde erfolgreich gebucht. Unser Team wird sich in Kürze bei Ihnen melden.</p>
+                {prop.addon_bewerberauswahl_booking_date && (
+                  <p className="text-xs text-muted-foreground mt-3">Gebucht am {new Date(prop.addon_bewerberauswahl_booking_date).toLocaleDateString("de-DE")}</p>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-6">
+                <div className="flex items-center gap-3 mb-2"><Gift className="h-5 w-5 text-primary" /><h3 className="font-display font-bold text-lg">Bewerberauswahl & Terminvergabe</h3></div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Lassen Sie uns die Bewerberauswahl übernehmen. Wir verwalten die Bewerbungen, wählen die besten aus und vergeben Besichtigungstermine mit den Bewerbern. Sie führen nur noch die Besichtigungen durch.
+                </p>
+                <ul className="text-sm space-y-2 mb-6">
+                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Bewerbungen sichten & auswählen</li>
+                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Termine mit Bewerbern abstimmen</li>
+                  <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Sie führen nur Besichtigungen durch</li>
+                </ul>
+                <div className="bg-secondary rounded-lg p-4 mb-6">
+                  <p className="text-lg font-bold">49 € <span className="text-sm font-normal text-muted-foreground">einmalig</span></p>
+                  <p className="text-xs text-muted-foreground mt-1">+ Besichtigungstermine auf Anfrage</p>
+                </div>
+                <label className="flex items-start gap-3 text-sm mb-6 cursor-pointer">
+                  <input type="checkbox" checked={addonConsent} onChange={(e) => setAddonConsent(e.target.checked)} className="mt-1" />
+                  <span className="text-muted-foreground">
+                    Ich bestätige, dass die Leistung sofort nach Zahlung beginnt und ich mein <strong>Widerrufsrecht</strong> damit verliere.
+                  </span>
+                </label>
+                <Button onClick={bookAddon} disabled={!addonConsent || addonCheckingOut} className="w-full">
+                  {addonCheckingOut ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Gift className="h-4 w-4 mr-2" />}
+                  Addon jetzt buchen
+                </Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="overview" className="mt-6">
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
