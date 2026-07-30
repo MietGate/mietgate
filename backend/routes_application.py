@@ -1,7 +1,7 @@
 import os
 import secrets
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from database import db, NO_ID
@@ -320,7 +320,7 @@ def _rejection_html(ptitle: str, someone_else: bool) -> str:
 
 
 @router.patch("/applications/{app_id}/status")
-async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(get_current_user)):
+async def update_status(app_id: str, body: StatusUpdate, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     if body.status not in PIPELINE_STATUSES:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
     app = await db.applications.find_one({"id": app_id})
@@ -334,10 +334,13 @@ async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(ge
     status_label = STATUS_LABELS.get(body.status, body.status)
     rejected_others = 0
 
+    # Notify/email fire in the background — awaiting the outbound Resend API call here (up
+    # to several sequential sends for a Zusage that rejects other applicants) made a single
+    # drag-and-drop status change on the kanban board feel like it was hanging.
     if body.status == "zusage":
-        await notify(app["applicant_user_id"], "status_change", "Zusage erhalten! 🎉",
-                     f"Sie haben die Zusage für „{ptitle}“ erhalten.", "/bewerber")
-        await email_user(app["applicant_user_id"], f"Zusage für {ptitle}", "Herzlichen Glückwunsch! 🎉",
+        background_tasks.add_task(notify, app["applicant_user_id"], "status_change", "Zusage erhalten! 🎉",
+                                  f"Sie haben die Zusage für „{ptitle}“ erhalten.", "/bewerber")
+        background_tasks.add_task(email_user, app["applicant_user_id"], f"Zusage für {ptitle}", "Herzlichen Glückwunsch! 🎉",
                          f"<p>Ihre Bewerbung für <b>{ptitle}</b> war erfolgreich — die Wohnung gehört Ihnen.</p>"
                          f"<p>Der Vermieter meldet sich in Kürze bei Ihnen, um die Übergabe und den "
                          f"Mietvertrag zu besprechen.</p>"
@@ -349,9 +352,9 @@ async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(ge
                  "id": {"$ne": app_id}}).to_list(1000)
             for other in others:
                 await db.applications.update_one({"id": other["id"]}, {"$set": {"status": "absage"}})
-                await notify(other["applicant_user_id"], "status_change", "Entscheidung gefallen",
+                background_tasks.add_task(notify, other["applicant_user_id"], "status_change", "Entscheidung gefallen",
                              f"Die Wohnung „{ptitle}“ wurde vergeben.", "/bewerber")
-                await email_user(other["applicant_user_id"], f"Ihre Bewerbung für {ptitle}",
+                background_tasks.add_task(email_user, other["applicant_user_id"], f"Ihre Bewerbung für {ptitle}",
                                  "Ihre Bewerbung", _rejection_html(ptitle, someone_else=True),
                                  category="applications")
             rejected_others = len(others)
@@ -359,17 +362,17 @@ async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(ge
                                app["property_id"], {"count": rejected_others})
 
     elif body.status == "absage":
-        await notify(app["applicant_user_id"], "status_change", "Entscheidung zu Ihrer Bewerbung",
+        background_tasks.add_task(notify, app["applicant_user_id"], "status_change", "Entscheidung zu Ihrer Bewerbung",
                      f"Ihre Bewerbung für „{ptitle}“ wurde nicht berücksichtigt.", "/bewerber")
-        await email_user(app["applicant_user_id"], f"Ihre Bewerbung für {ptitle}", "Ihre Bewerbung",
+        background_tasks.add_task(email_user, app["applicant_user_id"], f"Ihre Bewerbung für {ptitle}", "Ihre Bewerbung",
                          _rejection_html(ptitle, someone_else=False), category="applications")
 
     elif previous == "zusage":
         # The deal fell through and the landlord is reopening the process. Without this the
         # applicant would just see their status quietly drop back with no explanation.
-        await notify(app["applicant_user_id"], "status_change", "Gute Neuigkeiten",
+        background_tasks.add_task(notify, app["applicant_user_id"], "status_change", "Gute Neuigkeiten",
                      f"„{ptitle}“ ist wieder verfügbar — Ihre Bewerbung ist zurück im Verfahren.", "/bewerber")
-        await email_user(app["applicant_user_id"], f"Gute Neuigkeiten zu {ptitle}", "Gute Neuigkeiten",
+        background_tasks.add_task(email_user, app["applicant_user_id"], f"Gute Neuigkeiten zu {ptitle}", "Gute Neuigkeiten",
                          f"<p>Die Wohnung <b>{ptitle}</b> ist wieder verfügbar geworden, und Ihre Bewerbung "
                          f"ist zurück im Verfahren.</p>"
                          f"<p>Aktueller Stand: <b>{status_label}</b>. Der Vermieter meldet sich bei Ihnen, "
@@ -377,9 +380,9 @@ async def update_status(app_id: str, body: StatusUpdate, user: dict = Depends(ge
                          category="applications")
 
     else:
-        await notify(app["applicant_user_id"], "status_change", "Statusänderung",
+        background_tasks.add_task(notify, app["applicant_user_id"], "status_change", "Statusänderung",
                      f"Ihre Bewerbung hat den Status: {status_label}", "/bewerber")
-        await email_user(app["applicant_user_id"], "Statusänderung Ihrer Bewerbung",
+        background_tasks.add_task(email_user, app["applicant_user_id"], "Statusänderung Ihrer Bewerbung",
                          "Es gibt ein Update zu Ihrer Bewerbung",
                          f"<p>Der Status Ihrer Bewerbung für <b>{ptitle}</b> wurde aktualisiert:</p>"
                          f"<p style='font-size:17px;font-weight:700;color:#0a2540'>{status_label}</p>"

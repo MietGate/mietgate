@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
 from database import db, NO_ID
@@ -134,7 +134,7 @@ class MessagePayload(BaseModel):
 
 
 @router.post("/messages")
-async def send_message(payload: MessagePayload, user: dict = Depends(get_current_user)):
+async def send_message(payload: MessagePayload, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     app, is_landlord = await _check_access(payload.application_id, user)
     prop = await db.properties.find_one({"id": app["property_id"]}, NO_ID)
     recipient_id = app["applicant_user_id"] if is_landlord else prop.get("created_by")
@@ -160,20 +160,23 @@ async def send_message(payload: MessagePayload, user: dict = Depends(get_current
                   f"<blockquote style='margin:12px 0;padding-left:12px;border-left:3px solid #e2e8f0;color:#334155'>"
                   f"{payload.body[:400]}</blockquote>"
                   f"<p>Antworten können Sie direkt in Ihrem MietGate-Konto.</p>")
+    # Notify/email fire in the background — the outbound call to the Resend API alone can
+    # take a second or more, and awaiting it here made every single chat message feel like
+    # it was hanging until it "sent" for both landlord and applicant.
     if is_landlord:
         link = f"/bewerber/nachrichten?application_id={payload.application_id}"
-        await notify(recipient_id, "message", "Neue Nachricht", f"{user.get('name')}: {preview}", link)
+        background_tasks.add_task(notify, recipient_id, "message", "Neue Nachricht", f"{user.get('name')}: {preview}", link)
         # Without this, an applicant who isn't logged in never learns a landlord replied.
-        await email_user(recipient_id, "Neue Nachricht zu Ihrer Bewerbung",
-                         "Sie haben eine neue Nachricht", email_html, category="messages")
+        background_tasks.add_task(email_user, recipient_id, "Neue Nachricht zu Ihrer Bewerbung",
+                                  "Sie haben eine neue Nachricht", email_html, category="messages")
     else:
         # An applicant's message should reach every team member managing this property,
         # not just whoever originally created it.
-        await notify_org_team(app["org_id"], "message", "Neue Nachricht",
-                              f"{user.get('name')}: {preview}", f"/nachrichten",
-                              email_subject="Neue Nachricht von einem Bewerber",
-                              email_title="Sie haben eine neue Nachricht",
-                              email_body_html=email_html, category="messages")
+        background_tasks.add_task(notify_org_team, app["org_id"], "message", "Neue Nachricht",
+                                  f"{user.get('name')}: {preview}", f"/nachrichten",
+                                  email_subject="Neue Nachricht von einem Bewerber",
+                                  email_title="Sie haben eine neue Nachricht",
+                                  email_body_html=email_html, category="messages")
     msg.pop("_id", None)
     return msg
 
