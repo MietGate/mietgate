@@ -110,7 +110,7 @@ export default function Messages() {
           <p className="text-sm mt-1.5">Sobald Bewerber Ihnen schreiben, erscheinen die Unterhaltungen hier.</p>
         </div>
       ) : (
-        <div className={`${active ? "" : "-mx-4 mt-4"} lg:mx-0 lg:mt-0 rounded-none lg:rounded-2xl border-0 lg:border border-border/70 bg-card shadow-none lg:shadow-soft overflow-hidden grid lg:grid-cols-[340px_1fr] ${active ? "h-[100dvh]" : "h-[calc(100dvh-116px)]"} lg:h-[calc(100vh-260px)] min-h-[420px]`}>
+        <div className={`${active ? "" : "-mx-4 mt-4"} lg:mx-0 lg:mt-0 rounded-none lg:rounded-2xl border-0 lg:border border-border/70 bg-card shadow-none lg:shadow-soft overflow-hidden grid lg:grid-cols-[340px_1fr] ${active ? "h-[100svh]" : "h-[calc(100svh-116px)]"} lg:h-[calc(100vh-260px)] min-h-[420px]`}>
           {/* Conversation list */}
           <div className={`border-r border-border flex flex-col min-h-0 ${active ? "hidden lg:flex" : "flex"}`}>
             <div className="p-3 border-b border-border shrink-0">
