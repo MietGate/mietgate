@@ -269,7 +269,7 @@ function RescheduleRequest({ viewing, participant, onDone }) {
       )}
       <Input value={message} onChange={(e) => setMessage(e.target.value)} className="mt-2 bg-white"
         placeholder="Optionale Nachricht an den Bewerber" data-testid={`reschedule-msg-${participant.application_id}`} />
-      <div className="flex gap-2 mt-2">
+      <div className="flex flex-wrap gap-2 mt-2">
         <Button size="sm" disabled={busy} onClick={() => respond("reoffer")} data-testid={`reschedule-reoffer-${participant.application_id}`}>
           {busy && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />} Neuen Termin anbieten
         </Button>
@@ -386,7 +386,7 @@ export function Viewings({ propertyId, property }) {
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1"><Users className="h-3.5 w-3.5" /> {v.participants?.length || 0} Teilnehmer</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {v.type !== "slots" && v.datetime && (
                     <Button variant="outline" size="sm" onClick={() => addToCalendar(v)} data-testid={`ics-viewing-${v.id}`}><CalendarPlus className="h-4 w-4 mr-1" /> Zum Kalender</Button>
                   )}

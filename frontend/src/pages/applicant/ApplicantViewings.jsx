@@ -69,7 +69,7 @@ function ViewingCard({ v, onChanged }) {
       )}
 
       {v.type !== "slots" && !v.cancelled && v.my_status !== "confirmed" && v.my_status !== "declined" && (
-        <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+        <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
           <Button size="sm" onClick={() => respond("confirm")} data-testid={`confirm-${v.id}`}>Bestätigen</Button>
           <Button size="sm" variant="outline" onClick={() => respond("reschedule")}>Umbuchung anfragen</Button>
           <Button size="sm" variant="ghost" className="text-destructive" onClick={() => respond("decline")}>Absagen</Button>

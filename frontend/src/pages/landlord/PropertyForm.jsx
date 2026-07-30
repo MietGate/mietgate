@@ -466,7 +466,7 @@ export default function PropertyForm() {
         </Section>
       )}
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button type="button" variant="ghost" onClick={goBack} disabled={step === 0}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
         </Button>

@@ -212,9 +212,9 @@ export default function Calendar() {
           <h1 className="font-display text-3xl font-bold">Kalender</h1>
           <p className="text-muted-foreground mt-1">Alle Besichtigungen über alle Objekte hinweg.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={propFilter} onValueChange={setPropFilter}>
-            <SelectTrigger className="w-[200px]" data-testid="calendar-property-filter"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[160px] sm:w-[200px]" data-testid="calendar-property-filter"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Objekte</SelectItem>
               {properties.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}

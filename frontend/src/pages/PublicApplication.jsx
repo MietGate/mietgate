@@ -384,7 +384,7 @@ export default function PublicApplication() {
               </div>
 
               {/* Navigation */}
-              <div className="flex items-center justify-between gap-3 mt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 mt-5">
                 <Button type="button" variant="ghost" onClick={goBack} disabled={step === 0} data-testid="funnel-back">
                   <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
                 </Button>
