@@ -45,6 +45,49 @@ async def admin_stats(user: dict = Depends(admin)):
     }
 
 
+@router.get("/link-stats")
+async def link_stats(user: dict = Depends(admin)):
+    """Analytics: pro Bewerbungslink, wie viele Bewerber + Nachrichten."""
+    stats = await db.applications.aggregate([
+        {"$group": {
+            "_id": "$property_id",
+            "applicant_count": {"$sum": 1},
+        }},
+    ]).to_list(10000)
+
+    prop_ids = [s["_id"] for s in stats if s["_id"]]
+    props = await db.properties.find(
+        {"id": {"$in": prop_ids}},
+        {"id": 1, "title": 1, "application_code": 1, "city": 1}
+    ).to_list(len(prop_ids))
+    props_by_id = {p["id"]: p for p in props}
+
+    msg_stats = await db.messages.aggregate([
+        {"$group": {
+            "_id": "$property_id",
+            "message_count": {"$sum": 1},
+        }},
+    ]).to_list(10000)
+    msg_by_prop = {m["_id"]: m["message_count"] for m in msg_stats}
+
+    results = []
+    for s in stats:
+        prop = props_by_id.get(s["_id"])
+        if not prop:
+            continue
+        results.append({
+            "property_id": s["_id"],
+            "application_code": prop.get("application_code"),
+            "title": prop.get("title"),
+            "city": prop.get("city"),
+            "applicant_count": s["applicant_count"],
+            "message_count": msg_by_prop.get(s["_id"], 0),
+        })
+
+    results.sort(key=lambda x: x["message_count"], reverse=True)
+    return {"links": results[:20]}
+
+
 @router.get("/customer-search")
 async def admin_customer_search(q: str = "", user: dict = Depends(admin)):
     """Lightweight lookup used by the manual-ticket dialog to link a ticket to an

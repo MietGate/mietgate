@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { Loader2, Users, Building2, FileText, CreditCard, TrendingUp, XCircle, LifeBuoy, Clock, AlertTriangle } from "lucide-react";
+import { Loader2, Users, Building2, FileText, CreditCard, TrendingUp, XCircle, LifeBuoy, Clock, AlertTriangle, MessageSquare, Link2 } from "lucide-react";
 
 const Card = ({ icon: Icon, label, value, accent }) => (
   <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5" data-testid={`admin-stat-${label.toLowerCase().replace(/[^a-z]/g, "")}`}>
@@ -112,6 +112,66 @@ function Funnel() {
   );
 }
 
+function LinkStats() {
+  const [links, setLinks] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    api.get("/admin/link-stats").then((r) => setLinks(r.data.links)).catch(() => setError(true));
+  }, []);
+
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 space-y-4" data-testid="admin-link-stats">
+      <div>
+        <h2 className="font-display font-bold text-lg">Bewerbungslinks — Nachrichten-Klicks</h2>
+        <p className="text-sm text-muted-foreground">Welche Links führen zu den meisten Anfragen?</p>
+      </div>
+
+      {error && <p className="text-sm text-destructive">Statistik konnte nicht geladen werden.</p>}
+      {!links && <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
+      {links && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                <th className="pb-2 pr-4 font-medium">Wohnung</th>
+                <th className="pb-2 px-2 font-medium text-right">Bewerber</th>
+                <th className="pb-2 pl-2 font-medium text-right">Nachrichten</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {links.length === 0 ? (
+                <tr><td colSpan="3" className="py-4 text-center text-muted-foreground text-xs">Noch keine Daten</td></tr>
+              ) : (
+                links.map((link) => (
+                  <tr key={link.property_id} data-testid={`link-stat-${link.application_code}`}>
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-2">
+                        <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{link.title}</p>
+                          <p className="text-xs text-muted-foreground">{link.city || "Ort unbekannt"}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-2 text-right tabular-nums font-semibold">{link.applicant_count}</td>
+                    <td className="py-3 pl-2 text-right tabular-nums">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                        <span className="font-semibold text-success">{link.message_count}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [s, setS] = useState(null);
   const [error, setError] = useState(false);
@@ -136,6 +196,7 @@ export default function AdminDashboard() {
         <Card icon={XCircle} label="Gekündigte Abos" value={s.cancelled_subscriptions} />
       </div>
       <Funnel />
+      <LinkStats />
       <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 flex items-center gap-3 max-w-sm">
         <LifeBuoy className="h-5 w-5 text-primary" />
         <div><p className="text-sm text-muted-foreground">Offene Supportfälle</p><p className="font-mono text-2xl font-bold">{s.open_tickets}</p></div>
