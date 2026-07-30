@@ -339,7 +339,7 @@ async def activate_link(pid: str, body: ActivateLinkRequest, request: Request, u
     try:
         session, price = stripe_service.create_checkout_session(
             lookup_key, body.origin_url, user["id"], org_id,
-            purpose=purpose, trial_days=None if is_one_time else 3, property_id=pid,
+            purpose=purpose, trial_days=3, property_id=pid,
             one_time=is_one_time)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Checkout fehlgeschlagen: {e}")
