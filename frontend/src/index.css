@@ -4,7 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
+/* overflow-x alone on both html AND body would force each one's overflow-y to compute as
+   "auto" too (per the CSS overflow spec), turning body into a second, independent scroll
+   container nested inside html's. That double scroll context is what made position:sticky
+   (the sidebar) behave inconsistently — so the horizontal clamp lives on html only. */
+html {
     max-width: 100%;
     overflow-x: hidden;
 }

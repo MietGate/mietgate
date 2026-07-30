@@ -198,12 +198,21 @@ export function DashboardShell() {
   // (menu/search/bell) on top of the thread's own back button and name.
   const [headerHidden, setHeaderHidden] = useState(false);
   const activeNavRef = useRef(null);
+  const mainRef = useRef(null);
 
   // The admin nav alone has grown to 12 items — on a shorter window the sidebar scrolls
   // internally, and without this the active page's own link can end up scrolled out of view
   // above or below the visible strip, leaving only unrelated items showing.
   useEffect(() => {
     activeNavRef.current?.scrollIntoView({ block: "nearest" });
+  }, [location.pathname]);
+
+  // <main> is the app's only scrolling element (sidebar/header are fixed in the shell around
+  // it) — App.js's own ScrollToTop resets window scroll, which does nothing here since the
+  // window itself never scrolls inside the shell. Without this, navigating to a new page kept
+  // whatever scroll position the previous page's content happened to be at.
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
 
   // Safety net: a fresh navigation always starts with the header visible, even if the
@@ -238,14 +247,13 @@ export function DashboardShell() {
   const doLogout = async () => { await logout(); navigate("/"); };
 
   return (
-    <div className="app-shell min-h-screen flex bg-background text-foreground">
+    <div className="app-shell h-screen flex overflow-hidden bg-background text-foreground">
       <div className="fixed top-0 inset-x-0 h-[3px] z-50 bg-gradient-to-r from-primary via-primary/70 to-primary" />
       {/* Sidebar */}
-      {/* lg:sticky + lg:h-screen (not lg:static) pins the sidebar to the viewport height on
-          desktop — with plain `static` its box stretched to match the main column's full
-          (often scrollable, taller-than-viewport) height, pushing "Hilfe & Support" and
-          "Zur Website"/"Abmelden" below the fold on any page longer than one screen. */}
-      <aside className={`font-sidebar fixed lg:sticky lg:top-0 inset-y-0 lg:inset-y-auto left-0 z-40 w-[248px] h-screen bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      {/* The whole shell is h-screen + overflow-hidden and only <main> scrolls, so the
+          sidebar and header never move — no more sticky/scroll tricks needed to keep them
+          in place; lg:static + h-full simply sizes the sidebar to the fixed shell height. */}
+      <aside className={`font-sidebar fixed lg:static inset-y-0 left-0 z-40 w-[248px] h-full bg-brand-dark text-white flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="h-16 flex items-center justify-center px-3 border-b border-white/10">
           <Link to="/" className="flex items-center justify-center w-full">
             <img src="/mietgate-logo-wide.png" alt="MietGate" className="h-10 w-auto" />
@@ -302,8 +310,8 @@ export function DashboardShell() {
       {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setOpen(false)} />}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background">
-        <header className={`h-16 border-b border-border bg-card items-center gap-4 px-4 lg:px-8 sticky top-0 z-20 ${headerHidden ? "hidden lg:flex" : "flex"}`}>
+      <div className="flex-1 flex flex-col min-w-0 h-full bg-background">
+        <header className={`h-16 shrink-0 border-b border-border bg-card items-center gap-4 px-4 lg:px-8 z-20 ${headerHidden ? "hidden lg:flex" : "flex"}`}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button className="lg:hidden p-2" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
             <div className="hidden sm:flex items-center text-sm text-muted-foreground truncate">
@@ -343,7 +351,7 @@ export function DashboardShell() {
             </DropdownMenu>
           </div>
         </header>
-        <main className={`flex-1 lg:p-8 w-full mx-auto ${headerHidden ? "p-0" : "p-4"} ${fullWidth ? "max-w-none" : "max-w-[1400px]"}`}>
+        <main ref={mainRef} className={`flex-1 min-h-0 overflow-y-auto lg:p-8 w-full mx-auto ${headerHidden ? "p-0" : "p-4"} ${fullWidth ? "max-w-none" : "max-w-[1400px]"}`}>
           <Outlet context={{ setFullWidth, setHeaderHidden }} />
         </main>
       </div>
