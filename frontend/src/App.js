@@ -71,12 +71,16 @@ function ScrollToTop() {
 }
 
 /* Remembers where a visitor came from (?ref=…) so the signup can be attributed later.
-   Kept in localStorage because registration usually happens on a later page view. */
+   Kept in localStorage because registration usually happens on a later page view.
+   Also tracks clicks on campaign links for admin analytics. */
 function CaptureSource() {
   const { search } = useLocation();
   useEffect(() => {
     const ref = new URLSearchParams(search).get("ref");
-    if (ref) localStorage.setItem("mg_signup_source", ref.slice(0, 40));
+    if (ref) {
+      localStorage.setItem("mg_signup_source", ref.slice(0, 40));
+      fetch(`/api/admin/track-link-click?ref=${encodeURIComponent(ref)}`).catch(() => {});
+    }
   }, [search]);
   return null;
 }

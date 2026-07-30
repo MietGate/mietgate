@@ -45,6 +45,43 @@ async def admin_stats(user: dict = Depends(admin)):
     }
 
 
+@router.post("/track-link-click")
+async def track_link_click(ref: str = "", request: Request):
+    """Track clicks on outreach campaign links (?ref=...)."""
+    if not ref or len(ref) > 100:
+        return {"ok": True}
+    await db.link_clicks.insert_one({
+        "id": new_id(),
+        "ref": ref,
+        "created_at": now_iso(),
+        "user_agent": request.headers.get("user-agent", ""),
+        "ip": request.client.host if request.client else "",
+    })
+    return {"ok": True}
+
+
+@router.get("/campaign-stats")
+async def campaign_stats(user: dict = Depends(admin)):
+    """Campaign tracking: clicks per ?ref= parameter."""
+    stats = await db.link_clicks.aggregate([
+        {"$group": {
+            "_id": "$ref",
+            "clicks": {"$sum": 1},
+        }},
+        {"$sort": {"clicks": -1}},
+        {"$limit": 20},
+    ]).to_list(20)
+
+    result = []
+    for s in stats:
+        if s["_id"]:
+            result.append({
+                "ref": s["_id"],
+                "clicks": s["clicks"],
+            })
+    return {"campaigns": result}
+
+
 @router.get("/link-stats")
 async def link_stats(user: dict = Depends(admin)):
     """Analytics: pro Bewerbungslink, wie viele Bewerber + Nachrichten."""

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { Loader2, Users, Building2, FileText, CreditCard, TrendingUp, XCircle, LifeBuoy, Clock, AlertTriangle, MessageSquare, Link2 } from "lucide-react";
+import { Loader2, Users, Building2, FileText, CreditCard, TrendingUp, XCircle, LifeBuoy, Clock, AlertTriangle, MessageSquare, Link2, Zap } from "lucide-react";
 
 const Card = ({ icon: Icon, label, value, accent }) => (
   <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5" data-testid={`admin-stat-${label.toLowerCase().replace(/[^a-z]/g, "")}`}>
@@ -112,6 +112,56 @@ function Funnel() {
   );
 }
 
+function CampaignStats() {
+  const [campaigns, setCampaigns] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    api.get("/admin/campaign-stats").then((r) => setCampaigns(r.data.campaigns)).catch(() => setError(true));
+  }, []);
+
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 space-y-4" data-testid="admin-campaign-stats">
+      <div>
+        <h2 className="font-display font-bold text-lg">Outreach-Kampagnen</h2>
+        <p className="text-sm text-muted-foreground">Klicks auf Links mit ?ref= Parametern</p>
+      </div>
+
+      {error && <p className="text-sm text-destructive">Statistik konnte nicht geladen werden.</p>}
+      {!campaigns && <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
+      {campaigns && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                <th className="pb-2 pr-4 font-medium">Kampagne</th>
+                <th className="pb-2 pl-2 font-medium text-right">Klicks</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {campaigns.length === 0 ? (
+                <tr><td colSpan="2" className="py-4 text-center text-muted-foreground text-xs">Noch keine Klicks</td></tr>
+              ) : (
+                campaigns.map((camp) => (
+                  <tr key={camp.ref} data-testid={`campaign-${camp.ref}`}>
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-3.5 w-3.5 text-muted-foreground" />
+                        <code className="text-xs bg-secondary px-2 py-1 rounded">{camp.ref}</code>
+                      </div>
+                    </td>
+                    <td className="py-3 pl-2 text-right tabular-nums font-semibold text-primary">{camp.clicks}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LinkStats() {
   const [links, setLinks] = useState(null);
   const [error, setError] = useState(false);
@@ -196,6 +246,7 @@ export default function AdminDashboard() {
         <Card icon={XCircle} label="Gekündigte Abos" value={s.cancelled_subscriptions} />
       </div>
       <Funnel />
+      <CampaignStats />
       <LinkStats />
       <div className="rounded-2xl border border-border/70 bg-card shadow-soft p-5 flex items-center gap-3 max-w-sm">
         <LifeBuoy className="h-5 w-5 text-primary" />
