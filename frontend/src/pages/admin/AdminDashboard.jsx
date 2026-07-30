@@ -14,6 +14,10 @@ const Card = ({ icon: Icon, label, value, accent }) => (
 
 const RANGES = [{ days: 7, label: "7 Tage" }, { days: 30, label: "30 Tage" }, { days: 90, label: "90 Tage" }, { days: 0, label: "Gesamt" }];
 
+// Same brand hue family (teal/gold/navy/green) as the dashboard's stat-card tones, so each
+// funnel step reads as a distinct stage instead of one flat color from top to bottom.
+const FUNNEL_BAR = ["bg-primary", "bg-[hsl(38,75%,50%)]", "bg-[hsl(214,55%,45%)]", "bg-success"];
+
 function Funnel() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState(null);
@@ -63,7 +67,7 @@ function Funnel() {
                     <span className="text-muted-foreground"><span className="font-mono font-bold text-foreground">{st.value}</span> · {pct}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                    <div className={`h-full rounded-full ${i === 3 ? "bg-success" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+                    <div className={`h-full rounded-full ${FUNNEL_BAR[i % FUNNEL_BAR.length]}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
